@@ -1,0 +1,91 @@
+/* src/pages/Login.css */
+
+.guitar-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.guitar-string {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, #7B0099, transparent);
+  animation: stringVibrate 0.15s ease-in-out infinite alternate;
+}
+
+.guitar-string:nth-child(1) { left: 15%; animation-delay: 0s; opacity: 0.4; }
+.guitar-string:nth-child(2) { left: 30%; animation-delay: 0.05s; opacity: 0.5; width: 3px; }
+.guitar-string:nth-child(3) { left: 45%; animation-delay: 0.1s; opacity: 0.6; width: 2px; }
+.guitar-string:nth-child(4) { left: 55%; animation-delay: 0.02s; opacity: 0.5; width: 3px; }
+.guitar-string:nth-child(5) { left: 70%; animation-delay: 0.08s; opacity: 0.4; width: 2px; }
+.guitar-string:nth-child(6) { left: 85%; animation-delay: 0.03s; opacity: 0.3; width: 4px; }
+
+@keyframes stringVibrate {
+  from { transform: translateX(-1px); }
+  to { transform: translateX(1px); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rippleEffect {
+  from { transform: scale(0); opacity: 1; }
+  to { transform: scale(4); opacity: 0; }
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  width: 100px;
+  height: 100px;
+  animation: rippleEffect 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+
+/* ============================================
+   MINI ECUALIZADOR DE AUDIO
+   ============================================ */
+.mini-eq {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 3px;
+  height: 20px;
+  align-items: flex-end; /* Las barras crecen desde abajo */
+  opacity: 0;            /* Invisible por defecto */
+  transition: opacity 0.3s ease;
+  pointer-events: none;  /* No interfiere con los clics */
+}
+
+/* LA MAGIA: Mostrar cuando el input con clase 'cyber-input' tiene foco */
+.cyber-input:focus ~ .mini-eq {
+  opacity: 1;
+}
+
+.eq-bar {
+  width: 3px;
+  background: #00f3ff; /* Cian neón para que contraste con el morado */
+  border-radius: 1px;
+  animation: eqBounce 0.8s ease-in-out infinite alternate;
+}
+
+/* Diferentes alturas y retrasos para efecto orgánico */
+.eq-bar:nth-child(1) { height: 40%; animation-delay: 0s; }
+.eq-bar:nth-child(2) { height: 70%; animation-delay: 0.2s; }
+.eq-bar:nth-child(3) { height: 50%; animation-delay: 0.4s; }
+.eq-bar:nth-child(4) { height: 90%; animation-delay: 0.1s; }
+
+@keyframes eqBounce {
+  0% { height: 20%; }
+  100% { height: 100%; }
+}
