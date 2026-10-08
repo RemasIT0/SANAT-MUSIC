@@ -8,8 +8,9 @@ export interface Profile {
   username: string;
   display_name: string;
   bio: string;
-  avatar_url?: string;       // (Opcional, por si usamos imágenes después)
+  avatar_url?: string;       
   avatar_color?: string;
+  mascot_style?: string;
   instruments: Instrument[];
   genres: string[];
   departamento: string;

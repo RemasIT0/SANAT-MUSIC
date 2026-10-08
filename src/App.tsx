@@ -5,6 +5,8 @@ import Home from './pages/Inicio'
 import Profile from './pages/Perfiles'
 import Onboarding from './pages/Onboarding'
 import LoadingScreen from './components/LoadingScreen'
+import VerPerfil from './pages/VerPerfil'
+import EditarPerfil from './pages/EditarPerfil'
 
 function App() {
   const { user, profile, loading } = useAuth()
@@ -40,6 +42,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/perfil/:id" element={<VerPerfil />} />
+        <Route path="/editar-perfil" element={<EditarPerfil />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>

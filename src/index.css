@@ -23,3 +23,17 @@
 h1, h2{
   font-family: 'Nirvana';
 }
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.mascot-wiggle {
+  animation: wiggle 3s ease-in-out infinite;
+}
+
+/* Pausar la animación cuando el mouse está encima para que no moleste al interactuar */
+.mascot-wiggle:hover {
+  animation-play-state: paused;
+}
