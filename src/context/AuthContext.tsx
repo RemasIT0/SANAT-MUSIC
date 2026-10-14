@@ -3,41 +3,66 @@ import { supabase } from '../lib/supabaseClient'
 import { type User } from '@supabase/supabase-js'
 import { type Profile } from '../types'
 
-// 1. Definimos qué datos tendrá nuestro contexto
+// 1. Definimos qué datos tendrá nuestro contexto (Agregamos refreshProfile)
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void> // 👈 AGREGADO
 }
 
 // 2. Creamos el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// 3. Creamos el Provider (el componente que envolverá nuestra app)
+// 3. Creamos el Provider
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // --- FUNCIONES ---
 
+  // Función para refrescar el perfil manualmente
+  const refreshProfile = async () => {
+    if (!user) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      
+      if (error) throw error
+      setProfile(data)
+    } catch (error) {
+      console.error('Error al refrescar perfil:', error)
+    }
+  }
+
+  // Función para cerrar sesión
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setProfile(null)
+  }
+
+  // --- EFECTOS ---
   useEffect(() => {
-    // Función para obtener la sesión y el perfil
     const getInitialSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          // Si hay usuario, buscamos su perfil en la base de datos
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single()
 
-          if (error) {
-            console.error('Error al obtener perfil:', error)
-          } else {
+          if (!error && data) {
             setProfile(data)
           }
         }
@@ -50,7 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getInitialSession()
 
-    // Escuchar cambios en la autenticación (login, logout, registro)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       
@@ -60,32 +84,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', session.user.id)
           .single()
-        setProfile(data)
+        setProfile(data || null)
       } else {
         setProfile(null)
       }
       setLoading(false)
     })
 
-    // Limpiar la suscripción cuando el componente se desmonte
     return () => subscription.unsubscribe()
   }, [])
 
-  // Función para cerrar sesión
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
+  // --- VALOR DEL CONTEXTO (Debe ir DESPUÉS de declarar las funciones) ---
+  const value = {
+    user,
+    profile,
+    loading,
+    signOut,
+    refreshProfile, // 👈 AHORA SÍ FUNCIONA
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-// 4. Hook personalizado para usar el contexto fácilmente
+// 4. Hook personalizado
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {

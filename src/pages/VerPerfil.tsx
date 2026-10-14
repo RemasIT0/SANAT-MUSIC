@@ -174,7 +174,7 @@ export default function VerPerfil() {
               <FaImage className="text-gray-600 text-4xl mx-auto mb-3" />
               <p className="text-gray-400">Aún no hay publicaciones.</p>
               {isMyProfile && (
-                <p className="text-gray-600 text-sm mt-1">¡Sé el primero en compartir algo!</p>
+                <p className="text-gray-600 text-sm mt-1">¡Crea tu primera publicación!</p>
               )}
             </div>
           ) : (

@@ -44,10 +44,9 @@ const GENEROS_FIJOS = [
 const coloresMascota = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function Onboarding() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+ const { user, refreshProfile } = useAuth()
+const navigate = useNavigate()
   
-  // 1. Todos los useState VAN DENTRO de la función del componente
   const [loading, setLoading] = useState(false)
   const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
   const [selectedStyle, setSelectedStyle] = useState<MascotStyleType>('clasico')
@@ -61,9 +60,10 @@ export default function Onboarding() {
     genres: [] as string[],
     departamento: 'Capital',
     localidad: 'San Miguel de Tucumán',
-    intention: 'Busco banda',
     mascot_style: 'clasico'
   })
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -97,16 +97,16 @@ export default function Onboarding() {
           display_name: formData.display_name,
           bio: formData.bio,
           avatar_color: selectedColor,
-          mascot_style: selectedStyle, // 👈 Guardamos el estilo elegido
+          mascot_style: selectedStyle, 
           instruments: [{ name: formData.instrument, level: formData.level }],
           genres: formData.genres,
           departamento: formData.departamento,
           localidad: formData.localidad,
-          intention: formData.intention,
           updated_at: new Date().toISOString()
         })
 
       if (error) throw error
+      await refreshProfile() 
       navigate('/home') 
     } catch (error: any) {
       alert(error.message)
@@ -251,20 +251,7 @@ export default function Onboarding() {
                 {tucumanLocations[formData.departamento].map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
-            <div className="relative">
-              <FaBullseye className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-              <select
-                name="intention"
-                value={formData.intention}
-                onChange={handleChange}
-                className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors"
-              >
-                <option>Busco banda</option>
-                <option>Busco músicos para mi proyecto</option>
-                <option>Ofrezco mis servicios (session musician)</option>
-                <option>Solo quiero conocer gente</option>
-              </select>
-            </div>
+            
           </div>
 
           {/* SELECTOR DE GÉNEROS */}

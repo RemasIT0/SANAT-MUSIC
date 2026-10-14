@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
 import { MASCOT_STYLES, type MascotStyleType } from '../components/MascotStyles'
-import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaBullseye, FaPalette, FaArrowLeft, FaSpinner } from 'react-icons/fa'
+import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaArrowLeft, FaSpinner } from 'react-icons/fa'
 
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
@@ -46,10 +46,10 @@ export default function EditarPerfil() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   
-  // Estados inicializados con los datos actuales del perfil
   const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || coloresMascota[0])
   const [selectedStyle, setSelectedStyle] = useState<MascotStyleType>((profile?.mascot_style as MascotStyleType) || 'clasico')
 
+  // 1. YA NO TIENE 'intention'
   const [formData, setFormData] = useState({
     username: profile?.username || '',
     display_name: profile?.display_name || '',
@@ -58,8 +58,7 @@ export default function EditarPerfil() {
     level: profile?.instruments?.[0]?.level || 'Intermedio',
     genres: profile?.genres || [],
     departamento: profile?.departamento || 'Capital',
-    localidad: profile?.localidad || 'San Miguel de Tucumán',
-    intention: profile?.intention || 'Busco banda'
+    localidad: profile?.localidad || 'San Miguel de Tucumán'
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -98,7 +97,6 @@ export default function EditarPerfil() {
           genres: formData.genres,
           departamento: formData.departamento,
           localidad: formData.localidad,
-          intention: formData.intention,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -119,7 +117,6 @@ export default function EditarPerfil() {
     <div className="min-h-screen bg-[#0f0f0f] text-gray-200 p-4 font-sans flex items-start justify-center">
       <div className="w-full max-w-5xl">
         
-        {/* Header con botón volver */}
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
           <FaArrowLeft /> Volver a mi perfil
         </button>
@@ -137,7 +134,6 @@ export default function EditarPerfil() {
             </div>
             <FaPalette className="text-purple-500 mt-3" size={18} />
 
-            {/* Selector de ESTILOS */}
             <div className="mt-6 w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Elegí tu estilo</label>
               <div className="grid grid-cols-5 gap-2">
@@ -196,13 +192,7 @@ export default function EditarPerfil() {
                 {tucumanLocations[formData.departamento].map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
-            <div className="relative">
-              <FaBullseye className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-              <select name="intention" value={formData.intention} onChange={handleChange} className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors">
-                <option>Busco banda</option><option>Busco músicos para mi proyecto</option>
-                <option>Ofrezco mis servicios (session musician)</option><option>Solo quiero conocer gente</option>
-              </select>
-            </div>
+            {/* 2. YA NO ESTÁ EL SELECT DE INTENCIÓN AQUÍ */}
           </div>
 
           <div className="mb-6">
