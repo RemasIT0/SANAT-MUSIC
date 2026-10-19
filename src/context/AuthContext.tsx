@@ -1,59 +1,66 @@
+// src/context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { type User } from '@supabase/supabase-js'
 import { type Profile } from '../types'
 
-// 1. Definimos qué datos tendrá nuestro contexto (Agregamos refreshProfile)
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   loading: boolean
   signOut: () => Promise<void>
-  refreshProfile: () => Promise<void> // 👈 AGREGADO
+  refreshProfile: () => Promise<void>
 }
 
-// 2. Creamos el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// 3. Creamos el Provider
+// 🛡️ VALIDACIÓN INTELIGENTE: Detecta si el usuario realmente completó el Onboarding
+const isProfileComplete = (data: any) => {
+  if (!data) return false
+  
+  // 1. Debe tener nombre de usuario y nombre para mostrar
+  const tieneNombre = !!data.username && !!data.display_name
+  
+  // 2. Debe tener al menos un dato que SOLO se llena en el Onboarding
+  // Si el usuario cerró la pestaña antes de guardar, estos serán null o vacíos
+  const tieneDatosOnboarding = 
+    !!data.departamento || 
+    !!data.localidad || 
+    (Array.isArray(data.instruments) && data.instruments.length > 0) ||
+    (Array.isArray(data.genres) && data.genres.length > 0)
+
+  return tieneNombre && tieneDatosOnboarding
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  
-  // --- FUNCIONES ---
 
-  // Función para refrescar el perfil manualmente
   const refreshProfile = async () => {
     if (!user) return
-    
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      
-      if (error) throw error
-      setProfile(data)
-    } catch (error) {
-      console.error('Error al refrescar perfil:', error)
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setProfile(isProfileComplete(data) ? data : null)
+    } catch (e) {
+      console.error("Error refrescando perfil:", e)
+      setProfile(null)
     }
   }
 
-  // Función para cerrar sesión
   const signOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
   }
 
-  // --- EFECTOS ---
   useEffect(() => {
-    const getInitialSession = async () => {
+    let isMounted = true
+
+    const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+        if (!isMounted) return
 
         if (session?.user) {
           const { data, error } = await supabase
@@ -62,59 +69,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single()
 
-          if (!error && data) {
+          if (!error && isProfileComplete(data)) {
             setProfile(data)
+          } else {
+            setProfile(null) // 👈 Esto forzará la redirección a /onboarding
           }
+        } else {
+          setProfile(null)
         }
       } catch (error) {
-        console.error('Error inesperado:', error)
+        console.error("Error verificando sesión:", error)
+        setProfile(null)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
-    getInitialSession()
+    checkSession()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+      
+      if (event === 'SIGNED_IN') {
+        setLoading(true)
+      }
+
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        setProfile(data || null)
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (!error && isProfileComplete(data)) {
+            setProfile(data)
+          } else {
+            setProfile(null) // 👈 Esto forzará la redirección a /onboarding
+          }
+        } catch (error) {
+          console.error("Error en onAuthStateChange:", error)
+          setProfile(null)
+        }
       } else {
         setProfile(null)
       }
-      setLoading(false)
+      
+      if (isMounted) setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // --- VALOR DEL CONTEXTO (Debe ir DESPUÉS de declarar las funciones) ---
-  const value = {
-    user,
-    profile,
-    loading,
-    signOut,
-    refreshProfile, // 👈 AHORA SÍ FUNCIONA
-  }
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-// 4. Hook personalizado
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider')
-  }
+  if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider')
   return context
 }

@@ -59,7 +59,7 @@ export default function Login() {
         })
         if (error) throw error
         
-        // Al iniciar sesión, el AuthContext detecta el usuario y App.tsx lo redirige solo
+        navigate('/home', { replace: true })
       }
     } catch (error: any) {
       setToast({ message: error.message || 'Error inesperado', type: 'error' })

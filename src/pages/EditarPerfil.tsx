@@ -1,11 +1,14 @@
 // src/pages/EditarPerfil.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
-import { MASCOT_STYLES, type MascotStyleType } from '../components/MascotStyles'
-import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaArrowLeft, FaSpinner } from 'react-icons/fa'
+import Avatar from '../components/Avatar'
+import Toast from '../components/Toast'
+import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaArrowLeft, FaSpinner, FaCamera } from 'react-icons/fa'
+
+import AnimatedBackground from '../components/AnimatedBackground'
 
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
@@ -39,17 +42,47 @@ const GENEROS_FIJOS = [
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' }
 ]
 
-const coloresMascota = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+// ✅ PALETA COMPLETA DE COLORES (Mascota y Tema)
+const PALETA_COMPLETA = [
+  // Vibrantes clásicos
+  '#6366f1', // Índigo
+  '#ec4899', // Rosa
+  '#10b981', // Esmeralda
+  '#f59e0b', // Ámbar
+  '#ef4444', // Rojo
+  '#8b5cf6', // Violeta
+  // Neón / Cyberpunk
+  '#06b6d4', // Cian
+  '#84cc16', // Lima
+  '#d946ef', // Fucsia
+  // Oscuros / Elegantes
+  '#475569', // Pizarra
+  '#3f3f46', // Carbón
+  '#1e293b', // Medianoche
+  // Claros / Minimalistas
+  '#e2e8f0', // Plata
+  '#f8fafc'  // Blanco Hueso
+]
+
+const coloresMascota = PALETA_COMPLETA
+const coloresTema = PALETA_COMPLETA
 
 export default function EditarPerfil() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   
+  // Estados para la foto de perfil
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(profile?.avatar_url || null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // ✅ Estados para los colores (Mascota y Tema separados)
   const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || coloresMascota[0])
-  const [selectedStyle, setSelectedStyle] = useState<MascotStyleType>((profile?.mascot_style as MascotStyleType) || 'clasico')
+  const [selectedTheme, setSelectedTheme] = useState(profile?.theme_color || '#a855f7')
+  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>((profile?.expression as any) || 'normal')
 
-  // 1. YA NO TIENE 'intention'
   const [formData, setFormData] = useState({
     username: profile?.username || '',
     display_name: profile?.display_name || '',
@@ -60,6 +93,72 @@ export default function EditarPerfil() {
     departamento: profile?.departamento || 'Capital',
     localidad: profile?.localidad || 'San Miguel de Tucumán'
   })
+
+  const [originalData, setOriginalData] = useState({
+    username: profile?.username || '',
+    display_name: profile?.display_name || '',
+    bio: profile?.bio || '',
+    instrument: profile?.instruments?.[0]?.name || '',
+    level: profile?.instruments?.[0]?.level || 'Intermedio',
+    genres: profile?.genres || [],
+    departamento: profile?.departamento || 'Capital',
+    localidad: profile?.localidad || 'San Miguel de Tucumán',
+    avatar_color: profile?.avatar_color || coloresMascota[0],
+    theme_color: profile?.theme_color || '#a855f7', // ✅ NUEVO
+    expression: (profile?.expression as any) || 'normal',
+    avatar_url: profile?.avatar_url || null
+  })
+
+  useEffect(() => {
+    if (profile) {
+      const initialData = {
+        username: profile.username || '',
+        display_name: profile.display_name || '',
+        bio: profile.bio || '',
+        instrument: profile.instruments?.[0]?.name || '',
+        level: profile.instruments?.[0]?.level || 'Intermedio',
+        genres: profile.genres || [],
+        departamento: profile.departamento || 'Capital',
+        localidad: profile.localidad || 'San Miguel de Tucumán',
+        avatar_color: profile.avatar_color || coloresMascota[0],
+        theme_color: profile.theme_color || '#a855f7', // ✅ NUEVO
+        expression: (profile.expression as any) || 'normal',
+        avatar_url: profile.avatar_url || null
+      }
+      setOriginalData(initialData)
+      setFormData({
+        username: initialData.username,
+        display_name: initialData.display_name,
+        bio: initialData.bio,
+        instrument: initialData.instrument,
+        level: initialData.level,
+        genres: initialData.genres,
+        departamento: initialData.departamento,
+        localidad: initialData.localidad
+      })
+      setSelectedColor(initialData.avatar_color)
+      setSelectedTheme(initialData.theme_color) // ✅ NUEVO
+      setSelectedExpression(initialData.expression)
+      setImagePreview(initialData.avatar_url)
+    }
+  }, [profile])
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setToast({ message: 'Solo se permiten archivos de imagen', type: 'error' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setToast({ message: 'La imagen debe pesar menos de 2MB', type: 'error' })
+      return
+    }
+
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -79,12 +178,79 @@ export default function EditarPerfil() {
     }))
   }
 
+  const isFormValid = 
+    formData.username.trim().length > 0 &&
+    formData.display_name.trim().length > 0 &&
+    formData.instrument.trim().length > 0 &&
+    formData.genres.length > 0
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !isFormValid) return
+    
+    const hasChanges = 
+      formData.username !== originalData.username ||
+      formData.display_name !== originalData.display_name ||
+      formData.bio !== originalData.bio ||
+      formData.instrument !== originalData.instrument ||
+      formData.level !== originalData.level ||
+      JSON.stringify(formData.genres) !== JSON.stringify(originalData.genres) ||
+      formData.departamento !== originalData.departamento ||
+      formData.localidad !== originalData.localidad ||
+      selectedColor !== originalData.avatar_color ||
+      selectedTheme !== originalData.theme_color || // ✅ NUEVO
+      selectedExpression !== originalData.expression ||
+      imageFile !== null
+
+    if (!hasChanges) {
+      setToast({ message: 'No realizaste ningún cambio', type: 'info' })
+      return
+    }
+
     setLoading(true)
 
+    // Validación de username único
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', formData.username)
+      .neq('id', user.id)
+      .maybeSingle()
+
+    if (existingUser) {
+      setToast({ message: 'Ese nombre de usuario ya está en uso. Prueba con otro.', type: 'error' })
+      setLoading(false)
+      return
+    }
+
     try {
+      let finalAvatarUrl = profile?.avatar_url || null
+
+      // Subir imagen si hay una nueva
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+        const filePath = `${user.id}/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, imageFile, { upsert: true })
+
+        if (uploadError) {
+          console.error("Error al subir imagen:", uploadError)
+          setToast({ message: 'Error al subir la imagen: ' + uploadError.message, type: 'error' })
+          setLoading(false)
+          return
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath)
+        
+        finalAvatarUrl = urlData.publicUrl
+      }
+
+      // Guardar el perfil en la base de datos
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -92,7 +258,9 @@ export default function EditarPerfil() {
           display_name: formData.display_name,
           bio: formData.bio,
           avatar_color: selectedColor,
-          mascot_style: selectedStyle,
+          theme_color: selectedTheme, // ✅ NUEVO
+          expression: selectedExpression,
+          avatar_url: finalAvatarUrl,
           instruments: [{ name: formData.instrument, level: formData.level }],
           genres: formData.genres,
           departamento: formData.departamento,
@@ -103,9 +271,16 @@ export default function EditarPerfil() {
 
       if (error) throw error
       
-      navigate(`/perfil/${user.id}`) 
+      setToast({ message: 'Perfil actualizado correctamente', type: 'success' })
+      
+      await refreshProfile()
+      
+      setTimeout(() => {
+        navigate(`/perfil/${user.id}`, { replace: true })
+      }, 1500)
+      
     } catch (error: any) {
-      alert(error.message)
+      setToast({ message: 'Error al guardar: ' + error.message, type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -114,7 +289,16 @@ export default function EditarPerfil() {
   if (!profile) return <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center text-white">Cargando perfil...</div>
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-gray-200 p-4 font-sans flex items-start justify-center">
+    <div className="min-h-screen relative text-gray-200 p-4 font-sans flex items-start justify-center">
+       <AnimatedBackground />
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="w-full max-w-5xl">
         
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
@@ -123,27 +307,80 @@ export default function EditarPerfil() {
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
-            <Mascot color={selectedColor} size={100} style={selectedStyle} />
             
-            <div className="mt-4 flex gap-2 flex-wrap justify-center">
-              {coloresMascota.map((color) => (
-                <button key={color} type="button" onClick={() => setSelectedColor(color)}
-                  className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
-                  style={{ backgroundColor: color }} />
-              ))}
+            {/* Avatar con botón de cámara */}
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <Avatar 
+                url={imagePreview} 
+                name={formData.display_name || 'Usuario'} 
+                color={selectedColor} 
+                size={100} 
+              />
+              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <FaCamera className="text-white text-2xl" />
+              </div>
             </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            <p className="text-xs text-gray-500 mt-2">Toca para cambiar foto</p>
+            
+            {/* ✅ SELECTOR 1: COLOR DE LA MASCOTA */}
+            <div className="mt-4 w-full">
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Mascota</label>
+              <div className="flex gap-2 flex-wrap justify-center">
+                {coloresMascota.map((color) => (
+                  <button 
+                    key={`mascot-${color}`} 
+                    type="button" 
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: color }} 
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ✅ SELECTOR 2: COLOR DEL TEMA (BORDES) */}
+            <div className="mt-6 w-full">
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Perfil (Bordes y Detalles)</label>
+              <div className="flex gap-2 flex-wrap justify-center">
+                {coloresTema.map((color) => (
+                  <button 
+                    key={`theme-${color}`} 
+                    type="button" 
+                    onClick={() => setSelectedTheme(color)}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedTheme === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: color }} 
+                  />
+                ))}
+              </div>
+            </div>
+
             <FaPalette className="text-purple-500 mt-3" size={18} />
 
             <div className="mt-6 w-full">
-              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Elegí tu estilo</label>
-              <div className="grid grid-cols-5 gap-2">
-                {(Object.keys(MASCOT_STYLES) as MascotStyleType[]).map((styleKey) => (
-                  <button key={styleKey} type="button" onClick={() => setSelectedStyle(styleKey)}
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">¿Cómo se siente tu mascota hoy?</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['normal', 'feliz', 'pensativo', 'rockero'] as const).map((exp) => (
+                  <button
+                    key={exp}
+                    type="button"
+                    onClick={() => setSelectedExpression(exp)}
                     className={`flex flex-col items-center p-2 rounded-lg border-2 transition-all ${
-                      selectedStyle === styleKey ? 'border-purple-600 bg-purple-900/20' : 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-gray-500'
-                    }`}>
-                    <span className="text-2xl mb-1">{MASCOT_STYLES[styleKey].emoji}</span>
-                    <span className="text-[10px] text-gray-400 text-center leading-tight">{MASCOT_STYLES[styleKey].name}</span>
+                      selectedExpression === exp
+                        ? 'border-purple-600 bg-purple-900/20'
+                        : 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-gray-500'
+                    }`}
+                  >
+                    <Mascot color={selectedColor} size={40} expression={exp} />
+                    <span className="text-[10px] text-gray-400 mt-1 capitalize">{exp}</span>
                   </button>
                 ))}
               </div>
@@ -192,7 +429,6 @@ export default function EditarPerfil() {
                 {tucumanLocations[formData.departamento].map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
-            {/* 2. YA NO ESTÁ EL SELECT DE INTENCIÓN AQUÍ */}
           </div>
 
           <div className="mb-6">
@@ -212,10 +448,23 @@ export default function EditarPerfil() {
             </div>
           </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+          <button 
+            type="submit" 
+            disabled={loading || !isFormValid}
+            className={`w-full py-3 font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+              loading || !isFormValid
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                : 'bg-purple-700 text-white hover:bg-purple-600 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+            }`}
+          >
             {loading ? <><FaSpinner className="animate-spin" /> Guardando cambios...</> : 'Guardar Cambios'}
           </button>
+          
+          {!isFormValid && !loading && (
+            <p className="text-center text-xs text-gray-500 mt-2 animate-pulse">
+              * Completa tu nombre, instrumento y elige al menos un género para continuar.
+            </p>
+          )}
         </form>
       </div>
     </div>

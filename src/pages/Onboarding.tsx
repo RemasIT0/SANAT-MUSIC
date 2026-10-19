@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
-import { MASCOT_STYLES, type MascotStyleType } from '../components/MascotStyles'
-import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaBullseye, FaPalette } from 'react-icons/fa'
+import Toast from '../components/Toast' // ✅ Agregado para notificaciones
+import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaSpinner } from 'react-icons/fa'
 
-// 📍 LOCALIDADES COMPLETAS DE TUCUMÁN
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
   "Capital": ["San Miguel de Tucumán"],
@@ -30,7 +29,6 @@ const tucumanLocations: Record<string, string[]> = {
 
 const departamentos = Object.keys(tucumanLocations)
 
-// 🎵 GÉNEROS FIJOS CON COLORES
 const GENEROS_FIJOS = [
   { name: 'Rock', color: 'bg-red-500/20 text-red-400 border-red-500/50' },
   { name: 'Pop', color: 'bg-pink-500/20 text-pink-400 border-pink-500/50' },
@@ -44,12 +42,15 @@ const GENEROS_FIJOS = [
 const coloresMascota = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function Onboarding() {
- const { user, refreshProfile } = useAuth()
-const navigate = useNavigate()
+  const { user, refreshProfile } = useAuth()
+  const navigate = useNavigate()
   
   const [loading, setLoading] = useState(false)
   const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
-  const [selectedStyle, setSelectedStyle] = useState<MascotStyleType>('clasico')
+  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>('normal')
+  
+  // ✅ Estado para el Toast
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const [formData, setFormData] = useState({
     username: '',
@@ -59,11 +60,8 @@ const navigate = useNavigate()
     level: 'Intermedio',
     genres: [] as string[],
     departamento: 'Capital',
-    localidad: 'San Miguel de Tucumán',
-    mascot_style: 'clasico'
+    localidad: 'San Miguel de Tucumán'
   })
-
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -88,6 +86,19 @@ const navigate = useNavigate()
     if (!user) return
     setLoading(true)
 
+    // 🛡️ VALIDACIÓN DE USERNAME ÚNICO
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', formData.username)
+      .maybeSingle()
+
+    if (existingUser) {
+      setToast({ message: 'Ese nombre de usuario ya está en uso. Prueba con otro.', type: 'error' })
+      setLoading(false)
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -97,7 +108,7 @@ const navigate = useNavigate()
           display_name: formData.display_name,
           bio: formData.bio,
           avatar_color: selectedColor,
-          mascot_style: selectedStyle, 
+          expression: selectedExpression,
           instruments: [{ name: formData.instrument, level: formData.level }],
           genres: formData.genres,
           departamento: formData.departamento,
@@ -106,27 +117,47 @@ const navigate = useNavigate()
         })
 
       if (error) throw error
+      
+      setToast({ message: '¡Perfil creado con éxito!', type: 'success' })
       await refreshProfile() 
-      navigate('/home') 
+      
+      // Pequeña pausa para que el usuario vea el Toast antes de redirigir
+      setTimeout(() => {
+        navigate('/home') 
+      }, 1000)
+
     } catch (error: any) {
-      alert(error.message)
+      setToast({ message: 'Error al guardar: ' + error.message, type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
+  const isFormValid = 
+    formData.username.trim().length > 0 &&
+    formData.display_name.trim().length > 0 &&
+    formData.instrument.trim().length > 0 &&
+    formData.genres.length > 0
+
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-gray-200 p-4 font-sans flex items-start justify-center">
+      
+      {/* ✅ Renderizado del Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="w-full max-w-5xl">
         
-        {/* HEADER: Mascota + Identidad */}
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           
-          {/* Mascota y selectores */}
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
-            <Mascot color={selectedColor} size={100} style={selectedStyle} />
+            <Mascot color={selectedColor} size={100} expression={selectedExpression} />
             
-            {/* Selector de colores */}
             <div className="mt-4 flex gap-2 flex-wrap justify-center">
               {coloresMascota.map((color) => (
                 <button
@@ -142,30 +173,28 @@ const navigate = useNavigate()
             </div>
             <FaPalette className="text-purple-500 mt-3" size={18} />
 
-            {/* Selector de ESTILOS */}
             <div className="mt-6 w-full">
-              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Elegí tu estilo</label>
-              <div className="grid grid-cols-5 gap-2">
-                {(Object.keys(MASCOT_STYLES) as MascotStyleType[]).map((styleKey) => (
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">¿Cómo se siente tu mascota hoy?</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['normal', 'feliz', 'pensativo', 'rockero'] as const).map((exp) => (
                   <button
-                    key={styleKey}
+                    key={exp}
                     type="button"
-                    onClick={() => setSelectedStyle(styleKey)}
+                    onClick={() => setSelectedExpression(exp)}
                     className={`flex flex-col items-center p-2 rounded-lg border-2 transition-all ${
-                      selectedStyle === styleKey
+                      selectedExpression === exp
                         ? 'border-purple-600 bg-purple-900/20'
                         : 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-gray-500'
                     }`}
                   >
-                    <span className="text-2xl mb-1">{MASCOT_STYLES[styleKey].emoji}</span>
-                    <span className="text-[10px] text-gray-400 text-center leading-tight">{MASCOT_STYLES[styleKey].name}</span>
+                    <Mascot color={selectedColor} size={40} expression={exp} />
+                    <span className="text-[10px] text-gray-400 mt-1 capitalize">{exp}</span>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Campos de identidad */}
           <div className="flex-1 space-y-4 w-full text-center md:text-left">
             <h1 className="text-xl md:text-2xl font-bold text-white mb-2">Creá tu Perfil</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,14 +225,13 @@ const navigate = useNavigate()
               name="bio"
               value={formData.bio}
               onChange={handleChange}
-              placeholder="Contanos algo sobre vos..."
+              placeholder="Contanos algo sobre vos... (Opcional)"
               rows={2}
               className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors resize-none text-center md:text-left placeholder:text-gray-600"
             />
           </div>
         </div>
 
-        {/* FORMULARIO RESTANTE */}
         <form onSubmit={handleSubmit} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="relative">
@@ -251,10 +279,8 @@ const navigate = useNavigate()
                 {tucumanLocations[formData.departamento].map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
-            
           </div>
 
-          {/* SELECTOR DE GÉNEROS */}
           <div className="mb-6">
             <label className="block text-xs font-medium text-gray-400 mb-3 uppercase tracking-wider">Elegí tus géneros (mínimo 1)</label>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -280,11 +306,27 @@ const navigate = useNavigate()
 
           <button
             type="submit"
-            disabled={loading || formData.genres.length === 0}
-            className="w-full py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !isFormValid}
+            className={`w-full py-3 font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+              loading || !isFormValid
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                : 'bg-purple-700 text-white hover:bg-purple-600 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+            }`}
           >
-            {loading ? 'Guardando...' : 'Crear Perfil'}
+            {loading ? (
+              <>
+                <FaSpinner className="animate-spin" /> Guardando...
+              </>
+            ) : (
+              'Crear Perfil y Continuar'
+            )}
           </button>
+          
+          {!isFormValid && !loading && (
+            <p className="text-center text-xs text-gray-500 mt-3 animate-pulse">
+              * Completa tu nombre, instrumento y elige al menos un género para continuar.
+            </p>
+          )}
         </form>
       </div>
     </div>

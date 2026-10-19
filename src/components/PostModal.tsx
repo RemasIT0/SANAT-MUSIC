@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { FaTimes, FaSpinner, FaBullseye } from 'react-icons/fa'
+import Toast from './Toast' // ✅ Importamos el Toast para reemplazar el alert
 
 // Los mismos géneros fijos que usamos en el perfil
 const GENEROS_FIJOS = [
@@ -35,16 +36,35 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
   const [intention, setIntention] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // ✅ Estado para el Toast de notificación
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   // Cargar datos si estamos editando
+  // ✅ Guardamos el estado original para detectar cambios reales
+  const [originalData, setOriginalData] = useState({ content: '', intention: '', genres: [] as string[] })
+
   useEffect(() => {
     if (isOpen) {
-      setContent(existingPost?.content || '')
-      setIntention(existingPost?.intention || '')
-      setSelectedGenres(existingPost?.genres || [])
+      const initialContent = existingPost?.content || ''
+      const initialIntention = existingPost?.intention || ''
+      const initialGenres = existingPost?.genres || []
+      
+      setContent(initialContent)
+      setIntention(initialIntention)
+      setSelectedGenres(initialGenres)
+      
+      // Guardamos una copia del estado original
+      setOriginalData({ 
+        content: initialContent, 
+        intention: initialIntention, 
+        genres: initialGenres 
+      })
+      
+      // 🧹 Limpiamos cualquier Toast viejo al abrir el modal
+      setToast(null)
     }
   }, [isOpen, existingPost])
-
   if (!isOpen) return null
 
   const toggleGenre = (genre: string) => {
@@ -53,9 +73,23 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
     )
   }
 
+  // 🛡️ VALIDACIÓN: El formulario es válido si tiene texto, intención y al menos 1 género
+  const isFormValid = content.trim().length > 0 && intention !== '' && selectedGenres.length > 0
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !content.trim()) return
+    if (!user || !isFormValid) return
+    
+    // 🔍 Detectamos si realmente hubo cambios
+    const hasChanges = 
+      content.trim() !== originalData.content ||
+      intention !== originalData.intention ||
+      JSON.stringify(selectedGenres) !== JSON.stringify(originalData.genres)
+
+    // Si no hubo cambios, mostramos un mensaje informativo y no hacemos nada
+    if (!hasChanges) {
+      setToast({ message: 'No realizaste ningún cambio', type: 'info' })
+      return
+    }
     
     setLoading(true)
     try {
@@ -71,23 +105,42 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
 
       if (error) throw error
       
-      onPostSaved()
-      onClose()
-    } catch (error) {
-      alert('Error al guardar la publicación')
+      // ✅ Mensaje de éxito dinámico
+      const successMessage = existingPost 
+        ? 'Publicación actualizada correctamente' 
+        : 'Publicación creada correctamente'
+        
+      setToast({ message: successMessage, type: 'success' })
+      
+      setTimeout(() => {
+        onPostSaved()
+        onClose()
+      }, 1500)
+      
+    } catch (error: any) {
+      setToast({ message: 'Error al guardar: ' + error.message, type: 'error' })
     } finally {
       setLoading(false)
     }
   }
-
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl w-full max-w-lg p-6 shadow-2xl my-8">
+      
+      {/* ✅ Renderizado del Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl w-full max-w-lg p-6 shadow-2xl my-8 relative animate-[scaleIn_0.2s_ease-out]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-white">
             {existingPost ? 'Editar mi publicación' : 'Nueva publicación'}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white bg-transparent">
+          <button onClick={onClose} className="text-gray-400 hover:text-white bg-transparent transition-colors">
             <FaTimes size={20} />
           </button>
         </div>
@@ -95,7 +148,7 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Texto principal */}
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">¿Qué querés contar o buscar?</label>
+            <label className="text-xs text-gray-400 mb-1 block">¿Qué querés contar o buscar? *</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -105,17 +158,19 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
               className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-600 transition-colors resize-none text-sm"
               required
             />
+            <p className="text-right text-[10px] text-gray-600 mt-1">{content.length}/500</p>
           </div>
 
           {/* Intención */}
           <div>
             <label className="text-xs text-gray-400 mb-1 block flex items-center gap-1">
-              <FaBullseye size={10} /> ¿Cuál es tu intención con este post?
+              <FaBullseye size={10} /> ¿Cuál es tu intención con este post? *
             </label>
             <select
               value={intention}
               onChange={(e) => setIntention(e.target.value)}
               className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-600 transition-colors text-sm"
+              required
             >
               <option value="">Seleccioná una opción...</option>
               {INTENCIONES.map(int => <option key={int} value={int}>{int}</option>)}
@@ -124,7 +179,7 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
 
           {/* Géneros para este post */}
           <div>
-            <label className="text-xs text-gray-400 mb-2 block">Géneros de esta publicación</label>
+            <label className="text-xs text-gray-400 mb-2 block">Géneros de esta publicación * (Mínimo 1)</label>
             <div className="flex flex-wrap gap-2">
               {GENEROS_FIJOS.map((genero) => {
                 const isSelected = selectedGenres.includes(genero.name)
@@ -134,23 +189,40 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
                     type="button"
                     onClick={() => toggleGenre(genero.name)}
                     className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
-                      isSelected ? `${genero.color} scale-105` : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-500'
+                      isSelected ? `${genero.color} scale-105 shadow-lg` : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-500 hover:border-gray-400'
                     }`}
                   >
-                    #{genero.name}
+                    {isSelected && '# '}{genero.name}
                   </button>
                 )
               })}
             </div>
           </div>
 
+          {/* 🛡️ BOTÓN CON VALIDACIÓN Y MENSAJE DE AYUDA */}
           <button
             type="submit"
-            disabled={loading || !content.trim()}
-            className="w-full py-3 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            disabled={loading || !isFormValid}
+            className={`w-full py-3 font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 mt-2 ${
+              loading || !isFormValid
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                : 'bg-purple-700 text-white hover:bg-purple-600 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+            }`}
           >
-            {loading ? <FaSpinner className="animate-spin" /> : (existingPost ? 'Guardar cambios' : 'Publicar')}
+            {loading ? (
+              <>
+                <FaSpinner className="animate-spin" /> Guardando...
+              </>
+            ) : (
+              existingPost ? 'Guardar cambios' : 'Publicar'
+            )}
           </button>
+          
+          {!isFormValid && !loading && (
+            <p className="text-center text-xs text-gray-500 mt-2 animate-pulse">
+              * Completa el texto, la intención y elige al menos un género para continuar.
+            </p>
+          )}
         </form>
       </div>
     </div>

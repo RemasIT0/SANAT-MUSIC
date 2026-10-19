@@ -1,19 +1,20 @@
-// src/pages/inicio.tsx
+// src/pages/Inicio.tsx
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import { 
-  FaMapMarkerAlt, FaMusic, FaSignOutAlt, FaFilter, FaSpinner, FaGuitar, 
-  FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye 
+  FaMapMarkerAlt, FaMusic, FaFilter, FaSpinner, FaGuitar, 
+  FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash, FaExclamationTriangle 
 } from 'react-icons/fa'
 import { IoMegaphone } from "react-icons/io5";
 import Mascot from '../components/Mascot'
 import PostModal from '../components/PostModal'
 import MessageDrawer from '../components/MessageDrawer'
-import SendMessageModal from '../components/SendMessageModal' // Si ya lo tenés, sino ignorá esta línea por ahora
+import Toast from '../components/Toast'
+import AnimatedBackground from '../components/AnimatedBackground'
+import Avatar from '../components/Avatar'
 
-// ... (Mantené las constantes tucumanLocations y GENEROS_FIJOS que ya tenías arriba) ...
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
   "Capital": ["San Miguel de Tucumán"],
@@ -48,9 +49,21 @@ const GENEROS_FIJOS = [
 const INTENCIONES_FILTRO = ['Todas', 'Busco banda', 'Busco músicos para mi proyecto', 'Ofrezco mis servicios (session musician)', 'Solo quiero conocer gente']
 
 interface PostWithAuthor {
-  id: string; content: string; created_at: string; updated_at: string; intention: string; genres: string[];
-  display_name: string; username: string; avatar_color: string;
-  instruments: { name: string; level: string }[]; departamento: string; localidad: string;
+  id?: string; 
+  user_id: string; 
+  content: string; 
+  created_at: string; 
+  updated_at: string; 
+  intention: string; 
+  genres: string[];
+  display_name: string; 
+  username: string; 
+  avatar_color: string;
+  avatar_url: string | null;
+  expression: string;
+  instruments: { name: string; level: string }[]; 
+  departamento: string; 
+  localidad: string;
 }
 
 export default function Home() {
@@ -61,14 +74,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false) // Para el drawer de mensajes
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false) 
   
-  // Estados de filtros
   const [filterDepartamento, setFilterDepartamento] = useState('Todos')
   const [filterLocalidad, setFilterLocalidad] = useState('Todas')
   const [filterGenre, setFilterGenre] = useState('')
-  const [filterIntention, setFilterIntention] = useState('Todas') // NUEVO FILTRO
+  const [filterIntention, setFilterIntention] = useState('Todas')
   const [showFilters, setShowFilters] = useState(false)
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const fetchPosts = async () => {
     setLoading(true)
@@ -83,12 +98,15 @@ export default function Home() {
         const userIds = postsData.map(p => p.user_id)
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, display_name, username, avatar_color, instruments, departamento, localidad')
-          .in('id', userIds)
-        
+          .select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad')        
         const combined: PostWithAuthor[] = postsData.map(post => {
           const author = profilesData?.find(p => p.id === post.user_id)
-          return { ...post, ...author }
+          return { 
+            ...post, 
+            ...(author || {}),
+            id: post.id,
+            user_id: post.user_id
+          }
         }).filter(p => p.display_name)
         setPosts(combined)
       } else { setPosts([]) }
@@ -107,35 +125,45 @@ export default function Home() {
     const matchesDep = filterDepartamento === 'Todos' || p.departamento === filterDepartamento
     const matchesLoc = filterLocalidad === 'Todas' || p.localidad === filterLocalidad
     const matchesGenre = filterGenre === '' || p.genres?.includes(filterGenre)
-    const matchesIntention = filterIntention === 'Todas' || p.intention === filterIntention // NUEVO FILTRO
+    const matchesIntention = filterIntention === 'Todas' || p.intention === filterIntention
     return matchesDep && matchesLoc && matchesGenre && matchesIntention
   })
 
-  const myPost = posts.find(p => p.id === user?.id)
-  const otherPosts = filteredPosts.filter(p => p.id !== user?.id)
-  const handleLogout = async () => await signOut()
-
+  const myPost = posts.find(p => p.user_id === user?.id)
+  const otherPosts = filteredPosts.filter(p => p.user_id !== user?.id)
+  
   const openCreateModal = () => { setIsEditing(false); setIsModalOpen(true) }
   const openEditModal = () => { setIsEditing(true); setIsModalOpen(true) }
 
-  return (
-    <div className="min-h-screen bg-[#0f0f0f] text-gray-200 font-sans">
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-[#1a1a1a]/95 backdrop-blur-md border-b border-[#2a2a2a]">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/perfil/${user?.id}`)}>
-            <Mascot color={profile?.avatar_color || '#333'} size={40} />
-            <div>
-              <h2 className="text-white font-bold text-sm">Hola, {profile?.display_name}</h2>
-              <p className="text-gray-500 text-xs">{profile?.localidad}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="text-red-400 hover:bg-red-900/20 p-2 rounded-lg transition-colors">
-            <FaSignOutAlt size={18} />
-          </button>
-        </div>
-      </header>
+  const handleDeletePost = async () => {
+    if (!user) return
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('user_id', user.id)
 
+      if (error) throw error
+
+      setPosts(posts.filter(p => p.user_id !== user.id))
+      setShowDeleteModal(false)
+      setToast({ message: 'Publicación eliminada correctamente', type: 'success' })
+    } catch (error: any) {
+      setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+    }
+  }
+
+  return (
+    <div className="min-h-screen relative  text-gray-200 font-sans pb-24">
+      <AnimatedBackground />
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         
         {/* SECCIÓN ANCLADA: MI PUBLICACIÓN O INVITACIÓN */}
@@ -152,8 +180,15 @@ export default function Home() {
             </div>
 
             <div className="flex items-start gap-3 mb-4">
-              <Mascot color={myPost.avatar_color || '#333'} size={50} />
-              <div className="flex-1">
+              <div className="flex items-end gap-1">
+                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={50} />
+                <Mascot 
+                  color={myPost.avatar_color || '#333'} 
+                  size={24} 
+                  expression={(myPost.expression as any) || 'normal'} 
+                />
+              </div>         
+<div className="flex-1">
                 <h4 className="text-white font-bold text-base">{myPost.display_name}</h4>
                 <p className="text-gray-500 text-xs">@{myPost.username}</p>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400">
@@ -166,7 +201,6 @@ export default function Home() {
 
             <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap mb-4 pl-[62px] md:pl-[62px]">{myPost.content}</p>
 
-            {/* Badges de Intención y Géneros del post */}
             <div className="flex flex-wrap gap-2 mb-4 pl-[62px] md:pl-[62px]">
               {myPost.intention && (
                 <span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1">
@@ -187,6 +221,14 @@ export default function Home() {
               <button onClick={openEditModal} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all">
                 <FaEdit size={12} className="text-purple-400" /> Editar
               </button>
+              
+              <button 
+                onClick={() => setShowDeleteModal(true)} 
+                className="flex items-center gap-2 px-4 py-2 bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 rounded-lg text-sm text-red-400 hover:text-red-300 transition-all"
+              >
+                <FaTrash size={12} /> Eliminar
+              </button>
+
               <button onClick={() => setIsDrawerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all relative">
                 <FaEnvelope size={12} className="text-purple-400" /> Mensajes
                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#1a1a1a]">0</span>
@@ -230,7 +272,6 @@ export default function Home() {
           
           {showFilters && (
             <div className="px-5 pb-5 pt-4 space-y-4 border-t border-[#2a2a2a]">
-              {/* Fila 1: Zona */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
@@ -248,7 +289,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Fila 2: Intención (NUEVO) */}
               <div>
                 <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><FaBullseye size={10} /> Intención</label>
                 <select value={filterIntention} onChange={(e) => setFilterIntention(e.target.value)} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white focus:outline-none focus:border-purple-600">
@@ -256,7 +296,6 @@ export default function Home() {
                 </select>
               </div>
 
-              {/* Fila 3: Géneros */}
               <div>
                 <label className="text-xs text-gray-500 mb-2 block">Filtrar por Género</label>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -293,10 +332,17 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {otherPosts.map((post) => (
-                <div key={post.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 hover:border-purple-600/30 transition-colors flex flex-col">
-                  <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.id}`)}>
-                    <Mascot color={post.avatar_color || '#333'} size={45} />
-                    <div className="flex-1">
+                <div key={post.id || post.user_id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 hover:border-purple-600/30 transition-colors flex flex-col">
+                  <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.user_id}`)}>
+                    <div className="flex items-end gap-1">
+                      <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={45} />
+                      <Mascot 
+                        color={post.avatar_color || '#333'} 
+                        size={20} 
+                        expression={(post.expression as any) || 'normal'} 
+                      />
+                    </div>                
+                <div className="flex-1">
                       <h4 className="text-white font-bold text-sm hover:text-purple-400 transition-colors">{post.display_name}</h4>
                       <p className="text-gray-500 text-xs">@{post.username}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400">
@@ -310,7 +356,6 @@ export default function Home() {
 
                   <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap mb-4 flex-1">{post.content}</p>
 
-                  {/* Badges de Intención y Géneros */}
                   <div className="flex flex-wrap gap-1.5 pt-3 border-t border-[#2a2a2a] mb-3">
                     {post.intention && (
                       <span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1">
@@ -323,7 +368,6 @@ export default function Home() {
                     })}
                   </div>
 
-                  {/* Botón Enviar Mensaje */}
                   <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all">
                     <FaEnvelope size={12} className="text-purple-400" /> Enviar mensaje
                   </button>
@@ -333,6 +377,35 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)} />
+          <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl shadow-red-900/20">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-red-500/30 rounded-full blur-xl"></div>
+                <div className="relative w-16 h-16 bg-gradient-to-br from-red-900/40 to-red-950/60 rounded-full flex items-center justify-center border border-red-700/50">
+                  <FaExclamationTriangle className="text-red-400" size={28} />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">¿Eliminar publicación?</h3>
+            <p className="text-gray-400 text-sm text-center mb-6 leading-relaxed">
+              Esta acción no se puede deshacer. Tu publicación desaparecerá del feed.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-2.5 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] hover:text-white transition-all font-medium border border-[#3a3a3a]">
+                Cancelar
+              </button>
+              <button onClick={handleDeletePost} className="flex-1 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-500 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
+                <FaTrash size={14} /> Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <PostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} existingPost={isEditing ? myPost : null} onPostSaved={fetchPosts} />
       <MessageDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} currentUserId={user?.id} />

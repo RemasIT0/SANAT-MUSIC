@@ -10,7 +10,8 @@ export interface Profile {
   bio: string;
   avatar_url?: string;       
   avatar_color?: string;
-  mascot_style?: string;
+  theme_color: string
+  expression?: 'normal' | 'feliz' | 'pensativo' | 'rockero'; 
   instruments: Instrument[];
   genres: string[];
   departamento: string;
