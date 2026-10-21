@@ -7,10 +7,12 @@ import ReactPlayer from 'react-player'
 // ✅ Truco para silenciar el error de tipos de react-player en TypeScript
 const Player = ReactPlayer as any
 
-// ✅ 1. LISTA DE ESTACIONES (Ahora acepta YouTube, SoundCloud o MP3 directo)
+// ✅ 1. LISTA DE ESTACIONES
 const RADIO_STATIONS = [
-
-  { id: '4', name: '🎹 Clásica', url: 'https://www.youtube.com/watch?v=P51WDb2y3as' },
+  { id: '1', name: '🎸 Rock Nacional (SANAT)', url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
+  { id: '2', name: '🎧 Lo-Fi Beats (YouTube)', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk' },
+  { id: '3', name: '🎷 Jazz & Blues', url: 'http://jazz-wr04.ice.infomaniak.ch/jazz-wr04-128.mp3' },
+  { id: '4', name: '🎹 Clásica (YouTube)', url: 'https://www.youtube.com/watch?v=P51WDb2y3as' },
 ]
 
 export default function RetroRadio() {
@@ -19,9 +21,7 @@ export default function RetroRadio() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentStationIndex, setCurrentStationIndex] = useState(0)
   
-  // ✅ Referencia al reproductor
   const playerRef = useRef<any>(null) 
-  
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
 
@@ -39,24 +39,29 @@ export default function RetroRadio() {
   }
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying)
+    setIsPlaying(prev => !prev)
   }
 
   return (
     <>
-      {/* ✅ 2. REPRODUCTOR OCULTO (Usamos 'Player' en vez de 'ReactPlayer' para evitar el error de TS) */}
-      <div style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
+      {/* ✅ 2. REPRODUCTOR OCULTO (Sacado de la pantalla, no transparente, para que YouTube lo permita) */}
+      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
         <Player
           ref={playerRef}
           url={currentStation.url}
           playing={isPlaying}
           volume={0.8}
-          onReady={() => {
-            if (isPlaying && playerRef.current) {
-              playerRef.current.play()
+          onPlay={() => console.log('▶️ Reproduciendo:', currentStation.name)}
+          onPause={() => console.log('⏸️ Pausado:', currentStation.name)}
+          onError={(e: any) => console.error("❌ Error al cargar la estación:", e, currentStation.url)}
+          config={{
+            youtube: {
+              playerVars: { 
+                autoplay: 1,
+                controls: 0
+              }
             }
           }}
-          onError={(e: any) => console.error("Error al cargar la estación:", e)}
         />
       </div>
       
