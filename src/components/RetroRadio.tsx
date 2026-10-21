@@ -4,14 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { FaPlay, FaPause, FaMusic, FaXmark, FaRadio } from 'react-icons/fa6'
 import ReactPlayer from 'react-player'
 
-// ✅ Truco para silenciar el error de tipos de react-player en TypeScript
 const Player = ReactPlayer as any
 
-// ✅ 1. LISTA DE ESTACIONES
 const RADIO_STATIONS = [
   { id: '1', name: '🎸 Rock Nacional (SANAT)', url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
   { id: '2', name: '🎧 Lo-Fi Beats (YouTube)', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk' },
-  { id: '3', name: '🎷 Jazz & Blues', url: 'https://www.youtube.com/watch?v=P51WDb2y3as' },
+  { id: '3', name: '🎷 Jazz & Blues', url: 'http://jazz-wr04.ice.infomaniak.ch/jazz-wr04-128.mp3' },
   { id: '4', name: '🎹 Clásica (YouTube)', url: 'https://www.youtube.com/watch?v=P51WDb2y3as' },
 ]
 
@@ -22,20 +20,16 @@ export default function RetroRadio() {
   const [currentStationIndex, setCurrentStationIndex] = useState(0)
   
   const playerRef = useRef<any>(null)
-  const wasPlayingRef = useRef(false) // ✅ Memoria para saber si debe sonar al cambiar
-  
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
 
   const changeStation = (index: number) => {
     if (index === currentStationIndex) return
-    
-    // 1. Guardamos si estaba sonando
-    wasPlayingRef.current = isPlaying
-    // 2. Pausamos el actual para evitar superposiciones
+    // Al cambiar, pausamos primero para evitar superposiciones de audio
     setIsPlaying(false)
-    // 3. Cambiamos la estación (la 'key' en el JSX forzará una recarga limpia)
     setCurrentStationIndex(index)
+    // Pequeña pausa para dar tiempo a que el nuevo URL se prepare
+    setTimeout(() => setIsPlaying(true), 200)
   }
 
   const togglePlay = () => {
@@ -44,32 +38,33 @@ export default function RetroRadio() {
 
   return (
     <>
-      {/* ✅ 2. REPRODUCTOR OCULTO (Sacado de la pantalla para que YouTube lo permita) */}
-      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
+      {/* ✅ CONTENEDOR "VISUALLY HIDDEN": Engaña al navegador para que permita el audio */}
+      <div style={{ 
+        position: 'absolute', 
+        width: '1px', 
+        height: '1px', 
+        padding: '0', 
+        margin: '-1px', 
+        overflow: 'hidden', 
+        clip: 'rect(0, 0, 0, 0)', 
+        whiteSpace: 'nowrap', 
+        borderWidth: '0',
+        pointerEvents: 'none' 
+      }}>
         <Player
-          // ✅ La 'key' obliga a React a destruir el reproductor viejo y crear uno nuevo limpio
-          key={currentStation.url}
           ref={playerRef}
           url={currentStation.url}
           playing={isPlaying}
-          volume={0.8}
-          onPlay={() => console.log('▶️ Reproduciendo:', currentStation.name)}
-          onPause={() => console.log('⏸️ Pausado:', currentStation.name)}
-          onError={(e: any) => console.error("❌ Error al cargar:", currentStation.name, e)}
-          
-          // ✅ Cuando el nuevo reproductor está listo, retomamos la reproducción si estaba sonando
-          onReady={() => {
-            if (wasPlayingRef.current && playerRef.current) {
-              playerRef.current.play().catch((e: any) => {
-                // Silenciamos el AbortError porque es normal al cambiar de fuente
-                if (e.name !== 'AbortError') {
-                  console.error("Error al reproducir:", e)
-                }
-              })
-              setIsPlaying(true)
+          volume={1.0} // Volumen al máximo para probar
+          muted={false}
+          onPlay={() => console.log('✅ Audio reproduciéndose:', currentStation.name)}
+          onPause={() => console.log('⏸️ Audio pausado:', currentStation.name)}
+          onError={(e: any) => {
+            // Silenciamos solo el AbortError, mostramos los demás
+            if (e?.name !== 'AbortError' && e?.message !== 'AbortError') {
+              console.error("❌ Error real de carga:", currentStation.name, e)
             }
           }}
-          
           config={{
             youtube: {
               playerVars: { 
@@ -82,7 +77,7 @@ export default function RetroRadio() {
         />
       </div>
       
-      {/* CASSETTE (Diseño visual intacto) */}
+      {/* CASSETTE (Interfaz visual) */}
       <div 
         className={`fixed z-40 transition-all duration-500 ease-in-out cursor-pointer ${
           isExpanded ? 'top-4 right-4 w-72 sm:w-80' : 'top-4 right-4 w-16 sm:w-20'
