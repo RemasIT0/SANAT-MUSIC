@@ -77,3 +77,27 @@ main {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Espacio global para que el BottomNav no tape el contenido final */
+main {
+  padding-bottom: 80px;
+  padding-top: 100px; /* Agregado: espacio para el cassette en móvil */
+}
+
+@media (min-width: 640px) {
+  main {
+    padding-top: 0; /* En desktop no hace falta tanto espacio arriba */
+  }
+}

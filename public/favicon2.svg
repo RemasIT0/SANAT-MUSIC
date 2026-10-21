@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Fondo oscuro redondeado -->
+  <rect width="64" height="64" rx="14" fill="#0f0f0f"/>
+  <!-- Borde neón sutil -->
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <!-- Cuerpo de la mascota -->
+  <rect x="14" y="16" width="36" height="32" rx="8" fill="#a855f7"/>
+  <!-- Ojos -->
+  <rect x="22" y="25" width="6" height="11" rx="3" fill="#0f0f0f"/>
+  <rect x="36" y="25" width="6" height="11" rx="3" fill="#0f0f0f"/>
+  <!-- Boca -->
+  <rect x="26" y="40" width="12" height="3" rx="1.5" fill="#0f0f0f"/>
+  <!-- Notita musical flotando -->
+  <text x="46" y="16" font-size="14" fill="#22d3ee">♪</text>
+</svg>

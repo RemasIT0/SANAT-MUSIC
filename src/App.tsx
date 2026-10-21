@@ -1,80 +1,168 @@
 // src/App.tsx
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { supabase } from './lib/supabaseClient'
 
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
+import VerificarEmail from './pages/VerificarEmail' 
 import Home from './pages/Inicio'
 import VerPerfil from './pages/VerPerfil'
 import EditarPerfil from './pages/EditarPerfil'
-import BottomNav from './components/BottomNav'
-import AnimatedBackground from './components/AnimatedBackground' 
 import ChatRoom from './pages/ChatRoom'
+import Bandeja from './pages/Bandeja'
+import AdminPanel from './pages/AdminPanel'
+import RestablecerContrasena from './pages/RestablecerContrasena'
+import Baneado from './pages/Baneado'
+import BottomNav from './components/BottomNav'
+import AnimatedBackground from './components/AnimatedBackground'
+import RetroRadio from './components/RetroRadio'
+import Toast from './components/Toast'
+
+import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelope, FaPaperPlane, FaSpinner } from 'react-icons/fa'
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen  flex flex-col items-center justify-center gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
       <p className="text-gray-400 text-sm animate-pulse">Cargando SANAT...</p>
     </div>
   )
 }
 
+// ✅ COMPONENTE PARA REDIRIGIR SI ESTÁ BANEADO
+function BanRedirect() {
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!loading && !user && localStorage.getItem('sanat_ban_reason')) {
+      navigate('/baneado', { replace: true })
+    }
+  }, [loading, user, navigate])
+  return null
+}
+
 function LayoutWithNav() {
+  const { showSuggestionModal, showHelpModal, closeSuggestionModal, closeHelpModal, user } = useAuth()
+  const [suggestionText, setSuggestionText] = useState('')
+  const [isSendingSuggestion, setIsSendingSuggestion] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+
+  const handleSendSuggestion = async () => {
+    if (!suggestionText.trim() || !user) return;
+    setIsSendingSuggestion(true);
+    try {
+      const { error } = await supabase.from('suggestions').insert({ user_id: user.id, content: suggestionText });
+      if (error) throw error;
+      setToast({ message: '¡Gracias por tu sugerencia! Nos ayuda a mejorar.', type: 'success' });
+      setSuggestionText('');
+      closeSuggestionModal();
+    } catch (error: any) {
+      setToast({ message: 'Error al enviar: ' + error.message, type: 'error' });
+    } finally {
+      setIsSendingSuggestion(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen ">
-      {/* El Outlet renderiza la página actual (Home, Perfil, etc.) */}
-      {/* pb-32 reserva el espacio para que el BottomNav no tape nada */}
-      <div className="pb-32">
-        <Outlet />
-      </div>
-      
-      {/* El BottomNav flota encima, pero el contenido ya tiene espacio reservado */}
+    <div className="min-h-screen relative">
+      <RetroRadio />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <div className="pb-32"><Outlet /></div>
       <BottomNav />
+
+      {showSuggestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeSuggestionModal} />
+          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><FaRegEnvelope className="text-purple-400" /> Buzón de Sugerencias</h3>
+              <button onClick={closeSuggestionModal} className="text-gray-500 hover:text-white transition-colors"><FaTimes size={20} /></button>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">¿Tenés una idea, encontraste un error o querés pedir una función? ¡Tu opinión nos ayuda a mejorar SANAT!</p>
+            <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="Escribí tu sugerencia aquí..." className="w-full h-32 p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 resize-none mb-4 placeholder:text-gray-600" />
+            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+              {isSendingSuggestion ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />} {isSendingSuggestion ? 'Enviando...' : 'Enviar Sugerencia'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeHelpModal} />
+          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="mb-4"><h3 className="text-xl font-bold text-white flex items-center gap-2"><FaQuestionCircle className="text-blue-400" /> Centro de Ayuda</h3></div>
+            <div className="space-y-4 mb-6">
+              <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                <h4 className="text-white font-semibold text-sm mb-2 flex items-center gap-2"><FaEnvelopeOpenText className="text-purple-400" /> ¿No podés iniciar sesión?</h4>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  <li>• Verificá que tu email esté confirmado (revisá tu bandeja de entrada o spam)</li>
+                  <li>• Si olvidaste tu contraseña, usá "¿Olvidaste tu contraseña?" en el login</li>
+                  <li>• Si intentaste muchas veces, esperá 15 minutos y volvé a probar</li>
+                </ul>
+              </div>
+              <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
+                <h4 className="text-white font-semibold text-sm mb-2 flex items-center gap-2"><FaRegEnvelope className="text-blue-400" /> ¿Problemas con el email?</h4>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  <li>• Revisá tu carpeta de Spam o Correo no deseado</li>
+                  <li>• Esperá unos minutos, puede tardar en llegar</li>
+                  <li>• Si no llega, volvé al login y pedí que lo reenvíen</li>
+                </ul>
+              </div>
+            </div>
+            <div className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-4 mb-4">
+              <p className="text-xs text-gray-400 mb-2">¿Necesitás más ayuda? Escribinos a:</p>
+              <a href="mailto:remaslove281@gmail.com" className="text-purple-400 hover:text-purple-300 font-semibold text-sm flex items-center gap-2"><FaEnvelope /> remaslove281@gmail.com</a>
+            </div>
+            <button onClick={closeHelpModal} className="w-full py-3 bg-[#2a2a2a] hover:bg-[#333] text-white font-semibold rounded-lg transition-all">Entendido</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function RequireUser() {
   const { user, loading } = useAuth()
-
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  
   return <Outlet />
 }
 
-function RequireAuth() {
-  const { user, profile, loading } = useAuth()
-
+function RequireVerified() {
+  const { user, profile, emailConfirmed, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
+  if (!emailConfirmed) return <Navigate to="/verificar-email" replace />
   if (!profile) return <Navigate to="/onboarding" replace />
-  
   return <Outlet />
 }
 
 function App() {
   return (
     <BrowserRouter>
-          <AnimatedBackground />
-
+      <AnimatedBackground />
+      <BanRedirect /> {/* ✅ ESTO REDIRIGE AL USUARIO BANEADO */}
       <Routes>
-        {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
+        <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
+        <Route path="/baneado" element={<Baneado />} /> {/* ✅ RUTA DE BANEADO */}
         
-        {/* Rutas que solo requieren usuario logueado */}
         <Route element={<RequireUser />}>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/verificar-email" element={<VerificarEmail />} />
         </Route>
         
-        {/* ✅ Rutas que requieren usuario + perfil, con BottomNav automático */}
-        <Route element={<RequireAuth />}>
+        <Route element={<RequireVerified />}>
           <Route element={<LayoutWithNav />}>
             <Route path="/" element={<Home />} />
             <Route path="/home" element={<Home />} />
             <Route path="/perfil/:id" element={<VerPerfil />} />
             <Route path="/editar-perfil" element={<EditarPerfil />} />
+            <Route path="/bandeja" element={<Bandeja />} />
+            <Route path="/admin" element={<AdminPanel />} />
           </Route>
           <Route path="/chat/:userId" element={<ChatRoom />} />
           <Route path="*" element={<Navigate to="/home" replace />} />

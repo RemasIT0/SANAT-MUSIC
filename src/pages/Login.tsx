@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FaEye, FaEyeSlash, FaKey } from 'react-icons/fa'
 import Toast from '../components/Toast'
 import './Login.css'
 
@@ -46,23 +46,51 @@ export default function Login() {
             }
           }
         })
+        
         if (error) throw error
 
-        setToast({ message: '¡Cuenta creada! Entrando...', type: 'success' })
-        // Pequeña pausa para que se vea el cartel y luego redirige
-        setTimeout(() => navigate('/onboarding'), 800)
+        // ✅ CAMBIO: Redirigir a verificar email en lugar de onboarding directamente
+        setToast({ message: '¡Cuenta creada! Revisa tu email para confirmar.', type: 'success' })
+        setTimeout(() => navigate('/verificar-email'), 4000)
         
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
+        
         if (error) throw error
         
         navigate('/home', { replace: true })
       }
     } catch (error: any) {
-      setToast({ message: error.message || 'Error inesperado', type: 'error' })
+      // ✅ CAMBIO: Manejo elegante de "Email no confirmado"
+      if (error.message?.toLowerCase().includes('email not confirmed') || error.message?.toLowerCase().includes('no confirmado')) {
+        setToast({ message: 'Debes confirmar tu email antes de entrar.', type: 'info' })
+        setTimeout(() => navigate('/verificar-email'), 4000)
+      } else {
+        setToast({ message: error.message || 'Error inesperado', type: 'error' })
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ✅ NUEVO: Función para recuperar contraseña
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setToast({ message: 'Ingresa tu email primero para recuperar la contraseña', type: 'info' })
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/restablecer-contrasena`
+      })
+      if (error) throw error
+      setToast({ message: 'Te enviamos un link a tu email para restablecer la contraseña', type: 'success' })
+    } catch (error: any) {
+      setToast({ message: error.message || 'Error al enviar el link', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -83,16 +111,10 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[#0f0f0f] text-gray-200 p-4 font-sans overflow-hidden">
-      {/* Toast personalizado */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
-      {/* Fondo de cuerdas*/}
       <div className="guitar-bg">
         <div className="guitar-string"></div>
         <div className="guitar-string"></div>
@@ -102,13 +124,10 @@ export default function Login() {
         <div className="guitar-string"></div>
       </div>
 
-      {/* Contenedor */}
       <div className="relative z-10 w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] p-8 sm:p-10 rounded-2xl shadow-2xl animate-[slideIn_0.8s_ease-out]">
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">
-            {isRegistering ? 'SANAT' : 'SANAT'}
-          </h1>
+          <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">SANAT</h1>
           <p className="text-gray-400 text-sm">
             {isRegistering ? 'Creá tu cuenta para encontrar músicos.' : 'Iniciá sesión para continuar.'}
           </p>
@@ -126,10 +145,7 @@ export default function Login() {
               required
             />
             <div className="mini-eq">
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
+              <div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div>
             </div>
           </div>
 
@@ -153,10 +169,7 @@ export default function Login() {
               {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
             </button>
             <div className="mini-eq">
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
-              <div className="eq-bar"></div>
+              <div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div>
             </div>
           </div>
 
@@ -181,11 +194,22 @@ export default function Login() {
                 {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
               </button>
               <div className="mini-eq">
-                <div className="eq-bar"></div>
-                <div className="eq-bar"></div>
-                <div className="eq-bar"></div>
-                <div className="eq-bar"></div>
+                <div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div>
               </div>
+            </div>
+          )}
+          
+          {/* ✅ NUEVO: Link de recuperación de contraseña */}
+          {!isRegistering && (
+            <div className="text-right">
+              <button 
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="text-xs text-purple-400 hover:text-purple-300 transition-colors bg-transparent flex items-center justify-end gap-1 ml-auto"
+              >
+                <FaKey size={10} /> ¿Olvidaste tu contraseña?
+              </button>
             </div>
           )}
           

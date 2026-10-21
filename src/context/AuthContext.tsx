@@ -8,39 +8,54 @@ interface AuthContextType {
   user: User | null
   profile: Profile | null
   loading: boolean
+  emailConfirmed: boolean
+  showSuggestionModal: boolean
+  showHelpModal: boolean
+  openSuggestionModal: () => void
+  closeSuggestionModal: () => void
+  openHelpModal: () => void
+  closeHelpModal: () => void
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// 🛡️ VALIDACIÓN INTELIGENTE: Detecta si el usuario realmente completó el Onboarding
 const isProfileComplete = (data: any) => {
   if (!data) return false
-  
-  // 1. Debe tener nombre de usuario y nombre para mostrar
   const tieneNombre = !!data.username && !!data.display_name
-  
-  // 2. Debe tener al menos un dato que SOLO se llena en el Onboarding
-  // Si el usuario cerró la pestaña antes de guardar, estos serán null o vacíos
   const tieneDatosOnboarding = 
     !!data.departamento || 
     !!data.localidad || 
     (Array.isArray(data.instruments) && data.instruments.length > 0) ||
     (Array.isArray(data.genres) && data.genres.length > 0)
-
   return tieneNombre && tieneDatosOnboarding
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [emailConfirmed, setEmailConfirmed] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
+  
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false)
+  const [showHelpModal, setShowHelpModal] = useState(false)
+
+  // 🚫 BAN: si el perfil está baneado, cierra sesión y guarda el motivo
+  const applyBannedCheck = async (data: any): Promise<boolean> => {
+    if (data?.is_banned) {
+      localStorage.setItem('sanat_ban_reason', data.ban_reason || 'Sin motivo especificado')
+      await supabase.auth.signOut()
+      return true
+    }
+    return false
+  }
 
   const refreshProfile = async () => {
     if (!user) return
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data && (await applyBannedCheck(data))) return
       setProfile(isProfileComplete(data) ? data : null)
     } catch (e) {
       console.error("Error refrescando perfil:", e)
@@ -52,7 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    setEmailConfirmed(false)
   }
+
+  const openSuggestionModal = () => setShowSuggestionModal(true)
+  const closeSuggestionModal = () => setShowSuggestionModal(false)
+  const openHelpModal = () => setShowHelpModal(true)
+  const closeHelpModal = () => setShowHelpModal(false)
 
   useEffect(() => {
     let isMounted = true
@@ -63,23 +84,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
 
         if (session?.user) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          if (!error && isProfileComplete(data)) {
-            setProfile(data)
+          setEmailConfirmed(!!session.user.email_confirmed_at)
+          const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          if (!error && data) {
+            const banned = await applyBannedCheck(data)
+            setProfile(!banned && isProfileComplete(data) ? data : null)
           } else {
-            setProfile(null) // 👈 Esto forzará la redirección a /onboarding
+            setProfile(null)
           }
         } else {
           setProfile(null)
+          setEmailConfirmed(false)
         }
       } catch (error) {
         console.error("Error verificando sesión:", error)
         setProfile(null)
+        setEmailConfirmed(false)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -89,25 +109,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return
-      
-      if (event === 'SIGNED_IN') {
-        setLoading(true)
-      }
+      if (event === 'SIGNED_IN') setLoading(true)
 
       setUser(session?.user ?? null)
-      
+      setEmailConfirmed(!!session?.user?.email_confirmed_at)
+
       if (session?.user) {
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-          
-          if (!error && isProfileComplete(data)) {
-            setProfile(data)
+          const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          if (!error && data) {
+            const banned = await applyBannedCheck(data)
+            setProfile(!banned && isProfileComplete(data) ? data : null)
           } else {
-            setProfile(null) // 👈 Esto forzará la redirección a /onboarding
+            setProfile(null)
           }
         } catch (error) {
           console.error("Error en onAuthStateChange:", error)
@@ -116,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null)
       }
-      
+
       if (isMounted) setLoading(false)
     })
 
@@ -127,7 +141,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      emailConfirmed,
+      showSuggestionModal,
+      showHelpModal,
+      openSuggestionModal,
+      closeSuggestionModal,
+      openHelpModal,
+      closeHelpModal,
+      signOut, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   )

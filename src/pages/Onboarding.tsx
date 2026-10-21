@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
-import Toast from '../components/Toast' // ✅ Agregado para notificaciones
+import Toast from '../components/Toast'
 import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaSpinner } from 'react-icons/fa'
 
 const tucumanLocations: Record<string, string[]> = {
@@ -39,17 +39,28 @@ const GENEROS_FIJOS = [
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' }
 ]
 
-const coloresMascota = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+// ✅ PALETA COMPLETA DE COLORES (Mascota y Tema)
+const PALETA_COMPLETA = [
+  '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', // Vibrantes
+  '#06b6d4', '#84cc16', '#d946ef', // Neón
+  '#475569', '#3f3f46', '#1e293b', // Oscuros
+  '#e2e8f0', '#f8fafc'  // Claros
+]
+
+const coloresMascota = PALETA_COMPLETA
+const coloresTema = PALETA_COMPLETA
 
 export default function Onboarding() {
   const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
   
   const [loading, setLoading] = useState(false)
-  const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
-  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>('normal')
   
-  // ✅ Estado para el Toast
+  // ✅ Estados para los colores (Mascota y Tema separados)
+  const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
+  const [selectedTheme, setSelectedTheme] = useState('#a855f7') // Morado por defecto para el tema
+  
+  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>('normal')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const [formData, setFormData] = useState({
@@ -86,11 +97,12 @@ export default function Onboarding() {
     if (!user) return
     setLoading(true)
 
-    // 🛡️ VALIDACIÓN DE USERNAME ÚNICO
+    // 🛡️ VALIDACIÓN DE USERNAME ÚNICO (Excluyendo al usuario actual)
     const { data: existingUser } = await supabase
       .from('profiles')
       .select('id')
       .eq('username', formData.username)
+      .neq('id', user.id) // ✅ ESTA LÍNEA ES LA MAGIA: Ignora si el perfil ya es tuyo
       .maybeSingle()
 
     if (existingUser) {
@@ -108,6 +120,7 @@ export default function Onboarding() {
           display_name: formData.display_name,
           bio: formData.bio,
           avatar_color: selectedColor,
+          theme_color: selectedTheme,
           expression: selectedExpression,
           instruments: [{ name: formData.instrument, level: formData.level }],
           genres: formData.genres,
@@ -121,7 +134,6 @@ export default function Onboarding() {
       setToast({ message: '¡Perfil creado con éxito!', type: 'success' })
       await refreshProfile() 
       
-      // Pequeña pausa para que el usuario vea el Toast antes de redirigir
       setTimeout(() => {
         navigate('/home') 
       }, 1000)
@@ -141,36 +153,52 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-gray-200 p-4 font-sans flex items-start justify-center">
-      
-      {/* ✅ Renderizado del Toast */}
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
       <div className="w-full max-w-5xl">
-        
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
             <Mascot color={selectedColor} size={100} expression={selectedExpression} />
             
-            <div className="mt-4 flex gap-2 flex-wrap justify-center">
-              {coloresMascota.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setSelectedColor(color)}
-                  className={`w-7 h-7 rounded-full border-2 transition-transform ${
-                    selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
+            {/* ✅ SELECTOR 1: COLOR DE LA MASCOTA */}
+            <div className="mt-4 w-full">
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Mascota</label>
+              <div className="flex gap-2 flex-wrap justify-center">
+                {coloresMascota.map((color) => (
+                  <button
+                    key={`mascot-${color}`}
+                    type="button"
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                      selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
             </div>
+
+            {/* ✅ SELECTOR 2: COLOR DEL TEMA (BORDES) */}
+            <div className="mt-6 w-full">
+              <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Perfil (Bordes)</label>
+              <div className="flex gap-2 flex-wrap justify-center">
+                {coloresTema.map((color) => (
+                  <button
+                    key={`theme-${color}`}
+                    type="button"
+                    onClick={() => setSelectedTheme(color)}
+                    className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                      selectedTheme === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
             <FaPalette className="text-purple-500 mt-3" size={18} />
 
             <div className="mt-6 w-full">
