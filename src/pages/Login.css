@@ -61,25 +61,23 @@
   display: flex;
   gap: 3px;
   height: 20px;
-  align-items: flex-end; /* Las barras crecen desde abajo */
-  opacity: 0;            /* Invisible por defecto */
+  align-items: flex-end; 
+  opacity: 0;            
   transition: opacity 0.3s ease;
-  pointer-events: none;  /* No interfiere con los clics */
+  pointer-events: none;  
 }
 
-/* LA MAGIA: Mostrar cuando el input con clase 'cyber-input' tiene foco */
 .cyber-input:focus ~ .mini-eq {
   opacity: 1;
 }
 
 .eq-bar {
   width: 3px;
-  background: #00f3ff; /* Cian neón para que contraste con el morado */
+  background: #00f3ff; 
   border-radius: 1px;
   animation: eqBounce 0.8s ease-in-out infinite alternate;
 }
 
-/* Diferentes alturas y retrasos para efecto orgánico */
 .eq-bar:nth-child(1) { height: 40%; animation-delay: 0s; }
 .eq-bar:nth-child(2) { height: 70%; animation-delay: 0.2s; }
 .eq-bar:nth-child(3) { height: 50%; animation-delay: 0.4s; }
@@ -88,4 +86,19 @@
 @keyframes eqBounce {
   0% { height: 20%; }
   100% { height: 100%; }
+}
+
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
+/* Para Firefox */
+input[type="password"] {
+  -moz-appearance: none;
 }

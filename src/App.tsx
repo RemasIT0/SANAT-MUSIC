@@ -26,7 +26,7 @@ import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelop
 // CONFIGURACIÓN DE MANTENIMIENTO
 //================================= Poner false para desactivar el modo mantenimiento y permitir el acceso a todos los usuarios, incluso si no son administradores. Poner true para activar el modo mantenimiento y bloquear el acceso a todos los usuarios que no sean administradores.
 
-const IS_MAINTENANCE_MODE = true 
+const IS_MAINTENANCE_MODE = false 
 
 
 //=====================================

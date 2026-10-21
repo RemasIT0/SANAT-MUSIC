@@ -29,7 +29,7 @@ export default function Login() {
 //=======================================
 
 
-    const IS_MAINTENANCE_MODE = true 
+    const IS_MAINTENANCE_MODE = false 
 
 
     const ADMIN_EMAIL = 'remaslove281@gmail.com'
