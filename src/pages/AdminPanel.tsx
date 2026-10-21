@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { 
   FaUsers, FaNewspaper, FaChartPie, FaTrash, FaArrowLeft, 
-  FaSpinner, FaSearch, FaRegEnvelope, FaFlag, FaBan, FaUnlock 
+  FaSpinner, FaSearch, FaRegEnvelope, FaFlag, FaBan, FaUnlock, FaExclamationTriangle
 } from 'react-icons/fa'
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
@@ -28,9 +28,10 @@ export default function AdminPanel() {
   
   const [banningUser, setBanningUser] = useState<any>(null)
   const [banReasonInput, setBanReasonInput] = useState('')
-  
-  // ✅ NUEVO: Estado para el modal de desbaneo
   const [unbanningUser, setUnbanningUser] = useState<any>(null)
+  
+  // ✅ NUEVO: Estado para el modal de eliminar publicación
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.email !== 'remaslove281@gmail.com') {
@@ -104,7 +105,6 @@ export default function AdminPanel() {
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Ejecuta el desbaneo sin alert()
   const executeUnban = async () => {
     if (!unbanningUser) return
     try {
@@ -118,13 +118,24 @@ export default function AdminPanel() {
     }
   }
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('¿Eliminar esta publicación?')) return
+  // ✅ NUEVA FUNCIÓN: Solo abre el modal
+  const requestDeletePost = (postId: string) => {
+    setDeletingPostId(postId)
+  }
+
+  // ✅ NUEVA FUNCIÓN: Ejecuta el borrado real
+  const executeDeletePost = async () => {
+    if (!deletingPostId) return
     try {
-      await supabase.from('posts').delete().eq('id', postId)
-      setPostsList(postsList.filter(p => p.id !== postId))
-      setToast({ message: 'Publicación eliminada', type: 'success' })
-    } catch { setToast({ message: 'Error al eliminar', type: 'error' }) }
+      const { error } = await supabase.from('posts').delete().eq('id', deletingPostId)
+      if (error) throw error
+      
+      setPostsList(postsList.filter(p => p.id !== deletingPostId))
+      setToast({ message: 'Publicación eliminada correctamente', type: 'success' })
+      setDeletingPostId(null) // Cierra el modal
+    } catch (error: any) {
+      setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+    }
   }
 
   const handleDeleteUser = async (userId: string) => {
@@ -243,7 +254,8 @@ export default function AdminPanel() {
                   <p className="text-gray-300 text-sm mb-2 line-clamp-2">{p.content}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-600">User: {p.user_id.substring(0, 8)}...</span>
-                    <button onClick={() => handleDeletePost(p.id)} className="text-red-500 hover:text-red-400 text-xs flex items-center gap-1"><FaTrash /> Eliminar</button>
+                    {/* ✅ BOTÓN ACTUALIZADO PARA ABRIR EL MODAL */}
+                    <button onClick={() => requestDeletePost(p.id)} className="text-red-500 hover:text-red-400 text-xs flex items-center gap-1 hover:bg-red-900/20 px-2 py-1 rounded transition-all"><FaTrash /> Eliminar</button>
                   </div>
                 </div>
               ))}
@@ -261,7 +273,6 @@ export default function AdminPanel() {
                     <p className="text-xs text-gray-500">@{u.username}</p>
                     <p className="text-xs text-gray-400 mt-2 bg-red-950/50 p-2 rounded border border-red-900/30"><span className="text-red-500 font-semibold">Motivo:</span> {u.ban_reason || 'Sin motivo especificado'}</p>
                   </div>
-                  {/* ✅ BOTÓN QUE ABRE EL MODAL EN LUGAR DEL ALERT */}
                   <button onClick={() => setUnbanningUser(u)} className="text-green-500 hover:text-green-400 p-3 bg-green-900/20 hover:bg-green-900/40 rounded-lg transition-all flex items-center gap-2 text-sm font-semibold border border-green-500/30">
                     <FaUnlock /> Desbanear
                   </button>
@@ -320,7 +331,7 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ✅ NUEVO: MODAL DE DESBANEO PROFESIONAL */}
+      {/* MODAL DE DESBANEO */}
       {unbanningUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setUnbanningUser(null)} />
@@ -330,6 +341,35 @@ export default function AdminPanel() {
             <div className="flex gap-3">
               <button onClick={() => setUnbanningUser(null)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">Cancelar</button>
               <button onClick={executeUnban} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all font-medium shadow-[0_0_15px_rgba(34,197,94,0.4)]">Confirmar Desbaneo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ NUEVO: MODAL DE ELIMINAR PUBLICACIÓN */}
+      {deletingPostId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDeletingPostId(null)} />
+          <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl shadow-red-900/20">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-red-500/30 rounded-full blur-xl"></div>
+                <div className="relative w-16 h-16 bg-gradient-to-br from-red-900/40 to-red-950/60 rounded-full flex items-center justify-center border border-red-700/50">
+                  <FaExclamationTriangle className="text-red-400" size={28} />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">¿Eliminar publicación?</h3>
+            <p className="text-gray-400 text-sm text-center mb-6 leading-relaxed">
+              Esta acción no se puede deshacer. La publicación desaparecerá permanentemente del feed y de la base de datos.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingPostId(null)} className="flex-1 py-2.5 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] hover:text-white transition-all font-medium border border-[#3a3a3a]">
+                Cancelar
+              </button>
+              <button onClick={executeDeletePost} className="flex-1 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-500 hover:to-red-600 transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
+                <FaTrash size={14} /> Sí, eliminar
+              </button>
             </div>
           </div>
         </div>
