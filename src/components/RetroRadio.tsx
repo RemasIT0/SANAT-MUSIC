@@ -21,21 +21,21 @@ export default function RetroRadio() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentStationIndex, setCurrentStationIndex] = useState(0)
   
-  const playerRef = useRef<any>(null) 
+  const playerRef = useRef<any>(null)
+  const wasPlayingRef = useRef(false) // ✅ Memoria para saber si debe sonar al cambiar
+  
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
 
   const changeStation = (index: number) => {
-    const wasPlaying = isPlaying
-    setCurrentStationIndex(index)
-    setIsPlaying(false)
+    if (index === currentStationIndex) return
     
-    // Pequeño delay para que el nuevo URL se cargue correctamente
-    setTimeout(() => {
-      if (wasPlaying) {
-        setIsPlaying(true)
-      }
-    }, 300)
+    // 1. Guardamos si estaba sonando
+    wasPlayingRef.current = isPlaying
+    // 2. Pausamos el actual para evitar superposiciones
+    setIsPlaying(false)
+    // 3. Cambiamos la estación (la 'key' en el JSX forzará una recarga limpia)
+    setCurrentStationIndex(index)
   }
 
   const togglePlay = () => {
@@ -44,21 +44,38 @@ export default function RetroRadio() {
 
   return (
     <>
-      {/* ✅ 2. REPRODUCTOR OCULTO (Sacado de la pantalla, no transparente, para que YouTube lo permita) */}
+      {/* ✅ 2. REPRODUCTOR OCULTO (Sacado de la pantalla para que YouTube lo permita) */}
       <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}>
         <Player
+          // ✅ La 'key' obliga a React a destruir el reproductor viejo y crear uno nuevo limpio
+          key={currentStation.url}
           ref={playerRef}
           url={currentStation.url}
           playing={isPlaying}
           volume={0.8}
           onPlay={() => console.log('▶️ Reproduciendo:', currentStation.name)}
           onPause={() => console.log('⏸️ Pausado:', currentStation.name)}
-          onError={(e: any) => console.error("❌ Error al cargar la estación:", e, currentStation.url)}
+          onError={(e: any) => console.error("❌ Error al cargar:", currentStation.name, e)}
+          
+          // ✅ Cuando el nuevo reproductor está listo, retomamos la reproducción si estaba sonando
+          onReady={() => {
+            if (wasPlayingRef.current && playerRef.current) {
+              playerRef.current.play().catch((e: any) => {
+                // Silenciamos el AbortError porque es normal al cambiar de fuente
+                if (e.name !== 'AbortError') {
+                  console.error("Error al reproducir:", e)
+                }
+              })
+              setIsPlaying(true)
+            }
+          }}
+          
           config={{
             youtube: {
               playerVars: { 
                 autoplay: 1,
-                controls: 0
+                controls: 0,
+                modestbranding: 1
               }
             }
           }}
