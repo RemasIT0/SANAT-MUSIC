@@ -24,7 +24,6 @@ export default function Login() {
 
     try {
       if (isRegistering) {
-        // Validaciones
         if (password !== confirmPassword) {
           setToast({ message: 'Las contraseñas no coinciden', type: 'error' })
           setLoading(false)
@@ -49,7 +48,6 @@ export default function Login() {
         
         if (error) throw error
 
-        // ✅ CAMBIO: Redirigir a verificar email en lugar de onboarding directamente
         setToast({ message: '¡Cuenta creada! Revisa tu email para confirmar.', type: 'success' })
         setTimeout(() => navigate('/verificar-email'), 4000)
         
@@ -64,7 +62,6 @@ export default function Login() {
         navigate('/home', { replace: true })
       }
     } catch (error: any) {
-      // ✅ CAMBIO: Manejo elegante de "Email no confirmado"
       if (error.message?.toLowerCase().includes('email not confirmed') || error.message?.toLowerCase().includes('no confirmado')) {
         setToast({ message: 'Debes confirmar tu email antes de entrar.', type: 'info' })
         setTimeout(() => navigate('/verificar-email'), 4000)
@@ -76,7 +73,6 @@ export default function Login() {
     }
   }
 
-  // ✅ NUEVO: Función para recuperar contraseña
   const handleForgotPassword = async () => {
     if (!email) {
       setToast({ message: 'Ingresa tu email primero para recuperar la contraseña', type: 'info' })
@@ -110,7 +106,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#0f0f0f] text-gray-200 p-4 font-sans overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center bg-[#0f0f0f] text-gray-200 px-4 py-6 font-sans overflow-hidden">
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
@@ -124,11 +120,12 @@ export default function Login() {
         <div className="guitar-string"></div>
       </div>
 
-      <div className="relative z-10 w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] p-8 sm:p-10 rounded-2xl shadow-2xl animate-[slideIn_0.8s_ease-out]">
+      {/* ✅ TARJETA CON PADDING RESPONSIVE */}
+      <div className="relative z-10 w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl animate-[slideIn_0.8s_ease-out]">
         
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">SANAT</h1>
-          <p className="text-gray-400 text-sm">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 tracking-wide">SANAT</h1>
+          <p className="text-gray-400 text-sm sm:text-base">
             {isRegistering ? 'Creá tu cuenta para encontrar músicos.' : 'Iniciá sesión para continuar.'}
           </p>
         </div>
@@ -137,12 +134,13 @@ export default function Login() {
           {/* EMAIL */}
           <div className="relative w-full">
             <input
-              className="cyber-input w-full p-3 pr-20 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
+              className="cyber-input w-full p-3.5 pr-20 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-base sm:text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
               type="email"
               placeholder="> tu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
             <div className="mini-eq">
               <div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div><div className="eq-bar"></div>
@@ -152,18 +150,19 @@ export default function Login() {
           {/* CONTRASEÑA */}
           <div className="relative w-full">
             <input
-              className="cyber-input w-full p-3 pr-[85px] bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
+              className="cyber-input w-full p-3.5 pr-[85px] bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-base sm:text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
               type={showPassword ? 'text' : 'password'}
               placeholder="> tu_contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="current-password"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-500 hover:text-purple-400 transition-colors bg-transparent z-10"
+              className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-500 hover:text-purple-400 transition-colors bg-transparent z-10 p-2"
               tabIndex={-1}
             >
               {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
@@ -173,22 +172,23 @@ export default function Login() {
             </div>
           </div>
 
-          {/* CONFIRMAR CONTRASEÑA (solo al registrarse) */}
+          {/* CONFIRMAR CONTRASEÑA */}
           {isRegistering && (
             <div className="relative w-full">
               <input
-                className="cyber-input w-full p-3 pr-[85px] bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
+                className="cyber-input w-full p-3.5 pr-[85px] bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-base sm:text-[15px] outline-none transition-all duration-300 focus:border-purple-600 focus:ring-1 focus:ring-purple-600/30 placeholder:text-gray-600"
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="> confirmar_contraseña"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-500 hover:text-purple-400 transition-colors bg-transparent z-10"
+                className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-500 hover:text-purple-400 transition-colors bg-transparent z-10 p-2"
                 tabIndex={-1}
               >
                 {showConfirmPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
@@ -199,7 +199,7 @@ export default function Login() {
             </div>
           )}
           
-          {/* ✅ NUEVO: Link de recuperación de contraseña */}
+          {/* RECUPERAR CONTRASEÑA */}
           {!isRegistering && (
             <div className="text-right">
               <button 
@@ -213,18 +213,19 @@ export default function Login() {
             </div>
           )}
           
+          {/* ✅ BOTÓN MÁS GRANDE EN MÓVIL */}
           <button
             ref={buttonRef}
             type="submit"
             disabled={loading}
             onClick={handleRipple}
-            className="relative w-full py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden mt-2"
+            className="relative w-full py-3.5 sm:py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden mt-2 text-base sm:text-sm"
           >
             {loading ? 'Procesando...' : isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
           </button>
         </form>
 
-        <div className="text-center text-sm text-gray-400 pt-6 mt-6 border-t border-[#2a2a2a]">
+        <div className="text-center text-sm text-gray-400 pt-5 mt-5 sm:pt-6 sm:mt-6 border-t border-[#2a2a2a]">
           {isRegistering ? (
             <p>
               ¿Ya tenés cuenta?{' '}
