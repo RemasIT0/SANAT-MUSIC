@@ -77,7 +77,8 @@ const renderContentWithLinks = (text: string) => {
 export default function Home() {
   const { user, showSuggestionModal, showHelpModal, closeSuggestionModal, closeHelpModal } = useAuth()
   const navigate = useNavigate()
-  const hiddenIds = useHiddenUsers() // ✅ NUEVO: Lista de usuarios bloqueados
+  const hiddenIds = useHiddenUsers()
+  const [hasOwnPost, setHasOwnPost] = useState(false)
   
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -113,6 +114,17 @@ export default function Home() {
       const { data: postsData, error: postsError } = await supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, end);
       if (postsError) throw postsError;
 
+      // ✅ Verificar si el usuario ya tiene una publicación (independiente de la paginación)
+      if (user && !isLoadMore) {
+        const { data: userPost } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .single()
+        setHasOwnPost(!!userPost)
+      }
+
       if (postsData && postsData.length > 0) {
         const userIds = [...new Set(postsData.map(p => p.user_id))];
         const { data: profilesData } = await supabase.from('profiles').select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad').in('id', userIds);
@@ -142,10 +154,17 @@ export default function Home() {
   })
 
   const myPost = posts.find(p => p.user_id === user?.id)
-  // ✅ CORREGIDO: Excluye usuarios bloqueados del feed
   const otherPosts = filteredPosts.filter(p => p.user_id !== user?.id && !hiddenIds.includes(p.user_id))
   
-  const openCreateModal = () => { setIsEditing(false); setIsModalOpen(true) }
+  const openCreateModal = () => { 
+    if (hasOwnPost) {
+      setToast({ message: 'Ya tenés una publicación activa. Editá o eliminá la existente.', type: 'info' })
+      return
+    }
+    setIsEditing(false)
+    setIsModalOpen(true) 
+  }
+  
   const openEditModal = () => { setIsEditing(true); setIsModalOpen(true) }
 
   const handleDeletePost = async () => {
@@ -154,6 +173,7 @@ export default function Home() {
       const { error } = await supabase.from('posts').delete().eq('user_id', user.id);
       if (error) throw error;
       setPosts(posts.filter(p => p.user_id !== user.id));
+      setHasOwnPost(false); // ✅ Actualizar estado inmediatamente al eliminar
       setShowDeleteModal(false);
       setToast({ message: 'Publicación eliminada correctamente', type: 'success' });
     } catch (error: any) {
@@ -167,7 +187,6 @@ export default function Home() {
     setIsSearching(true);
     try {
       const { data, error } = await supabase.from('profiles').select('id, username, display_name, avatar_url, avatar_color, instruments').or(`username.ilike.%${query}%,display_name.ilike.%${query}%`).limit(5);
-      // ✅ CORREGIDO: Excluye usuarios bloqueados de la búsqueda
       if (!error && data) setSearchResults(data.filter(p => p.id !== user?.id && !hiddenIds.includes(p.id)));
     } catch (error) { console.error('Error al buscar usuarios:', error); }
     finally { setIsSearching(false); }
@@ -246,7 +265,13 @@ export default function Home() {
           )}
         </div>
 
-        {myPost ? (
+        {/* ✅ SECCIÓN CORREGIDA CON hasOwnPost */}
+        {loading ? (
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 text-center">
+            <FaSpinner className="animate-spin text-3xl text-purple-600 mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Cargando tu publicación...</p>
+          </div>
+        ) : myPost ? (
           <div className="bg-gradient-to-br from-purple-900/10 to-[#1a1a1a] border-2 border-purple-600/40 rounded-2xl p-5 md:p-6 shadow-lg shadow-purple-900/10">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span> Mi publicación</span>
@@ -276,6 +301,13 @@ export default function Home() {
               <button onClick={openEditModal} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all"><FaEdit size={12} className="text-purple-400" /> Editar</button>
               <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-2 px-4 py-2 bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 rounded-lg text-sm text-red-400 hover:text-red-300 transition-all"><FaTrash size={12} /> Eliminar</button>
             </div>
+          </div>
+        ) : hasOwnPost ? (
+          <div className="bg-[#1a1a1a] border border-purple-600/40 rounded-2xl p-8 text-center">
+            <p className="text-gray-300 text-sm mb-4">Ya tenés una publicación activa en tu perfil.</p>
+            <button onClick={() => navigate(`/perfil/${user?.id}`)} className="text-purple-400 hover:text-purple-300 text-sm font-semibold underline">
+              Ir a mi perfil para editarla o eliminarla
+            </button>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-purple-900/15 to-[#1a1a1a] border-2 border-dashed border-purple-600/40 rounded-2xl p-8 md:p-10 text-center">
