@@ -9,9 +9,7 @@ const Player = ReactPlayer as any
 
 // ✅ 1. LISTA DE ESTACIONES (Ahora acepta YouTube, SoundCloud o MP3 directo)
 const RADIO_STATIONS = [
-  { id: '1', name: '🎸 Rock Nacional (SANAT)', url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
-  { id: '2', name: '🎧 Lo-Fi Beats (YouTube)', url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk' },
-  { id: '3', name: '🎷 Jazz & Blues', url: 'http://jazz-wr04.ice.infomaniak.ch/jazz-wr04-128.mp3' },
+
   { id: '4', name: '🎹 Clásica', url: 'https://www.youtube.com/watch?v=P51WDb2y3as' },
 ]
 
