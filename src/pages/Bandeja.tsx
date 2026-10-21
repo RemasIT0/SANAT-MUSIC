@@ -22,7 +22,7 @@ interface Conversation {
 export default function Bandeja() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const hiddenIds = useHiddenUsers() // ✅ NUEVO: Lista de usuarios bloqueados
+  const hiddenIds = useHiddenUsers() 
   
   const [activeTab, setActiveTab] = useState<'messages' | 'friends' | 'blocked'>('messages')
   const [searchQuery, setSearchQuery] = useState('')

@@ -173,7 +173,7 @@ export default function Home() {
       const { error } = await supabase.from('posts').delete().eq('user_id', user.id);
       if (error) throw error;
       setPosts(posts.filter(p => p.user_id !== user.id));
-      setHasOwnPost(false); // ✅ Actualizar estado inmediatamente al eliminar
+      setHasOwnPost(false); 
       setShowDeleteModal(false);
       setToast({ message: 'Publicación eliminada correctamente', type: 'success' });
     } catch (error: any) {
