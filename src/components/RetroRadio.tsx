@@ -3,13 +3,32 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { FaPlay, FaPause, FaMusic, FaXmark, FaRadio } from 'react-icons/fa6'
 
-// ✅ USAMOS STREAMS DE AUDIO DIRECTOS (MP3/AAC). 
-// Son 100% estables en segundo plano. Los navegadores bloquean iframes de YouTube ocultos.
 const RADIO_STATIONS = [
-  { id: '1', name: '🎸 Rock Nacional (SANAT)', url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
-  { id: '2', name: '🎧 Lo-Fi Beats', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' },
-  { id: '3', name: '🎷 Jazz & Blues', url: 'http://jazz-wr04.ice.infomaniak.ch/jazz-wr04-128.mp3' },
-  { id: '4', name: '🎹 Clásica', url: 'http://icecast.omroep.nl/radio4-bb-mp3' },
+  { 
+    id: '1', 
+    name: '🎸 Rock Nacional (SANAT)', 
+    url: 'https://stream.zeno.fm/0r0xa792kwzuv' // Tu stream original (100% estable)
+  },
+  { 
+    id: '2', 
+    name: '🇦🇷 Radio Nacional Rock', 
+    url: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad38' // La más estable, stream oficial de Icecast
+  },
+  { 
+    id: '3', 
+    name: '🎧 Rock & Pop Argentina', 
+    url: 'https://26683.live.streamtheworld.com/ROCK_AND_POP_SC' // Stream oficial (puede tener leve delay)
+  },
+  { 
+    id: '4', 
+    name: '🤘 Vorterix (Rock/Alternativo)', 
+    url: 'https://26683.live.streamtheworld.com/VORTERIX_FM_SC' // Stream oficial
+  },
+  { 
+    id: '5', 
+    name: '🎵 Clásicos del Rock (Respaldo)', 
+    url: 'https://stream.zeno.fm/yn65fsaurfhvv' // Stream curado en Zeno.fm (nunca falla en web)
+  }
 ]
 
 export default function RetroRadio() {
