@@ -23,12 +23,11 @@ export default function RetroRadio() {
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
 
+  // ✅ LÓGICA SIMPLIFICADA: Solo cambiamos el índice. ReactPlayer hace el resto.
   const changeStation = (index: number) => {
     if (index === currentStationIndex) return
-    // Pausamos, cambiamos y volvemos a reproducir
-    setIsPlaying(false)
     setCurrentStationIndex(index)
-    setTimeout(() => setIsPlaying(true), 300)
+    // Al cambiar la 'url', si 'isPlaying' es true, ReactPlayer reproducirá la nueva automáticamente.
   }
 
   const togglePlay = () => {
@@ -42,7 +41,7 @@ export default function RetroRadio() {
       }`}
       onClick={() => !isExpanded && setIsExpanded(true)}
     >
-      {/* ✅ TRUCO: El reproductor está DENTRO del cassette, es transparente pero el navegador lo ve "visible" */}
+      {/* ✅ REPRODUCTOR: Visible para el navegador, invisible para el usuario */}
       <div className="absolute inset-0 opacity-0 pointer-events-none z-0">
         <Player
           ref={playerRef}
@@ -65,14 +64,14 @@ export default function RetroRadio() {
                 autoplay: 1,
                 controls: 0,
                 modestbranding: 1,
-                playsinline: 1 // ✅ Crucial para que funcione en móviles y segundo plano
+                playsinline: 1 
               }
             }
           }}
         />
       </div>
 
-      {/* CASSETTE (Interfaz visual, ahora con z-10 para estar ENCIMA del reproductor) */}
+      {/* CASSETTE (Interfaz visual) */}
       <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden">
         
         {isExpanded && (
