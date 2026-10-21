@@ -19,8 +19,18 @@ import BottomNav from './components/BottomNav'
 import AnimatedBackground from './components/AnimatedBackground'
 import RetroRadio from './components/RetroRadio'
 import Toast from './components/Toast'
+import MaintenanceScreen from './components/MaintenanceScreen'
 
 import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelope, FaPaperPlane, FaSpinner } from 'react-icons/fa'
+
+// CONFIGURACIÓN DE MANTENIMIENTO
+//================================= Poner false para desactivar el modo mantenimiento y permitir el acceso a todos los usuarios, incluso si no son administradores. Poner true para activar el modo mantenimiento y bloquear el acceso a todos los usuarios que no sean administradores.
+
+const IS_MAINTENANCE_MODE = true 
+
+
+//=====================================
+const ADMIN_EMAIL = 'remaslove281@gmail.com'
 
 function LoadingScreen() {
   return (
@@ -31,7 +41,6 @@ function LoadingScreen() {
   )
 }
 
-// ✅ COMPONENTE PARA REDIRIGIR SI ESTÁ BANEADO
 function BanRedirect() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
@@ -44,6 +53,7 @@ function BanRedirect() {
 }
 
 function LayoutWithNav() {
+  // ... (Mantené todo tu código de LayoutWithNav igual que antes, no hace falta cambiarlo) ...
   const { showSuggestionModal, showHelpModal, closeSuggestionModal, closeHelpModal, user } = useAuth()
   const [suggestionText, setSuggestionText] = useState('')
   const [isSendingSuggestion, setIsSendingSuggestion] = useState(false)
@@ -71,24 +81,7 @@ function LayoutWithNav() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="pb-32"><Outlet /></div>
       <BottomNav />
-
-      {showSuggestionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeSuggestionModal} />
-          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2"><FaRegEnvelope className="text-purple-400" /> Buzón de Sugerencias</h3>
-              <button onClick={closeSuggestionModal} className="text-gray-500 hover:text-white transition-colors"><FaTimes size={20} /></button>
-            </div>
-            <p className="text-gray-400 text-sm mb-4">¿Tenés una idea, encontraste un error o querés pedir una función? ¡Tu opinión nos ayuda a mejorar SANAT!</p>
-            <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="Escribí tu sugerencia aquí..." className="w-full h-32 p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 resize-none mb-4 placeholder:text-gray-600" />
-            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
-              {isSendingSuggestion ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />} {isSendingSuggestion ? 'Enviando...' : 'Enviar Sugerencia'}
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* ... (Aquí va el resto de tus modales de sugerencia y ayuda, cópialos de tu archivo original) ... */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeHelpModal} />
@@ -100,21 +93,8 @@ function LayoutWithNav() {
                 <ul className="text-xs text-gray-400 space-y-1">
                   <li>• Verificá que tu email esté confirmado (revisá tu bandeja de entrada o spam)</li>
                   <li>• Si olvidaste tu contraseña, usá "¿Olvidaste tu contraseña?" en el login</li>
-                  <li>• Si intentaste muchas veces, esperá 15 minutos y volvé a probar</li>
                 </ul>
               </div>
-              <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
-                <h4 className="text-white font-semibold text-sm mb-2 flex items-center gap-2"><FaRegEnvelope className="text-blue-400" /> ¿Problemas con el email?</h4>
-                <ul className="text-xs text-gray-400 space-y-1">
-                  <li>• Revisá tu carpeta de Spam o Correo no deseado</li>
-                  <li>• Esperá unos minutos, puede tardar en llegar</li>
-                  <li>• Si no llega, volvé al login y pedí que lo reenvíen</li>
-                </ul>
-              </div>
-            </div>
-            <div className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-4 mb-4">
-              <p className="text-xs text-gray-400 mb-2">¿Necesitás más ayuda? Escribinos a:</p>
-              <a href="mailto:remaslove281@gmail.com" className="text-purple-400 hover:text-purple-300 font-semibold text-sm flex items-center gap-2"><FaEnvelope /> remaslove281@gmail.com</a>
             </div>
             <button onClick={closeHelpModal} className="w-full py-3 bg-[#2a2a2a] hover:bg-[#333] text-white font-semibold rounded-lg transition-all">Entendido</button>
           </div>
@@ -124,6 +104,7 @@ function LayoutWithNav() {
   )
 }
 
+// ✅ GUARDIA SIMPLE: Solo verifica que haya usuario
 function RequireUser() {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
@@ -131,12 +112,19 @@ function RequireUser() {
   return <Outlet />
 }
 
+// ✅ GUARDIA VERIFICADA: Verifica usuario, email confirmado y perfil
 function RequireVerified() {
   const { user, profile, emailConfirmed, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!emailConfirmed) return <Navigate to="/verificar-email" replace />
   if (!profile) return <Navigate to="/onboarding" replace />
+  
+  // ✅ Doble chequeo de seguridad: Si está en mantenimiento y NO es el admin, lo expulsa
+  if (IS_MAINTENANCE_MODE && user.email !== ADMIN_EMAIL) {
+    return <MaintenanceScreen />
+  }
+  
   return <Outlet />
 }
 
@@ -144,11 +132,12 @@ function App() {
   return (
     <BrowserRouter>
       <AnimatedBackground />
-      <BanRedirect /> {/* ✅ ESTO REDIRIGE AL USUARIO BANEADO */}
+      <BanRedirect /> 
       <Routes>
+        {/* El login SIEMPRE es accesible. La lógica de mantenimiento va DENTRO del Login */}
         <Route path="/login" element={<Login />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
-        <Route path="/baneado" element={<Baneado />} /> {/* ✅ RUTA DE BANEADO */}
+        <Route path="/baneado" element={<Baneado />} /> 
         
         <Route element={<RequireUser />}>
           <Route path="/onboarding" element={<Onboarding />} />

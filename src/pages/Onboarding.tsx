@@ -36,7 +36,9 @@ const GENEROS_FIJOS = [
   { name: 'Cumbia', color: 'bg-green-500/20 text-green-400 border-green-500/50' },
   { name: 'Jazz', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' },
   { name: 'Electrónica', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' },
-  { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' }
+  { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' },
+  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },       
+  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }    
 ]
 
 // ✅ PALETA COMPLETA DE COLORES (Mascota y Tema)
