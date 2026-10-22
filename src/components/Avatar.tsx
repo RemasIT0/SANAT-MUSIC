@@ -6,9 +6,10 @@ interface AvatarProps {
   name: string
   color: string
   size?: number
+  isOnline?: boolean
 }
 
-export default function Avatar({ url, name, color, size = 50 }: AvatarProps) {
+export default function Avatar({ url, name, color, size = 50, isOnline = false }: AvatarProps) {
   const [imgError, setImgError] = useState(false)
   
   const initials = name
@@ -20,27 +21,51 @@ export default function Avatar({ url, name, color, size = 50 }: AvatarProps) {
 
   if (url && !imgError) {
     return (
-      <img
-        src={url} // ✅ Sin el ?t=${Date.now()}, ahora el navegador usará el caché y será instantáneo
-        alt={name}
-        className="rounded-full object-cover border-2 border-gray-700/50"
-        style={{ width: size, height: size }}
-        onError={() => setImgError(true)}
-      />
+      <div className="relative inline-block">
+        <img
+          src={url}
+          alt={name}
+          className="rounded-full object-cover border-2 border-gray-700/50"
+          style={{ width: size, height: size }}
+          onError={() => setImgError(true)}
+        />
+        {isOnline && (
+          <span 
+            className="absolute bottom-0 right-0 rounded-full bg-green-500 border-2 border-[#0f0f0f] animate-pulse"
+            style={{ 
+              width: Math.max(size * 0.3, 14), 
+              height: Math.max(size * 0.3, 14),
+              zIndex: 9999 
+            }}
+          />
+        )}
+      </div>
     )
   }
 
   return (
-    <div
-      className="rounded-full flex items-center justify-center text-white font-bold border-2 border-gray-700/50 select-none"
-      style={{ 
-        width: size, 
-        height: size, 
-        backgroundColor: color,
-        fontSize: size * 0.4
-      }}
-    >
-      {initials || '?'}
+    <div className="relative inline-block">
+      <div
+        className="rounded-full flex items-center justify-center text-white font-bold border-2 border-gray-700/50 select-none"
+        style={{ 
+          width: size, 
+          height: size, 
+          backgroundColor: color,
+          fontSize: size * 0.4
+        }}
+      >
+        {initials || '?'}
+      </div>
+      {isOnline && (
+        <span 
+          className="absolute bottom-0 right-0 rounded-full bg-green-500 border-2 border-[#0f0f0f] animate-pulse"
+          style={{ 
+            width: Math.max(size * 0.3, 14), 
+            height: Math.max(size * 0.3, 14),
+            zIndex: 9999 
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -11,6 +11,7 @@ import PostModal from '../components/PostModal'
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
+import { isUserOnline } from '../hooks/useOnlineStatus' // ✅ NUEVO IMPORT
 
 import { 
   FaMapMarkerAlt, FaGuitar, FaMusic, FaEnvelope, FaSpinner, 
@@ -58,7 +59,7 @@ export default function VerPerfil() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const hiddenIds = useHiddenUsers() // ✅ NUEVO: Lista de usuarios bloqueados
+  const hiddenIds = useHiddenUsers()
   
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<any[]>([])
@@ -253,7 +254,7 @@ export default function VerPerfil() {
   }
 
   const isMyProfile = user?.id === profile.id
-  const isBlocked = hiddenIds.includes(profile.id) // ✅ NUEVO: Verifica si está bloqueado
+  const isBlocked = hiddenIds.includes(profile.id)
   const themeColor = profile.theme_color || '#a855f7'
 
   return (
@@ -279,7 +280,14 @@ export default function VerPerfil() {
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
             
             <div className="bg-[#0f0f0f] p-4 rounded-xl border flex items-end gap-2" style={{ borderColor: themeColor + '40' }}>
-              <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={140} />
+              {/* ✅ AGREGADO isOnline AL AVATAR GRANDE */}
+              <Avatar 
+                url={profile.avatar_url || null} 
+                name={profile.display_name} 
+                color={profile.avatar_color || '#333'} 
+                size={140} 
+                isOnline={isUserOnline((profile as any).last_seen)} 
+              />
               <Mascot color={profile.avatar_color || '#333'} size={50} expression={profile.expression as any || 'normal'} />
             </div>
 
@@ -318,7 +326,6 @@ export default function VerPerfil() {
                 </div>
               </div>
 
-              {/* ✅ NUEVO: Aviso de bloqueo */}
               {!isMyProfile && isBlocked && (
                 <div className="mb-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg">
                   <FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.
@@ -328,7 +335,6 @@ export default function VerPerfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {!isMyProfile ? (
                   <>
-                    {/* ✅ CORREGIDO: Botón de mensaje con disabled si está bloqueado */}
                     <button 
                       onClick={() => navigate(`/chat/${profile.id}`)} 
                       disabled={isBlocked}
@@ -398,7 +404,14 @@ export default function VerPerfil() {
                 <div key={post.id} className="bg-[#1a1a1a] border rounded-2xl p-5 transition-colors" style={{ borderColor: themeColor + '40' }}>
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex items-end gap-1">
-                      <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={45} />
+                      {/* ✅ AGREGADO isOnline AL AVATAR DE LAS PUBLICACIONES */}
+                      <Avatar 
+                        url={profile.avatar_url || null} 
+                        name={profile.display_name} 
+                        color={profile.avatar_color || '#333'} 
+                        size={45} 
+                        isOnline={isUserOnline((profile as any).last_seen)} 
+                      />
                       <Mascot color={profile.avatar_color || '#333'} size={20} expression={profile.expression as any || 'normal'} />
                     </div>                
                     <div className="flex-1">

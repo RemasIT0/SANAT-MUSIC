@@ -1,11 +1,12 @@
 // src/pages/Onboarding.tsx
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
+import Avatar from '../components/Avatar'
 import Toast from '../components/Toast'
-import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaSpinner } from 'react-icons/fa'
+import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaSpinner, FaCamera } from 'react-icons/fa'
 
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
@@ -41,12 +42,11 @@ const GENEROS_FIJOS = [
   { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }    
 ]
 
-// ✅ PALETA COMPLETA DE COLORES (Mascota y Tema)
 const PALETA_COMPLETA = [
-  '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', // Vibrantes
-  '#06b6d4', '#84cc16', '#d946ef', // Neón
-  '#475569', '#3f3f46', '#1e293b', // Oscuros
-  '#e2e8f0', '#f8fafc'  // Claros
+  '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#06b6d4', '#84cc16', '#d946ef',
+  '#475569', '#3f3f46', '#1e293b',
+  '#e2e8f0', '#f8fafc'
 ]
 
 const coloresMascota = PALETA_COMPLETA
@@ -57,13 +57,15 @@ export default function Onboarding() {
   const navigate = useNavigate()
   
   const [loading, setLoading] = useState(false)
-  
-  // ✅ Estados para los colores (Mascota y Tema separados)
-  const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
-  const [selectedTheme, setSelectedTheme] = useState('#a855f7') // Morado por defecto para el tema
-  
-  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>('normal')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
+  const [selectedTheme, setSelectedTheme] = useState('#a855f7')
+  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>('normal')
 
   const [formData, setFormData] = useState({
     username: '',
@@ -94,17 +96,31 @@ export default function Onboarding() {
     }))
   }
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setToast({ message: 'Solo se permiten archivos de imagen', type: 'error' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setToast({ message: 'La imagen debe pesar menos de 2MB', type: 'error' })
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
     setLoading(true)
 
-    // 🛡️ VALIDACIÓN DE USERNAME ÚNICO (Excluyendo al usuario actual)
     const { data: existingUser } = await supabase
       .from('profiles')
       .select('id')
       .eq('username', formData.username)
-      .neq('id', user.id) // ✅ ESTA LÍNEA ES LA MAGIA: Ignora si el perfil ya es tuyo
+      .neq('id', user.id)
       .maybeSingle()
 
     if (existingUser) {
@@ -114,6 +130,31 @@ export default function Onboarding() {
     }
 
     try {
+      let finalAvatarUrl = null
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+        const filePath = `${user.id}/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, imageFile, { upsert: true })
+
+        if (uploadError) {
+          console.error("Error al subir imagen:", uploadError)
+          setToast({ message: 'Error al subir la imagen: ' + uploadError.message, type: 'error' })
+          setLoading(false)
+          return
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath)
+        
+        finalAvatarUrl = urlData.publicUrl
+      }
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -124,6 +165,7 @@ export default function Onboarding() {
           avatar_color: selectedColor,
           theme_color: selectedTheme,
           expression: selectedExpression,
+          avatar_url: finalAvatarUrl,
           instruments: [{ name: formData.instrument, level: formData.level }],
           genres: formData.genres,
           departamento: formData.departamento,
@@ -163,10 +205,18 @@ export default function Onboarding() {
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
-            <Mascot color={selectedColor} size={100} expression={selectedExpression} />
             
-            {/* ✅ SELECTOR 1: COLOR DE LA MASCOTA */}
-            <div className="mt-4 w-full">
+            <div className="relative group cursor-pointer mb-2" onClick={() => fileInputRef.current?.click()}>
+              <Avatar url={imagePreview} name={formData.display_name || 'Usuario'} color={selectedColor} size={100}  />
+              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <FaCamera className="text-white text-2xl" />
+              </div>
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+            <p className="text-xs text-gray-500 mb-4">Toca para agregar foto (opcional)</p>
+            
+            {/* ✅ SELECTOR DE COLOR DE MASCOTA MEJORADO */}
+            <div className="w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Mascota</label>
               <div className="flex gap-2 flex-wrap justify-center">
                 {coloresMascota.map((color) => (
@@ -180,10 +230,32 @@ export default function Onboarding() {
                     style={{ backgroundColor: color }}
                   />
                 ))}
+                {/* Botón de Color Personalizado */}
+                <label 
+                  htmlFor="custom-mascot-color"
+                  className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
+                    !coloresMascota.includes(selectedColor) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{
+                    background: !coloresMascota.includes(selectedColor) 
+                      ? selectedColor 
+                      : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
+                  }}
+                  title="Elegir color personalizado"
+                >
+                  <FaPalette className="text-white drop-shadow-md" size={12} />
+                </label>
+                <input 
+                  type="color" 
+                  id="custom-mascot-color" 
+                  value={selectedColor} 
+                  onChange={(e) => setSelectedColor(e.target.value)} 
+                  className="hidden" 
+                />
               </div>
             </div>
 
-            {/* ✅ SELECTOR 2: COLOR DEL TEMA (BORDES) */}
+            {/* ✅ SELECTOR DE COLOR DE TEMA MEJORADO */}
             <div className="mt-6 w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Perfil (Bordes)</label>
               <div className="flex gap-2 flex-wrap justify-center">
@@ -198,6 +270,28 @@ export default function Onboarding() {
                     style={{ backgroundColor: color }}
                   />
                 ))}
+                {/* Botón de Color Personalizado */}
+                <label 
+                  htmlFor="custom-theme-color"
+                  className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
+                    !coloresTema.includes(selectedTheme) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{
+                    background: !coloresTema.includes(selectedTheme) 
+                      ? selectedTheme 
+                      : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
+                  }}
+                  title="Elegir color personalizado"
+                >
+                  <FaPalette className="text-white drop-shadow-md" size={12} />
+                </label>
+                <input 
+                  type="color" 
+                  id="custom-theme-color" 
+                  value={selectedTheme} 
+                  onChange={(e) => setSelectedTheme(e.target.value)} 
+                  className="hidden" 
+                />
               </div>
             </div>
 

@@ -11,6 +11,7 @@ import {
   FaFlag
 } from 'react-icons/fa'
 import { IoMegaphone } from "react-icons/io5"
+import { isUserOnline } from '../hooks/useOnlineStatus'
 import Mascot from '../components/Mascot'
 import PostModal from '../components/PostModal'
 import Toast from '../components/Toast'
@@ -60,6 +61,7 @@ interface PostWithAuthor {
   intention: string; genres: string[]; display_name: string; username: string; 
   avatar_color: string; avatar_url: string | null; expression: string;
   instruments: { name: string; level: string }[]; departamento: string; localidad: string;
+  last_seen?: string; 
 }
 
 const renderContentWithLinks = (text: string) => {
@@ -100,7 +102,6 @@ export default function Home() {
 
   const [suggestionText, setSuggestionText] = useState('')
   const [isSendingSuggestion, setIsSendingSuggestion] = useState(false)
- 
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'user', id: string, userId: string } | null>(null)
   const [reportReason, setReportReason] = useState('')
@@ -114,22 +115,20 @@ export default function Home() {
       const { data: postsData, error: postsError } = await supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, end);
       if (postsError) throw postsError;
 
-      // ✅ Verificar si el usuario ya tiene una publicación (independiente de la paginación)
       if (user && !isLoadMore) {
-        const { data: userPost } = await supabase
-          .from('posts')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .single()
+        const { data: userPost } = await supabase.from('posts').select('id').eq('user_id', user.id).limit(1).single()
         setHasOwnPost(!!userPost)
       }
 
       if (postsData && postsData.length > 0) {
         const userIds = [...new Set(postsData.map(p => p.user_id))];
-        const { data: profilesData } = await supabase.from('profiles').select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad').in('id', userIds);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad, last_seen')
+          .in('id', userIds);      
+        
         const combined: PostWithAuthor[] = postsData.map(post => {
-          const author = profilesData?.find(p => p.id === post.user_id);
+          const author = profilesData?.find(p => p.id.toString() === post.user_id.toString());
           return { ...post, ...(author || {}), id: post.id, user_id: post.user_id };
         }).filter(p => p.display_name);
 
@@ -265,7 +264,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* ✅ SECCIÓN CORREGIDA CON hasOwnPost */}
         {loading ? (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 text-center">
             <FaSpinner className="animate-spin text-3xl text-purple-600 mx-auto mb-3" />
@@ -279,7 +277,14 @@ export default function Home() {
             </div>
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-end gap-1">
-                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={50} />
+                {/* ✅ AQUÍ ESTABA EL PROBLEMA: FALTABA isOnline */}
+                <Avatar 
+                  url={myPost.avatar_url || null} 
+                  name={myPost.display_name} 
+                  color={myPost.avatar_color || '#333'} 
+                  size={50} 
+                  isOnline={isUserOnline(myPost.last_seen)} 
+                />
                 <Mascot color={myPost.avatar_color || '#333'} size={24} expression={(myPost.expression as any) || 'normal'} />
               </div>         
               <div className="flex-1">
@@ -387,7 +392,13 @@ export default function Home() {
                   <div key={post.id || post.user_id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 hover:border-purple-600/30 transition-colors flex flex-col">
                     <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.user_id}`)}>
                       <div className="flex items-end gap-1">
-                        <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={45} />
+                        <Avatar 
+                          url={post.avatar_url || null} 
+                          name={post.display_name} 
+                          color={post.avatar_color || '#333'} 
+                          size={45} 
+                          isOnline={isUserOnline(post.last_seen)} 
+                        />
                         <Mascot color={post.avatar_color || '#333'} size={20} expression={(post.expression as any) || 'normal'} />
                       </div>                
                       <div className="flex-1">
@@ -414,7 +425,6 @@ export default function Home() {
                       >
                         <FaEnvelope size={12} className="text-purple-400" /> Enviar mensaje
                       </button>
-                      
                       <button 
                         onClick={() => handleOpenReport('post', post.id, post.user_id)} 
                         className="flex items-center gap-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors"
@@ -422,7 +432,6 @@ export default function Home() {
                         <FaFlag size={12} /> Reportar
                       </button>
                     </div>
-
                   </div>
                 ))}
               </div>
@@ -448,14 +457,8 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold text-white">Reportar publicación</h3>
             </div>
-            
             <p className="text-gray-400 text-sm mb-4">Tu reporte es anónimo para el usuario. Selecciona un motivo:</p>
-            
-            <select 
-              value={reportReason} 
-              onChange={(e) => setReportReason(e.target.value)}
-              className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-red-500 mb-4"
-            >
+            <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-red-500 mb-4">
               <option value="">Selecciona un motivo...</option>
               <option value="Spam o publicidad">Spam o publicidad</option>
               <option value="Comportamiento abusivo o acoso">Comportamiento abusivo o acoso</option>
@@ -463,18 +466,10 @@ export default function Home() {
               <option value="Información falsa">Información falsa</option>
               <option value="Otro motivo">Otro motivo</option>
             </select>
-
             <div className="flex gap-3">
-              <button onClick={() => setReportModalOpen(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSubmitReport} 
-                disabled={isReporting || !reportReason}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2"
-              >
-                {isReporting ? <FaSpinner className="animate-spin" /> : <FaFlag />}
-                {isReporting ? 'Enviando...' : 'Enviar Reporte'}
+              <button onClick={() => setReportModalOpen(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">Cancelar</button>
+              <button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">
+                {isReporting ? <FaSpinner className="animate-spin" /> : <FaFlag />} {isReporting ? 'Enviando...' : 'Enviar Reporte'}
               </button>
             </div>
           </div>

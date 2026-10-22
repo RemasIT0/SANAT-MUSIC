@@ -7,7 +7,7 @@ import { type Profile } from '../types'
 import Avatar from '../components/Avatar'
 import Mascot from '../components/Mascot'
 import AnimatedBackground from '../components/AnimatedBackground'
-import { FaArrowLeft, FaPaperPlane, FaSpinner, FaQuoteLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaPaperPlane, FaSpinner, FaQuoteLeft, FaChevronDown, FaChevronUp, FaGuitar, FaMapMarkerAlt } from 'react-icons/fa'
 
 interface Message {
   id: string
@@ -36,9 +36,10 @@ export default function ChatRoom() {
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [replyToPost, setReplyToPost] = useState<any>(null)
+  const [showUserInfo, setShowUserInfo] = useState(false) // ✅ Estado para el panel desplegable
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Colores de tema (El tuyo y el del otro)
   const myThemeColor = profile?.theme_color || '#a855f7'
   const otherThemeColor = otherProfile?.theme_color || '#a855f7'
 
@@ -79,7 +80,7 @@ export default function ChatRoom() {
         }))
         setMessages(formatted)
 
-        // Marcar como leídos
+        // ✅ Marcar como leídos (Tu lógica ya estaba perfecta)
         await supabase
           .from('messages')
           .update({ is_read: true })
@@ -168,7 +169,7 @@ export default function ChatRoom() {
 
   if (!otherProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
+      <div className="h-[100dvh] flex items-center justify-center text-gray-400 bg-[#0f0f0f]">
         <FaSpinner className="animate-spin text-3xl text-purple-600 mr-3" />
         Cargando chat...
       </div>
@@ -176,63 +177,113 @@ export default function ChatRoom() {
   }
 
   return (
-    // ✅ SIN pb-24: Pantalla completa real, el input se pega al fondo
-    <div className="min-h-screen relative text-gray-200 font-sans flex flex-col">
+    // ✅ h-[100dvh] es la clave: hace que el teclado móvil "empuje" la pantalla en vez de taparla
+    <div className="h-[100dvh] relative text-gray-200 font-sans flex flex-col overflow-hidden bg-[#0f0f0f]">
       <AnimatedBackground />
       
-      {/* Header del chat */}
+      {/* ✅ HEADER MEJORADO: Click para expandir info */}
       <header 
-        className="sticky top-0 z-20 bg-[#1a1a1a]/95 backdrop-blur border-b px-4 py-3 flex items-center gap-3"
+        className="sticky top-0 z-30 bg-[#1a1a1a]/95 backdrop-blur-md border-b px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[#222] transition-colors"
         style={{ borderColor: otherThemeColor + '40' }}
+        onClick={() => setShowUserInfo(!showUserInfo)}
       >
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+        <button 
+          onClick={(e) => { e.stopPropagation(); navigate(-1); }} 
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
+        >
           <FaArrowLeft className="text-white" />
         </button>
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <Avatar url={otherProfile.avatar_url || null} name={otherProfile.display_name} color={otherProfile.avatar_color || '#333'} size={40} />
-          <div>
-            <h2 className="text-white font-semibold text-sm">{otherProfile.display_name}</h2>
-            <p className="text-gray-500 text-xs">@{otherProfile.username}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-semibold text-sm truncate">{otherProfile.display_name}</h2>
+            <p className="text-gray-500 text-xs truncate">@{otherProfile.username}</p>
           </div>
+          {showUserInfo ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
         </div>
       </header>
 
+      {/* ✅ PANEL DESPLEGABLE DE INFORMACIÓN DEL USUARIO */}
+      {showUserInfo && (
+        <div className="bg-[#1a1a1a]/95 backdrop-blur-md border-b animate-[slideDown_0.3s_ease-out] z-20" style={{ borderColor: otherThemeColor + '40' }}>
+          <div className="p-4 max-w-3xl mx-auto">
+            <div className="flex items-start gap-4">
+              <Avatar url={otherProfile.avatar_url || null} name={otherProfile.display_name} color={otherProfile.avatar_color || '#333'} size={64} />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-white font-bold text-lg">{otherProfile.display_name}</h3>
+                <p className="text-purple-400 text-sm mb-2">@{otherProfile.username}</p>
+                
+                {otherProfile.bio && (
+                  <p className="text-gray-400 text-sm italic mb-3 line-clamp-3">"{otherProfile.bio}"</p>
+                )}
+                
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {otherProfile.instruments?.map((inst: any, i: number) => (
+                    <span key={i} className="text-xs bg-purple-900/30 text-purple-300 px-2 py-1 rounded-full border border-purple-700/40 flex items-center gap-1">
+                      <FaGuitar size={10} /> {inst.name} <span className="text-gray-500">({inst.level})</span>
+                    </span>
+                  ))}
+                </div>
+                
+                {otherProfile.localidad && (
+                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                    <FaMapMarkerAlt size={12} /> {otherProfile.localidad}, {otherProfile.departamento}
+                  </div>
+                )}
+
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigate(`/perfil/${otherProfile.id}`); }} 
+                  className="text-xs bg-[#2a2a2a] hover:bg-[#333] text-white px-4 py-2 rounded-lg transition-colors border border-[#3a3a3a]"
+                >
+                  Ver perfil completo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Área de mensajes */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="hidden lg:block w-1/4 min-w-[200px] bg-[#1a1a1a]/40 border-r" style={{ borderColor: otherThemeColor + '40' }} />
-        
-        <main className="flex-1 overflow-y-auto py-2 space-y-1 max-w-3xl mx-auto w-full px-4 md:px-6">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+        <main className="flex-1 overflow-y-auto py-4 space-y-3 max-w-3xl mx-auto w-full px-4 custom-scrollbar">
           {messages.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="h-full flex flex-col items-center justify-center text-gray-500">
               <Mascot color={otherProfile.avatar_color || '#333'} size={80} expression="normal" />
-              <p className="mt-4 text-sm">Aún no hay mensajes.</p>
-              <p className="text-xs mt-1">¡Sé el primero en saludar! 👋</p>
+              <p className="mt-4 text-sm font-medium">Aún no hay mensajes.</p>
+              <p className="text-xs mt-1 text-gray-600">¡Sé el primero en saludar! 👋</p>
             </div>
           ) : (
             messages.map((msg) => {
               const isMine = msg.sender_id === user?.id
-              // ✅ BURBUJAS CON DOBLE COLOR: Tu color para ti, su color para él/ella
-              const bubbleColor = isMine ? myThemeColor : otherThemeColor
+              const bubbleColor = isMine ? myThemeColor : '#2a2a2a'
+              const textColor = isMine ? 'text-white' : 'text-gray-100'
+              const timeColor = isMine ? 'text-white/60' : 'text-gray-500'
 
               return (
-                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.3s_ease-out]`}>
                   <div
-                    className={`max-w-[75%] md:max-w-[60%] px-4 py-2.5 rounded-2xl ${
-                      isMine ? 'rounded-br-sm text-white' : 'rounded-bl-sm text-gray-100 bg-[#2a2a2a]'
+                    className={`max-w-[85%] md:max-w-[65%] px-4 py-3 rounded-2xl shadow-sm ${
+                      isMine ? 'rounded-br-md' : 'rounded-bl-md'
                     }`}
-                    style={{ backgroundColor: isMine ? bubbleColor : undefined }}
+                    style={{ backgroundColor: bubbleColor }}
                   >
                     {msg.post_content && (
                       <div className={`mb-2 pb-2 border-b ${isMine ? 'border-white/20' : 'border-gray-600/50'}`}>
-                        <div className="flex items-center gap-1 mb-1">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <FaQuoteLeft className="text-xs opacity-60" />
-                          <p className={`text-[10px] font-semibold ${isMine ? 'text-white/70' : 'text-gray-400'}`}>Respondiendo a publicación</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-wider ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
+                            Respondiendo a
+                          </p>
                         </div>
-                        <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-gray-300'}`}>{msg.post_content}</p>
+                        <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-gray-300'}`}>
+                          {msg.post_content}
+                        </p>
                       </div>
                     )}
-                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                    <p className={`text-[10px] mt-1 ${isMine ? 'text-white/70' : 'text-gray-500'}`}>
+                    <p className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${textColor}`}>
+                      {msg.content}
+                    </p>
+                    <p className={`text-[10px] mt-1.5 text-right ${timeColor}`}>
                       {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -240,43 +291,101 @@ export default function ChatRoom() {
               )
             })
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-2" />
         </main>
 
-        <div className="hidden lg:block w-1/4 min-w-[200px] bg-[#1a1a1a]/40 border-l" style={{ borderColor: otherThemeColor + '40' }} />
-      </div>
-
-      {/* Bloque "Respondiendo a" */}
-      {replyToPost && (
-        <div className="bg-[#1a1a1a]/95 backdrop-blur border-t border-l border-r px-4 py-2 flex items-start gap-2 max-w-3xl mx-auto w-full" style={{ borderColor: otherThemeColor + '40' }}>
-          <FaQuoteLeft className="text-gray-500 mt-1 flex-shrink-0" size={12} />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400 mb-0.5">Respondiendo a:</p>
-            <p className="text-sm text-gray-200 line-clamp-2 truncate">{replyToPost.content}</p>
-          </div>
-          <button onClick={() => { setReplyToPost(null); navigate(`/chat/${userId}`, { replace: true }) }} className="text-gray-500 hover:text-white flex-shrink-0 ml-2">✕</button>
+        {/* Bloque "Respondiendo a" flotante sobre el input */}
+{replyToPost && (
+  <div 
+    className="relative bg-gradient-to-r from-[#1a1a1a] to-[#0f0f0f] border-t border-l border-r px-4 py-3 flex items-start gap-3 max-w-3xl mx-auto w-full animate-[slideUp_0.2s_ease-out] overflow-hidden"
+    style={{ borderColor: otherThemeColor + '40' }}
+  >
+    {/* ✅ BARRA LATERAL DE COLOR (estilo cita destacada) */}
+    <div 
+      className="absolute left-0 top-0 bottom-0 w-1.5"
+      style={{ backgroundColor: otherThemeColor }}
+    />
+    
+    {/* ✅ ÍCONO MÁS GRANDE Y VISIBLE */}
+    <div 
+      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md"
+      style={{ 
+        backgroundColor: otherThemeColor + '25',
+        border: `1px solid ${otherThemeColor}50`
+      }}
+    >
+      <FaQuoteLeft style={{ color: otherThemeColor }} size={14} />
+    </div>
+    
+    <div className="flex-1 min-w-0 pl-1">
+      <p 
+        className="text-[10px] font-bold uppercase tracking-wider mb-1"
+        style={{ color: otherThemeColor }}
+      >
+        Respondiendo a su publicación
+      </p>
+      <p className="text-sm text-white line-clamp-2 leading-relaxed">
+        {replyToPost.content}
+      </p>
+      
+      {/* ✅ TAGS DE GÉNERO (si existen) */}
+      {replyToPost.genres && replyToPost.genres.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {replyToPost.genres.slice(0, 3).map((genre: string, i: number) => (
+            <span 
+              key={i} 
+              className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ 
+                backgroundColor: otherThemeColor + '15',
+                color: otherThemeColor,
+                border: `1px solid ${otherThemeColor}30`
+              }}
+            >
+              #{genre}
+            </span>
+          ))}
         </div>
       )}
+    </div>
+    
+    <button 
+      onClick={() => { setReplyToPost(null); navigate(`/chat/${userId}`, { replace: true }) }} 
+      className="text-gray-500 hover:text-white flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
+      title="Cancelar respuesta"
+    >
+      ✕
+    </button>
+  </div>
+)}
 
-      {/* Input para escribir */}
-      <form onSubmit={handleSend} className="sticky bottom-0 bg-[#1a1a1a]/95 backdrop-blur border-t px-4 py-3 flex items-center gap-2" style={{ borderColor: otherThemeColor + '40' }}>
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={replyToPost ? "Escribe tu respuesta..." : "Escribe un mensaje..."}
-          className="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded-full px-4 py-2.5 text-sm text-white focus:outline-none transition-colors placeholder:text-gray-600"
-          disabled={sending}
-        />
-        <button
-          type="submit"
-          disabled={!newMessage.trim() || sending}
-          className={`p-3 rounded-full transition-all ${!newMessage.trim() || sending ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'text-white hover:scale-105'}`}
-          style={{ backgroundColor: newMessage.trim() && !sending ? myThemeColor : undefined }}
-        >
-          {sending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />}
-        </button>
-      </form>
+        {/* ✅ INPUT MEJORADO: Sticky y con soporte nativo para teclado móvil */}
+        <form onSubmit={handleSend} className="sticky bottom-0 bg-[#1a1a1a]/95 backdrop-blur-md border-t px-4 py-3 flex items-center gap-3 max-w-3xl mx-auto w-full" style={{ borderColor: otherThemeColor + '40' }}>
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={replyToPost ? "Escribe tu respuesta..." : "Escribe un mensaje..."}
+            className="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded-full px-5 py-3 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all placeholder:text-gray-600"
+            disabled={sending}
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            disabled={!newMessage.trim() || sending}
+            className={`p-3.5 rounded-full transition-all duration-300 flex items-center justify-center ${
+              !newMessage.trim() || sending 
+                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+                : 'text-white hover:scale-105 active:scale-95 shadow-lg'
+            }`}
+            style={{ 
+              backgroundColor: newMessage.trim() && !sending ? myThemeColor : undefined,
+              boxShadow: newMessage.trim() && !sending ? `0 0 15px ${myThemeColor}40` : 'none'
+            }}
+          >
+            {sending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane className={newMessage.trim() && !sending ? 'ml-0.5' : ''} />}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

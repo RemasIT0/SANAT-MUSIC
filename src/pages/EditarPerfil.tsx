@@ -7,6 +7,7 @@ import Mascot from '../components/Mascot'
 import Avatar from '../components/Avatar'
 import Toast from '../components/Toast'
 import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaArrowLeft, FaSpinner, FaCamera } from 'react-icons/fa'
+import { isUserOnline } from '../hooks/useOnlineStatus'
 import AnimatedBackground from '../components/AnimatedBackground'
 
 const tucumanLocations: Record<string, string[]> = {
@@ -31,7 +32,6 @@ const tucumanLocations: Record<string, string[]> = {
 
 const departamentos = Object.keys(tucumanLocations)
 
-// ✅ AGREGAMOS METAL Y GRUNGE PARA QUE PUEDAS DESELECCIONARLOS
 const GENEROS_FIJOS = [
   { name: 'Rock', color: 'bg-red-500/20 text-red-400 border-red-500/50' },
   { name: 'Pop', color: 'bg-pink-500/20 text-pink-400 border-pink-500/50' },
@@ -69,6 +69,22 @@ export default function EditarPerfil() {
   const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || coloresMascota[0])
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme_color || '#a855f7')
   const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>((profile?.expression as any) || 'normal')
+  
+  // ✅ Estado para leer tu last_seen en tiempo real en esta pantalla
+  const [liveLastSeen, setLiveLastSeen] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('last_seen')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setLiveLastSeen(data.last_seen)
+        })
+    }
+  }, [user])
 
   const initialGenres = Array.isArray(profile?.genres) 
     ? profile.genres.map(g => String(g).toLowerCase().trim())
@@ -165,18 +181,15 @@ export default function EditarPerfil() {
   }
 
   const toggleGenre = (genreName: string) => {
-    const normalizedTarget = genreName.toLowerCase().trim();
-    
+    const normalizedTarget = genreName.toLowerCase().trim()
     setFormData(prev => {
-      const currentNormalized = prev.genres.map(g => String(g).toLowerCase().trim());
-      const isAlreadyThere = currentNormalized.includes(normalizedTarget);
-      
+      const currentNormalized = prev.genres.map(g => String(g).toLowerCase().trim())
+      const isAlreadyThere = currentNormalized.includes(normalizedTarget)
       const newGenres = isAlreadyThere
         ? prev.genres.filter(g => String(g).toLowerCase().trim() !== normalizedTarget)
-        : [...prev.genres, normalizedTarget];
-        
-      return { ...prev, genres: newGenres };
-    });
+        : [...prev.genres, normalizedTarget]
+      return { ...prev, genres: newGenres }
+    })
   }
 
   const isFormValid = 
@@ -301,7 +314,13 @@ export default function EditarPerfil() {
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
             
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <Avatar url={imagePreview} name={formData.display_name || 'Usuario'} color={selectedColor} size={100} />
+              <Avatar 
+                url={imagePreview} 
+                name={formData.display_name || 'Usuario'} 
+                color={selectedColor} 
+                size={100} 
+                isOnline={isUserOnline(liveLastSeen)} 
+              />
               <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <FaCamera className="text-white text-2xl" />
               </div>
@@ -318,6 +337,27 @@ export default function EditarPerfil() {
                     className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                     style={{ backgroundColor: color }} />
                 ))}
+                <label 
+                  htmlFor="custom-mascot-color"
+                  className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
+                    !coloresMascota.includes(selectedColor) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{
+                    background: !coloresMascota.includes(selectedColor) 
+                      ? selectedColor 
+                      : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
+                  }}
+                  title="Elegir color personalizado"
+                >
+                  <FaPalette className="text-white drop-shadow-md" size={12} />
+                </label>
+                <input 
+                  type="color" 
+                  id="custom-mascot-color" 
+                  value={selectedColor} 
+                  onChange={(e) => setSelectedColor(e.target.value)} 
+                  className="hidden" 
+                />
               </div>
             </div>
 
@@ -329,6 +369,27 @@ export default function EditarPerfil() {
                     className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedTheme === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                     style={{ backgroundColor: color }} />
                 ))}
+                <label 
+                  htmlFor="custom-theme-color"
+                  className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
+                    !coloresTema.includes(selectedTheme) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{
+                    background: !coloresTema.includes(selectedTheme) 
+                      ? selectedTheme 
+                      : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
+                  }}
+                  title="Elegir color personalizado"
+                >
+                  <FaPalette className="text-white drop-shadow-md" size={12} />
+                </label>
+                <input 
+                  type="color" 
+                  id="custom-theme-color" 
+                  value={selectedTheme} 
+                  onChange={(e) => setSelectedTheme(e.target.value)} 
+                  className="hidden" 
+                />
               </div>
             </div>
 
@@ -398,9 +459,9 @@ export default function EditarPerfil() {
             <label className="block text-xs font-medium text-gray-400 mb-3 uppercase tracking-wider">Elegí tus géneros</label>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               {GENEROS_FIJOS.map((genero) => {
-                const normalizedGenre = genero.name.toLowerCase().trim();
-                const currentNormalized = formData.genres.map(g => String(g).toLowerCase().trim());
-                const isSelected = currentNormalized.includes(normalizedGenre);
+                const normalizedGenre = genero.name.toLowerCase().trim()
+                const currentNormalized = formData.genres.map(g => String(g).toLowerCase().trim())
+                const isSelected = currentNormalized.includes(normalizedGenre)
                 
                 return (
                   <button 
