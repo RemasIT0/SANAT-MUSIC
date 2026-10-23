@@ -35,7 +35,7 @@ export default function Avatar({ url, name, color, size = 50, isOnline = false }
             style={{ 
               width: Math.max(size * 0.3, 14), 
               height: Math.max(size * 0.3, 14),
-              zIndex: 9999 
+              zIndex: 10
             }}
           />
         )}
@@ -62,8 +62,7 @@ export default function Avatar({ url, name, color, size = 50, isOnline = false }
           style={{ 
             width: Math.max(size * 0.3, 14), 
             height: Math.max(size * 0.3, 14),
-            zIndex: 9999 
-          }}
+             zIndex: 10          }}
         />
       )}
     </div>

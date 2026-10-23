@@ -18,7 +18,6 @@ export default function Login() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [blockedByMaintenance, setBlockedByMaintenance] = useState(false)
   
-  // ✅ NUEVO: Estado para el modal de ayuda en el login
   const [showHelp, setShowHelp] = useState(false)
   
   const navigate = useNavigate()
@@ -26,14 +25,10 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-//=======================================
-
 
     const IS_MAINTENANCE_MODE = false 
-
-
     const ADMIN_EMAIL = 'remaslove281@gmail.com'
-//=======================================
+
     if (IS_MAINTENANCE_MODE && email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       setBlockedByMaintenance(true)
       return
@@ -71,13 +66,29 @@ export default function Login() {
         setTimeout(() => navigate('/verificar-email'), 4000)
         
       } else {
+        // --- INICIO DE SESIÓN ---
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         
-        if (error) throw error
+        if (error) {
+          let mensaje = 'Error al iniciar sesión. Intentá de nuevo.'
+          
+          if (error.message.includes('rate limit')) {
+            mensaje = 'Demasiados intentos. Esperá unos minutos e intentá de nuevo, o usá otro dispositivo.'
+          } else if (error.message.includes('Invalid login credentials')) {
+            mensaje = 'Email o contraseña incorrectos. Verificá tus datos.'
+          } else if (error.message.includes('Email not confirmed')) {
+            mensaje = 'Tu email no está confirmado. Revisá tu bandeja de entrada (y la carpeta de spam).'
+          }
+          
+          setToast({ message: mensaje, type: 'error' })
+          setLoading(false) // ✅ Detiene el spinner de carga
+          return // ✅ Detiene la ejecución para NO navegar al home si hay error
+        }
         
+        // Si no hay error, recién aquí navegamos al home
         navigate('/home', { replace: true })
       }
     } catch (error: any) {
@@ -145,7 +156,7 @@ export default function Login() {
 
           <div className="relative z-10 w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl animate-[slideIn_0.8s_ease-out]">
             
-            {/* ✅ NUEVO: BOTÓN DE AYUDA EN LA ESQUINA SUPERIOR DERECHA */}
+            {/* ✅ BOTÓN DE AYUDA EN LA ESQUINA SUPERIOR DERECHA */}
             <button 
               onClick={() => setShowHelp(true)}
               className="absolute top-4 right-4 text-gray-500 hover:text-purple-400 transition-colors p-2"
@@ -276,11 +287,11 @@ export default function Login() {
             </div>
           </div>
 
-          {/* ✅ NUEVO: MODAL DE AYUDA AUTOCONTENIDO EN EL LOGIN */}
+          {/* ✅ MODAL DE AYUDA AUTOCONTENIDO EN EL LOGIN (CON SCROLL OCULTO) */}
           {showHelp && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
               <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowHelp(false)} />
-              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl">
+              <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <FaQuestionCircle className="text-blue-400" /> Centro de Ayuda

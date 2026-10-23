@@ -42,7 +42,6 @@ export default function MaintenanceScreen() {
           </a>
         </div>
 
-        {/* ✅ BOTÓN QUE SÍ FUNCIONA SIEMPRE */}
         <button
           onClick={handleBackToLogin}
           className="w-full py-3 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30"

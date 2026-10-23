@@ -115,7 +115,7 @@ export default function BottomNav() {
 
             {/* 2. MENSAJES */}
             <button
-              onClick={() => navigate('/bandeja')}
+             onClick={() => navigate('/bandeja')}
               className={`relative flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300 ${isMessages ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'}`}
             >
               {isMessages && <div className="absolute -bottom-1 w-8 h-1 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)]"></div>}

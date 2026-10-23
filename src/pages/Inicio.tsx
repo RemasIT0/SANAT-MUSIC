@@ -8,12 +8,12 @@ import {
   FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash, 
   FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, 
   FaRegEnvelope, FaTimes, FaPaperPlane, FaQuestionCircle, FaEnvelopeOpenText,
-  FaFlag,FaHeart, FaFire
+  FaFlag, FaHeart, FaFire
 } from 'react-icons/fa'
 
-import { IoIosTime } from "react-icons/io";
-
+import { IoIosTime } from "react-icons/io"
 import { IoMegaphone } from "react-icons/io5"
+
 import { isUserOnline } from '../hooks/useOnlineStatus'
 import Mascot from '../components/Mascot'
 import PostModal from '../components/PostModal'
@@ -65,7 +65,7 @@ interface PostWithAuthor {
   avatar_color: string; avatar_url: string | null; expression: string;
   instruments: { name: string; level: string }[]; departamento: string; localidad: string;
   last_seen?: string; 
-    likes_count?: number;      
+  likes_count?: number;      
   is_liked_by_me?: boolean;
 }
 
@@ -112,13 +112,17 @@ export default function Home() {
   const [reportReason, setReportReason] = useState('')
   const [isReporting, setIsReporting] = useState(false) 
 
+  const [filterSort, setFilterSort] = useState<'recientes' | 'populares'>('recientes')
 
-   const [filterSort, setFilterSort] = useState<'recientes' | 'populares'>('recientes') // ✅ NUEVO ESTADO
+  // ✅ ESTADOS PARA EL MODAL DE LIKERS EN MI PUBLICACIÓN
+  const [showLikersModal, setShowLikersModal] = useState(false)
+  const [likersList, setLikersList] = useState<any[]>([])
+  const [viewedLikes, setViewedLikes] = useState(false)
+  const [loadingLikers, setLoadingLikers] = useState(false)
 
-  const handleToggleLike = async (postId: string) => {
+  const handleToggleLike = async (postId: string, postOwnerId?: string) => {
     if (!user) return;
     
-    // 1. Actualización Optimista (para que se sienta instantáneo)
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === postId) {
         const isLiked = p.is_liked_by_me;
@@ -131,7 +135,6 @@ export default function Home() {
       return p;
     }));
 
-    // 2. Llamada a la Base de Datos
     try {
       const { data: existingLike } = await supabase
         .from('post_likes')
@@ -141,21 +144,60 @@ export default function Home() {
         .maybeSingle();
 
       if (existingLike) {
-        // Si ya existía, lo borramos (Quitar Like)
         await supabase.from('post_likes').delete().eq('id', existingLike.id);
+        // Si existe la tabla de notificaciones, también borramos la notificación
+        try { await supabase.from('notifications').delete().eq('post_id', postId).eq('actor_id', user.id).eq('type', 'like'); } catch(e) {}
       } else {
-        // Si no existía, lo creamos (Dar Like)
         await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
+        // Si existe la tabla de notificaciones, creamos la notificación
+        if (postOwnerId && postOwnerId !== user.id) {
+          try {
+            await supabase.from('notifications').insert({ 
+              user_id: postOwnerId, 
+              actor_id: user.id, 
+              post_id: postId, 
+              type: 'like' 
+            });
+          } catch(e) {}
+        }
       }
     } catch (error) {
       console.error("Error al actualizar like:", error);
-      // Revertir si falla (opcional, pero buena práctica)
       fetchPosts(false); 
     }
   }
 
+  // ✅ FUNCIÓN PARA TRAER A LOS QUE DIERON LIKE A MI POST
+  const handleViewLikers = async (postId: string) => {
+    setLoadingLikers(true)
+    setShowLikersModal(true)
+    setViewedLikes(true) // ✅ Marcamos como visto al abrirlo, la pelotita desaparece
 
+    try {
+      const { data: likesData } = await supabase
+        .from('post_likes')
+        .select('user_id')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false })
 
+      if (likesData && likesData.length > 0) {
+        const userIds = likesData.map((l: any) => l.user_id)
+        
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url, avatar_color')
+          .in('id', userIds)
+
+        setLikersList(profilesData || [])
+      } else {
+        setLikersList([])
+      }
+    } catch (error) {
+      console.error('Error al cargar likers:', error)
+    } finally {
+      setLoadingLikers(false)
+    }
+  }
 
   const fetchPosts = async (isLoadMore = false) => {
     if (isLoadMore) setLoadingMore(true); else setLoading(true);
@@ -170,11 +212,10 @@ export default function Home() {
         setHasOwnPost(!!userPost)
       }
 
-            if (postsData && postsData.length > 0) {
+      if (postsData && postsData.length > 0) {
         const userIds = [...new Set(postsData.map(p => p.user_id))];
         const postIds = postsData.map(p => p.id);
 
-        // Traer perfiles y likes en paralelo para ser más rápidos
         const [profilesResponse, likesResponse] = await Promise.all([
           supabase.from('profiles').select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad, last_seen').in('id', userIds),
           supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds)
@@ -183,7 +224,6 @@ export default function Home() {
         const profilesData = profilesResponse.data;
         const likesData = likesResponse.data;
 
-        // Crear un mapa de likes para no iterar miles de veces
         const likesMap: Record<string, { count: number; likedByMe: boolean }> = {};
         likesData?.forEach(like => {
           if (!likesMap[like.post_id]) likesMap[like.post_id] = { count: 0, likedByMe: false };
@@ -225,14 +265,15 @@ export default function Home() {
   })
 
   const myPost = posts.find(p => p.user_id === user?.id)
-const otherPosts = filteredPosts
+  const otherPosts = filteredPosts
     .filter(p => p.user_id !== user?.id && !hiddenIds.includes(p.user_id))
     .sort((a, b) => {
       if (filterSort === 'populares') {
-        return (b.likes_count || 0) - (a.likes_count || 0); // Ordenar por likes descendente
+        return (b.likes_count || 0) - (a.likes_count || 0);
       }
-      return 0; // Mantener orden original (recientes)
+      return 0;
     });  
+
   const openCreateModal = () => { 
     if (hasOwnPost) {
       setToast({ message: 'Ya tenés una publicación activa. Editá o eliminá la existente.', type: 'info' })
@@ -355,7 +396,6 @@ const otherPosts = filteredPosts
             </div>
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-end gap-1">
-                {/* ✅ AQUÍ ESTABA EL PROBLEMA: FALTABA isOnline */}
                 <Avatar 
                   url={myPost.avatar_url || null} 
                   name={myPost.display_name} 
@@ -380,7 +420,27 @@ const otherPosts = filteredPosts
               {myPost.intention && (<span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1"><FaBullseye size={8} /> {myPost.intention}</span>)}
               {myPost.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
             </div>
-            <div className="flex items-center gap-3 pt-4 border-t border-purple-600/20 pl-[62px] md:pl-[62px]">
+            
+            {/* ✅ BOTONES DE ACCIÓN DE MI PUBLICACIÓN (CON MODAL DE LIKERS) */}
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-purple-600/20 pl-[62px] md:pl-[62px]">
+              <button 
+                onClick={() => handleViewLikers(myPost.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border relative ${
+                  myPost.is_liked_by_me 
+                    ? 'bg-red-900/20 text-red-500 border-red-800/50' 
+                    : 'bg-[#0f0f0f] text-gray-400 border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'
+                }`}
+              >
+                <FaHeart size={14} className={myPost.is_liked_by_me ? 'animate-pulse' : ''} />
+                <span className="text-xs font-bold">{myPost.likes_count || null} Ver likes</span>
+                
+                {/* ✅ PELOTITA ROJA: Aparece si hay likes y aún no se abrió el modal */}
+                {(myPost.likes_count || 0) > 0 && !viewedLikes && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse"></span>
+                )}
+                
+              </button>
+
               <button onClick={openEditModal} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all"><FaEdit size={12} className="text-purple-400" /> Editar</button>
               <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-2 px-4 py-2 bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 rounded-lg text-sm text-red-400 hover:text-red-300 transition-all"><FaTrash size={12} /> Eliminar</button>
             </div>
@@ -458,7 +518,6 @@ const otherPosts = filteredPosts
         </div>
 
         <div>
-          
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
             <button 
               onClick={() => setFilterSort('recientes')}
@@ -470,7 +529,7 @@ const otherPosts = filteredPosts
               onClick={() => setFilterSort('populares')}
               className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'populares' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}
             >
-              <FaFire className="text-lg" /> Más Me Gusta
+              <FaHeart className="text-lg" /> Más me gusta
             </button>
           </div>
           <div className="flex items-center justify-between mb-4">
@@ -511,10 +570,9 @@ const otherPosts = filteredPosts
                       {post.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
                     </div>
                     
-                                       <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a]">
-                      {/* ✅ BOTÓN DE LIKE */}
+                    <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a]">
                       <button 
-                        onClick={() => handleToggleLike(post.id)}
+                        onClick={() => handleToggleLike(post.id, post.user_id)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
                           post.is_liked_by_me 
                             ? 'bg-red-900/20 text-red-500 border border-red-800/50' 
@@ -555,6 +613,51 @@ const otherPosts = filteredPosts
           )}
         </div>
       </main>
+
+      {/* ✅ MODAL SIMPLE DE LIKERS DE MI PUBLICACIÓN */}
+      {showLikersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLikersModal(false)} />
+          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <FaHeart className="text-gray-500" /> Les gustó tu post
+              </h3>
+              <button onClick={() => setShowLikersModal(false)} className="text-gray-500 hover:text-white transition-colors">
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            {loadingLikers ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : likersList.length === 0 ? (
+  <div className="flex flex-col items-center justify-center py-6 gap-3">
+    {/* Personajito en gris con expresión pensativa */}
+    <Mascot color="#9ca3af" size={80} expression="pensativo" />
+   
+  </div>            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {likersList.map((liker: any) => (
+                  <div 
+                    key={liker.id} 
+                    onClick={() => { setShowLikersModal(false); navigate(`/perfil/${liker.id}`); }}
+                    className="flex items-center gap-3 p-2 hover:bg-[#2a2a2a] rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Avatar url={liker.avatar_url} name={liker.display_name} color={liker.avatar_color || '#333'} size={40} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-semibold truncate">{liker.display_name}</p>
+                      <p className="text-gray-500 text-xs truncate">@{liker.username}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {reportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
