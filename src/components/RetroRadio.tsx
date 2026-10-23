@@ -1,34 +1,19 @@
 // src/components/RetroRadio.tsx
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { FaPlay, FaPause, FaMusic, FaXmark, FaRadio } from 'react-icons/fa6'
+import { 
+  FaPlay, FaPause, FaMusic, FaXmark, FaRadio, 
+  FaGuitar, FaFlag, FaHeadphones, FaRecordVinyl 
+} from 'react-icons/fa6'
+import { IoVolumeHighSharp } from "react-icons/io5"
+import { FaVolumeXmark } from "react-icons/fa6"
 
 const RADIO_STATIONS = [
-  { 
-    id: '1', 
-    name: '🎸 Rock Nacional (SANAT)', 
-    url: 'https://stream.zeno.fm/0r0xa792kwzuv' // Tu stream original (100% estable)
-  },
-  { 
-    id: '2', 
-    name: '🇦🇷 Radio Nacional Rock', 
-    url: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad38' // La más estable, stream oficial de Icecast
-  },
-  { 
-    id: '3', 
-    name: '🎧 Rock & Pop Argentina', 
-    url: 'https://26683.live.streamtheworld.com/ROCK_AND_POP_SC' // Stream oficial (puede tener leve delay)
-  },
-  { 
-    id: '4', 
-    name: '🤘 Vorterix (Rock/Alternativo)', 
-    url: 'https://26683.live.streamtheworld.com/VORTERIX_FM_SC' // Stream oficial
-  },
-  { 
-    id: '5', 
-    name: '🎵 Clásicos del Rock (Respaldo)', 
-    url: 'https://stream.zeno.fm/yn65fsaurfhvv' // Stream curado en Zeno.fm (nunca falla en web)
-  }
+  { id: '1', name: 'Rock Nacional (SANAT)', icon: FaGuitar, url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
+  { id: '2', name: 'Radio Nacional Rock', icon: FaFlag, url: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad38' },
+  { id: '3', name: 'Rock & Pop Argentina', icon: FaHeadphones, url: 'https://26683.live.streamtheworld.com/ROCK_AND_POP_SC' },
+  { id: '4', name: 'Vorterix (Rock/Alternativo)', icon: FaGuitar, url: 'https://26683.live.streamtheworld.com/VORTERIX_FM_SC' },
+  { id: '5', name: 'Clásicos del Rock (Respaldo)', icon: FaRecordVinyl, url: 'https://stream.zeno.fm/yn65fsaurfhvv' }
 ]
 
 export default function RetroRadio() {
@@ -36,20 +21,34 @@ export default function RetroRadio() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentStationIndex, setCurrentStationIndex] = useState(0)
+  const [volume, setVolume] = useState(0.8)
+  const [isMuted, setIsMuted] = useState(false)
   
   const audioRef = useRef<HTMLAudioElement>(null)
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
 
-  // ✅ CONTROL NATIVO DEL AUDIO: La forma más robusta y sin errores de "Abort"
+  // 🧠 MEMORIA
+  useEffect(() => {
+    const savedStation = localStorage.getItem('sanat_radio_station')
+    const savedVolume = localStorage.getItem('sanat_radio_volume')
+    if (savedStation) setCurrentStationIndex(parseInt(savedStation))
+    if (savedVolume) setVolume(parseFloat(savedVolume))
+  }, [])
+
+  useEffect(() => { localStorage.setItem('sanat_radio_station', currentStationIndex.toString()) }, [currentStationIndex])
+  useEffect(() => { 
+    localStorage.setItem('sanat_radio_volume', volume.toString())
+    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume
+  }, [volume, isMuted])
+
+  // ▶️ CONTROL DE AUDIO
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-
     if (isPlaying) {
-      // Intentamos reproducir. Si el navegador lo bloquea, lo capturamos sin romper la app
       audio.play().catch((e) => {
-        console.warn("Reproducción bloqueada por el navegador (se requiere interacción del usuario):", e)
+        console.warn("Reproducción bloqueada (se requiere interacción):", e)
         setIsPlaying(false)
       })
     } else {
@@ -60,117 +59,146 @@ export default function RetroRadio() {
   const changeStation = (index: number) => {
     if (index === currentStationIndex) return
     setCurrentStationIndex(index)
-    // El useEffect de arriba se disparará automáticamente y reproducirá la nueva estación
   }
 
-  const togglePlay = () => {
-    setIsPlaying(prev => !prev)
-  }
+  const togglePlay = () => setIsPlaying(prev => !prev)
 
   return (
     <>
-      {/* ✅ ETIQUETA DE AUDIO NATIVA: Invisible pero 100% funcional en segundo plano */}
-      <audio 
-        ref={audioRef} 
-        src={currentStation.url} 
-        preload="none"
-        style={{ display: 'none' }} 
-      />
+      <audio ref={audioRef} src={currentStation.url} preload="none" style={{ display: 'none' }} />
       
+      {/* ✅ FLOTANTE AL COSTADO: Se achica al mínimo cuando está cerrado */}
       <div 
-        className={`fixed z-40 transition-all duration-500 ease-in-out cursor-pointer ${
-          isExpanded ? 'top-4 right-4 w-72 sm:w-80' : 'top-4 right-4 w-16 sm:w-20'
+        className={`fixed z-[60] transition-all duration-500 ease-in-out ${
+          isExpanded 
+            ? 'bottom-24 right-4 w-72 sm:w-80' 
+            : 'bottom-24 right-4 w-14 h-14 rounded-full shadow-2xl cursor-pointer hover:scale-110'
         }`}
         onClick={() => !isExpanded && setIsExpanded(true)}
       >
-        {/* CASSETTE (Interfaz visual) */}
-        <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden">
-          
-          {isExpanded && (
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 animate-[slideDown_0.3s_ease-out]">
+        {/* 🟢 ESTADO CERRADO: Mínimo, solo un círculo discreto */}
+        {!isExpanded && (
+          <div 
+            className="w-full h-full rounded-full flex items-center justify-center border-2 backdrop-blur-md"
+            style={{ 
+              backgroundColor: isPlaying ? `${themeColor}30` : '#1a1a1a',
+              borderColor: themeColor 
+            }}
+          >
+            {isPlaying ? (
+              <FaPause className="text-white animate-pulse" size={20} />
+            ) : (
+              <FaMusic className="text-gray-400" size={20} />
+            )}
+          </div>
+        )}
+
+        {/* 📻 ESTADO EXPANDIDO: Diseño RETRO ORIGINAL, con controles más notorios para móvil */}
+        {isExpanded && (
+          <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            
+            {/* Etiqueta estilo cassette */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
               <div className="bg-yellow-100 px-4 py-1 rounded-sm shadow-md border border-yellow-200/50 relative" style={{ transform: 'rotate(-2deg)', clipPath: 'polygon(0% 5%, 100% 0%, 98% 100%, 2% 95%)' }}>
-                <span className="text-xs font-bold text-gray-900 tracking-widest" style={{ fontFamily: 'monospace' }}>SANAT RADIO</span>
+                <span className="text-xs font-bold text-gray-900 tracking-widest font-mono">SANAT RADIO</span>
                 <div className="absolute -top-1 left-2 w-6 h-2 bg-yellow-200/60 rotate-12"></div>
                 <div className="absolute -top-1 right-2 w-6 h-2 bg-yellow-200/60 -rotate-12"></div>
               </div>
             </div>
-          )}
 
-          <div className={`bg-gradient-to-b from-white via-gray-100 to-gray-200 transition-all duration-500 ${isExpanded ? 'pt-6 pb-3 px-4' : 'pt-2 pb-1 px-2'}`}>
-            {isExpanded ? (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-gray-800 tracking-wider flex items-center gap-1"><FaRadio size={10} /> SELECCIONAR CINTA</span>
-                </div>
-                <select 
-                  value={currentStationIndex}
-                  onChange={(e) => changeStation(Number(e.target.value))}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-purple-500 font-mono cursor-pointer"
-                >
-                  {RADIO_STATIONS.map((station, index) => (
-                    <option key={station.id} value={index}>{station.name}</option>
-                  ))}
-                </select>
-              </>
-            ) : (
-              <div className="flex items-center justify-center"><FaMusic className="text-gray-600 text-xs" /></div>
-            )}
-          </div>
-
-          <div className={`transition-all duration-500 ${isExpanded ? 'p-4' : 'p-2'}`} style={{ background: `linear-gradient(to bottom, ${themeColor}dd, ${themeColor}99, ${themeColor}dd)` }}>
-            <div className={`bg-black rounded-lg flex items-center justify-center gap-3 transition-all duration-500 ${isExpanded ? 'p-3' : 'p-1.5'}`}>
-              <div className={`rounded-full border-2 flex items-center justify-center transition-all duration-500 ${isExpanded ? 'w-10 h-10' : 'w-5 h-5'} ${isPlaying ? 'animate-spin' : ''}`} style={{ borderColor: themeColor + '80', animationDuration: '2s' }}>
-                <div className={`rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center transition-all duration-500 ${isExpanded ? 'w-6 h-6' : 'w-3 h-3'}`}>
-                  <div className={`rounded-full transition-all duration-500 ${isExpanded ? 'w-2 h-2' : 'w-1 h-1'}`} style={{ backgroundColor: themeColor }}></div>
-                </div>
+            {/* 1. Selector de Estación (Más alto "py-3" para fácil toque en móvil) */}
+            <div className="bg-gradient-to-b from-white via-gray-100 to-gray-200 pt-6 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-gray-800 tracking-wider flex items-center gap-1"><FaRadio size={10} /> SELECCIONAR CINTA</span>
               </div>
-              
-              {isExpanded && (
-                <div className="flex-1 h-6 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded relative overflow-hidden flex items-center justify-center">
-                  {isPlaying && <div className="absolute inset-0 animate-pulse" style={{ background: `linear-gradient(to right, transparent, ${themeColor}40, transparent)` }}></div>}
-                  <span className="text-[8px] text-gray-500 font-mono z-10 truncate px-1">{currentStation.name.split(' ').slice(1).join(' ')}</span>
-                </div>
-              )}
+              <select 
+                value={currentStationIndex}
+                onChange={(e) => { e.stopPropagation(); changeStation(Number(e.target.value)) }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full bg-gray-800 text-gray-200 text-sm rounded px-3 py-3 border border-gray-600 focus:outline-none focus:border-purple-500 font-medium cursor-pointer appearance-none"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+              >
+                {RADIO_STATIONS.map((station, index) => (
+                  <option key={station.id} value={index} className="bg-gray-900 text-white">{station.name}</option>
+                ))}
+              </select>
+            </div>
 
-              <div className={`rounded-full border-2 flex items-center justify-center transition-all duration-500 ${isExpanded ? 'w-10 h-10' : 'w-5 h-5'} ${isPlaying ? 'animate-spin' : ''}`} style={{ borderColor: themeColor + '80', animationDuration: '2s' }}>
-                <div className={`rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center transition-all duration-500 ${isExpanded ? 'w-6 h-6' : 'w-3 h-3'}`}>
-                  <div className={`rounded-full transition-all duration-500 ${isExpanded ? 'w-2 h-2' : 'w-1 h-1'}`} style={{ backgroundColor: themeColor }}></div>
+            {/* 2. Visual del Cassette (Intacto, con los íconos vectoriales) */}
+            <div className="p-4" style={{ background: `linear-gradient(to bottom, ${themeColor}dd, ${themeColor}99, ${themeColor}dd)` }}>
+              <div className="bg-black rounded-lg flex items-center justify-center gap-3 p-3">
+                <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center animate-spin" style={{ borderColor: themeColor + '80', animationDuration: '2s' }}>
+                  <div className="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: themeColor }}></div>
+                  </div>
+                </div>
+                
+                <div className="flex-1 h-6 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded relative overflow-hidden flex items-center justify-center gap-2 px-2 border border-gray-700">
+                  {isPlaying && <div className="absolute inset-0 animate-pulse" style={{ background: `linear-gradient(to right, transparent, ${themeColor}40, transparent)` }}></div>}
+                  <currentStation.icon className="text-gray-400 flex-shrink-0 z-10" size={14} />
+                  <span className="text-[9px] text-gray-300 font-mono z-10 truncate font-bold">{currentStation.name}</span>
+                </div>
+
+                <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center animate-spin" style={{ borderColor: themeColor + '80', animationDuration: '2s' }}>
+                  <div className="w-6 h-6 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: themeColor }}></div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className={`bg-black border-t-2 border-gray-800 transition-all duration-500 ${isExpanded ? 'p-3' : 'p-1.5'}`}>
-            {isExpanded ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${isPlaying ? 'animate-pulse shadow-lg' : 'bg-gray-800'}`} style={{ backgroundColor: isPlaying ? '#22c55e' : undefined, boxShadow: isPlaying ? `0 0 10px ${themeColor}` : undefined }}></div>
-                  <span className="text-[8px] text-gray-500 font-mono">{isPlaying ? 'PLAY' : 'STOP'}</span>
+            {/* 3. Controles Principales (Más notorios para móvil, pero estilo retro) */}
+            <div className="bg-black border-t-2 border-gray-800 p-4">
+              <div className="flex flex-col gap-4">
+                
+                {/* Slider de Volumen (Más grueso "h-2" y fácil de arrastrar) */}
+                <div className="flex items-center gap-3 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                  <button onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }} className="text-gray-400 hover:text-white transition-colors flex-shrink-0">
+                    {isMuted || volume === 0 ? <FaVolumeXmark size={16} /> : <IoVolumeHighSharp size={16} />}
+                  </button>
+                  <input 
+                    type="range" min="0" max="1" step="0.01" 
+                    value={isMuted ? 0 : volume} 
+                    onChange={(e) => { e.stopPropagation(); setVolume(parseFloat(e.target.value)); setIsMuted(false); }}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                  <span className="text-gray-500 text-xs w-8 text-right flex-shrink-0 font-mono">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border-2 hover:scale-110" style={{ backgroundColor: isPlaying ? themeColor : 'transparent', borderColor: themeColor, color: isPlaying ? 'white' : themeColor }}>
-                  {isPlaying ? <FaPause size={12} /> : <FaPlay size={12} className="ml-0.5" />}
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }} className="text-gray-600 hover:text-gray-400 transition-colors"><FaXmark size={14} /></button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110" style={{ color: isPlaying ? themeColor : '#9ca3af' }}>
-                  {isPlaying ? <FaPause size={8} /> : <FaPlay size={8} className="ml-0.5" />}
-                </button>
-              </div>
-            )}
-          </div>
 
-          {isExpanded && (
-            <>
-              <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
-              <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
-              <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
-              <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
-            </>
-          )}
-        </div>
+                {/* Botón Play/Pause (Más grande "w-12 h-12") y Cerrar */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${isPlaying ? 'animate-pulse shadow-lg' : 'bg-gray-800'}`} style={{ backgroundColor: isPlaying ? '#22c55e' : undefined, boxShadow: isPlaying ? `0 0 10px ${themeColor}` : undefined }}></div>
+                    <span className="text-[10px] text-gray-500 font-mono">{isPlaying ? 'PLAY' : 'STOP'}</span>
+                  </div>
+                  
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
+                    className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border-2 hover:scale-110 active:scale-95"
+                    style={{ 
+                      backgroundColor: isPlaying ? themeColor : 'transparent', 
+                      borderColor: themeColor, 
+                      color: isPlaying ? 'white' : themeColor,
+                      boxShadow: isPlaying ? `0 0 15px ${themeColor}60` : 'none'
+                    }}
+                  >
+                    {isPlaying ? <FaPause size={18} /> : <FaPlay size={18} className="ml-1" />}
+                  </button>
+                  
+                  <button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }} className="text-gray-600 hover:text-gray-400 transition-colors p-1">
+                    <FaXmark size={20} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tornillos decorativos */}
+            <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
+            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
+            <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
+            <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-gray-700 flex items-center justify-center"><div className="w-0.5 h-full bg-gray-500 rotate-45"></div></div>
+          </div>
+        )}
       </div>
     </>
   )
