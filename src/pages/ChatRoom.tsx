@@ -1,4 +1,3 @@
-// src/pages/ChatRoom.tsx
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
@@ -36,14 +35,16 @@ export default function ChatRoom() {
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [replyToPost, setReplyToPost] = useState<any>(null)
-  const [showUserInfo, setShowUserInfo] = useState(false) // ✅ Estado para el panel desplegable
+  const [showUserInfo, setShowUserInfo] = useState(false)
 
+  // ✅ NUEVO: Estados para el indicador "Escribiendo..."
+  const [isOtherTyping, setIsOtherTyping] = useState(false)
+const typingTimeoutRef = useRef<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const myThemeColor = profile?.theme_color || '#a855f7'
   const otherThemeColor = otherProfile?.theme_color || '#a855f7'
 
-  // Cargar perfil del otro usuario
   useEffect(() => {
     const loadProfile = async () => {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
@@ -52,7 +53,6 @@ export default function ChatRoom() {
     if (userId) loadProfile()
   }, [userId])
 
-  // Cargar la publicación si viene el parámetro post
   useEffect(() => {
     if (initialPostId) {
       supabase.from('posts').select('*').eq('id', initialPostId).single()
@@ -60,7 +60,6 @@ export default function ChatRoom() {
     }
   }, [initialPostId])
 
-  // Cargar mensajes y suscribirse
   useEffect(() => {
     if (!user || !userId) return
     
@@ -80,7 +79,7 @@ export default function ChatRoom() {
         }))
         setMessages(formatted)
 
-        // ✅ Marcar como leídos (Tu lógica ya estaba perfecta)
+        // ✅ TU LÓGICA ORIGINAL DE MARCAR COMO LEÍDO (Intacta)
         await supabase
           .from('messages')
           .update({ is_read: true })
@@ -92,6 +91,7 @@ export default function ChatRoom() {
     
     loadMessages()
 
+    // Canal de mensajes nuevos
     const channel = supabase
       .channel(`chat-${user.id}-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
@@ -116,13 +116,35 @@ export default function ChatRoom() {
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // ✅ NUEVO: Canal de "Escribiendo..." (Broadcast)
+    const typingChannel = supabase.channel(`typing-room-${userId}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.senderId !== user?.id) {
+          setIsOtherTyping(true)
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+          typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000)
+        }
+      })
+      .subscribe()
+
+    return () => { 
+      supabase.removeChannel(channel)
+      supabase.removeChannel(typingChannel)
+    }
   }, [user, userId])
 
-  // Auto-scroll al último mensaje
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ✅ NUEVO: Función para avisar que estoy escribiendo
+  const handleTyping = () => {
+    supabase.channel(`typing-room-${userId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { senderId: user?.id }
+    })
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,20 +199,15 @@ export default function ChatRoom() {
   }
 
   return (
-    // ✅ h-[100dvh] es la clave: hace que el teclado móvil "empuje" la pantalla en vez de taparla
     <div className="h-[100dvh] relative text-gray-200 font-sans flex flex-col overflow-hidden bg-[#0f0f0f]">
       <AnimatedBackground />
       
-      {/* ✅ HEADER MEJORADO: Click para expandir info */}
       <header 
         className="sticky top-0 z-30 bg-[#1a1a1a]/95 backdrop-blur-md border-b px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[#222] transition-colors"
         style={{ borderColor: otherThemeColor + '40' }}
         onClick={() => setShowUserInfo(!showUserInfo)}
       >
-        <button 
-          onClick={(e) => { e.stopPropagation(); navigate(-1); }} 
-          className="p-2 rounded-full hover:bg-white/10 transition-colors"
-        >
+        <button onClick={(e) => { e.stopPropagation(); navigate(-1); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
           <FaArrowLeft className="text-white" />
         </button>
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -203,7 +220,6 @@ export default function ChatRoom() {
         </div>
       </header>
 
-      {/* ✅ PANEL DESPLEGABLE DE INFORMACIÓN DEL USUARIO */}
       {showUserInfo && (
         <div className="bg-[#1a1a1a]/95 backdrop-blur-md border-b animate-[slideDown_0.3s_ease-out] z-20" style={{ borderColor: otherThemeColor + '40' }}>
           <div className="p-4 max-w-3xl mx-auto">
@@ -212,11 +228,7 @@ export default function ChatRoom() {
               <div className="flex-1 min-w-0">
                 <h3 className="text-white font-bold text-lg">{otherProfile.display_name}</h3>
                 <p className="text-purple-400 text-sm mb-2">@{otherProfile.username}</p>
-                
-                {otherProfile.bio && (
-                  <p className="text-gray-400 text-sm italic mb-3 line-clamp-3">"{otherProfile.bio}"</p>
-                )}
-                
+                {otherProfile.bio && <p className="text-gray-400 text-sm italic mb-3 line-clamp-3">"{otherProfile.bio}"</p>}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {otherProfile.instruments?.map((inst: any, i: number) => (
                     <span key={i} className="text-xs bg-purple-900/30 text-purple-300 px-2 py-1 rounded-full border border-purple-700/40 flex items-center gap-1">
@@ -224,17 +236,12 @@ export default function ChatRoom() {
                     </span>
                   ))}
                 </div>
-                
                 {otherProfile.localidad && (
                   <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
                     <FaMapMarkerAlt size={12} /> {otherProfile.localidad}, {otherProfile.departamento}
                   </div>
                 )}
-
-                <button 
-                  onClick={(e) => { e.stopPropagation(); navigate(`/perfil/${otherProfile.id}`); }} 
-                  className="text-xs bg-[#2a2a2a] hover:bg-[#333] text-white px-4 py-2 rounded-lg transition-colors border border-[#3a3a3a]"
-                >
+                <button onClick={(e) => { e.stopPropagation(); navigate(`/perfil/${otherProfile.id}`); }} className="text-xs bg-[#2a2a2a] hover:bg-[#333] text-white px-4 py-2 rounded-lg transition-colors border border-[#3a3a3a]">
                   Ver perfil completo
                 </button>
               </div>
@@ -243,7 +250,6 @@ export default function ChatRoom() {
         </div>
       )}
 
-      {/* Área de mensajes */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         <main className="flex-1 overflow-y-auto py-4 space-y-3 max-w-3xl mx-auto w-full px-4 custom-scrollbar">
           {messages.length === 0 ? (
@@ -261,28 +267,17 @@ export default function ChatRoom() {
 
               return (
                 <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.3s_ease-out]`}>
-                  <div
-                    className={`max-w-[85%] md:max-w-[65%] px-4 py-3 rounded-2xl shadow-sm ${
-                      isMine ? 'rounded-br-md' : 'rounded-bl-md'
-                    }`}
-                    style={{ backgroundColor: bubbleColor }}
-                  >
+                  <div className={`max-w-[85%] md:max-w-[65%] px-4 py-3 rounded-2xl shadow-sm ${isMine ? 'rounded-br-md' : 'rounded-bl-md'}`} style={{ backgroundColor: bubbleColor }}>
                     {msg.post_content && (
                       <div className={`mb-2 pb-2 border-b ${isMine ? 'border-white/20' : 'border-gray-600/50'}`}>
                         <div className="flex items-center gap-1.5 mb-1">
                           <FaQuoteLeft className="text-xs opacity-60" />
-                          <p className={`text-[10px] font-bold uppercase tracking-wider ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
-                            Respondiendo a
-                          </p>
+                          <p className={`text-[10px] font-bold uppercase tracking-wider ${isMine ? 'text-white/70' : 'text-gray-400'}`}>Respondiendo a</p>
                         </div>
-                        <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-gray-300'}`}>
-                          {msg.post_content}
-                        </p>
+                        <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-gray-300'}`}>{msg.post_content}</p>
                       </div>
                     )}
-                    <p className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${textColor}`}>
-                      {msg.content}
-                    </p>
+                    <p className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${textColor}`}>{msg.content}</p>
                     <p className={`text-[10px] mt-1.5 text-right ${timeColor}`}>
                       {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -294,76 +289,49 @@ export default function ChatRoom() {
           <div ref={messagesEndRef} className="h-2" />
         </main>
 
-        {/* Bloque "Respondiendo a" flotante sobre el input */}
-{replyToPost && (
-  <div 
-    className="relative bg-gradient-to-r from-[#1a1a1a] to-[#0f0f0f] border-t border-l border-r px-4 py-3 flex items-start gap-3 max-w-3xl mx-auto w-full animate-[slideUp_0.2s_ease-out] overflow-hidden"
-    style={{ borderColor: otherThemeColor + '40' }}
-  >
-    {/* ✅ BARRA LATERAL DE COLOR (estilo cita destacada) */}
-    <div 
-      className="absolute left-0 top-0 bottom-0 w-1.5"
-      style={{ backgroundColor: otherThemeColor }}
-    />
-    
-    {/* ✅ ÍCONO MÁS GRANDE Y VISIBLE */}
-    <div 
-      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md"
-      style={{ 
-        backgroundColor: otherThemeColor + '25',
-        border: `1px solid ${otherThemeColor}50`
-      }}
-    >
-      <FaQuoteLeft style={{ color: otherThemeColor }} size={14} />
-    </div>
-    
-    <div className="flex-1 min-w-0 pl-1">
-      <p 
-        className="text-[10px] font-bold uppercase tracking-wider mb-1"
-        style={{ color: otherThemeColor }}
-      >
-        Respondiendo a su publicación
-      </p>
-      <p className="text-sm text-white line-clamp-2 leading-relaxed">
-        {replyToPost.content}
-      </p>
-      
-      {/* ✅ TAGS DE GÉNERO (si existen) */}
-      {replyToPost.genres && replyToPost.genres.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {replyToPost.genres.slice(0, 3).map((genre: string, i: number) => (
-            <span 
-              key={i} 
-              className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-              style={{ 
-                backgroundColor: otherThemeColor + '15',
-                color: otherThemeColor,
-                border: `1px solid ${otherThemeColor}30`
-              }}
-            >
-              #{genre}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-    
-    <button 
-      onClick={() => { setReplyToPost(null); navigate(`/chat/${userId}`, { replace: true }) }} 
-      className="text-gray-500 hover:text-white flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
-      title="Cancelar respuesta"
-    >
-      ✕
-    </button>
-  </div>
-)}
+        {replyToPost && (
+          <div className="relative bg-gradient-to-r from-[#1a1a1a] to-[#0f0f0f] border-t border-l border-r px-4 py-3 flex items-start gap-3 max-w-3xl mx-auto w-full animate-[slideUp_0.2s_ease-out] overflow-hidden" style={{ borderColor: otherThemeColor + '40' }}>
+            <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: otherThemeColor }} />
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md" style={{ backgroundColor: otherThemeColor + '25', border: `1px solid ${otherThemeColor}50` }}>
+              <FaQuoteLeft style={{ color: otherThemeColor }} size={14} />
+            </div>
+            <div className="flex-1 min-w-0 pl-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: otherThemeColor }}>Respondiendo a su publicación</p>
+              <p className="text-sm text-white line-clamp-2 leading-relaxed">{replyToPost.content}</p>
+              {replyToPost.genres && replyToPost.genres.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {replyToPost.genres.slice(0, 3).map((genre: string, i: number) => (
+                    <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: otherThemeColor + '15', color: otherThemeColor, border: `1px solid ${otherThemeColor}30` }}>#{genre}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={() => { setReplyToPost(null); navigate(`/chat/${userId}`, { replace: true }) }} className="text-gray-500 hover:text-white flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2">✕</button>
+          </div>
+        )}
 
-        {/* ✅ INPUT MEJORADO: Sticky y con soporte nativo para teclado móvil */}
+        {/* ✅ NUEVO: UI del indicador "Escribiendo..." */}
+        {isOtherTyping && (
+          <div className="max-w-3xl mx-auto w-full px-4 pb-2">
+            <div className="flex items-center gap-2 text-xs text-purple-400 italic animate-pulse">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
+              Escribiendo...
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSend} className="sticky bottom-0 bg-[#1a1a1a]/95 backdrop-blur-md border-t px-4 py-3 flex items-center gap-3 max-w-3xl mx-auto w-full" style={{ borderColor: otherThemeColor + '40' }}>
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value)
+              handleTyping() // ✅ Aquí se dispara la señal de que estás escribiendo
+            }}
             placeholder={replyToPost ? "Escribe tu respuesta..." : "Escribe un mensaje..."}
             className="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded-full px-5 py-3 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all placeholder:text-gray-600"
             disabled={sending}
@@ -372,15 +340,8 @@ export default function ChatRoom() {
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
-            className={`p-3.5 rounded-full transition-all duration-300 flex items-center justify-center ${
-              !newMessage.trim() || sending 
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
-                : 'text-white hover:scale-105 active:scale-95 shadow-lg'
-            }`}
-            style={{ 
-              backgroundColor: newMessage.trim() && !sending ? myThemeColor : undefined,
-              boxShadow: newMessage.trim() && !sending ? `0 0 15px ${myThemeColor}40` : 'none'
-            }}
+            className={`p-3.5 rounded-full transition-all duration-300 flex items-center justify-center ${!newMessage.trim() || sending ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'text-white hover:scale-105 active:scale-95 shadow-lg'}`}
+            style={{ backgroundColor: newMessage.trim() && !sending ? myThemeColor : undefined, boxShadow: newMessage.trim() && !sending ? `0 0 15px ${myThemeColor}40` : 'none' }}
           >
             {sending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane className={newMessage.trim() && !sending ? 'ml-0.5' : ''} />}
           </button>
