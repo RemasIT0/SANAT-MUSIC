@@ -23,7 +23,8 @@ import {
   FaArrowLeft, FaPlus, FaTrash, FaGripVertical,
   FaUndo, FaCheck, FaDesktop, FaMobileAlt, FaImage,
   FaUser, FaGuitar, FaMapMarkerAlt, FaLink, FaChartBar,
-  FaMusic, FaStar, FaHeart, FaBolt, FaMicrophone, FaTimes, FaPalette
+  FaMusic, FaStar, FaHeart, FaBolt, FaMicrophone, FaTimes, FaPalette,
+  FaChevronDown, FaChevronUp
 } from 'react-icons/fa'
 import Mascot from './Mascot'
 import Toast from './Toast'
@@ -78,19 +79,19 @@ function ModulePreview({
     : 'none'
 
   return (
-   <div 
-  ref={isEditor ? setNodeRef : null} 
-  className={`${sizeClass} ${borderRadiusClass} relative group p-4 transition-all ${
-    isEditor ? 'hover:ring-2 hover:ring-purple-500/50 cursor-pointer ring-1 ring-transparent' : ''
-  }`}
-  onClick={() => isEditor && onEdit?.(module.id)}
-  style={{
-    ...(isEditor ? dragStyle : {}),
-    backgroundColor: module.config.bgColor,
-    color: module.config.textColor,
-    border: borderStyle,
-  }}
->
+    <div 
+      ref={isEditor ? setNodeRef : null} 
+      className={`${sizeClass} ${borderRadiusClass} relative group p-4 transition-all ${
+        isEditor ? 'hover:ring-2 hover:ring-purple-500/50 cursor-pointer ring-1 ring-transparent' : ''
+      }`}
+      onClick={() => isEditor && onEdit?.(module.id)}
+      style={{
+        ...(isEditor ? dragStyle : {}),
+        backgroundColor: module.config.bgColor,
+        color: module.config.textColor,
+        border: borderStyle,
+      }}
+    >
       {isEditor && (
         <>
           <div {...attributes} {...listeners} className="absolute top-2 left-2 cursor-grab active:cursor-grabbing text-gray-500 hover:text-white p-1 rounded bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -194,16 +195,8 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
   const [editingModule, setEditingModule] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   
-  // ✅ NUEVO: Detectar orientación de la pantalla
-  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight)
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight)
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  // ✅ ESTADOS PARA BOTONES DESPLEGABLES (ACORDEÓN)
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -302,6 +295,11 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
 
   const currentModule = layout.modules.find(m => m.id === editingModule)
 
+  // ✅ FUNCIÓN PARA TOGGLE DE SECCIONES
+  const toggleSection = (section: string) => {
+    setOpenSection(openSection === section ? null : section)
+  }
+
   if (loading) return <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center text-white">Cargando editor...</div>
 
   return (
@@ -309,6 +307,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
       <div className="fixed inset-0 bg-black/95 z-[100] overflow-y-auto">
+        {/* Header */}
         <div className="sticky top-0 bg-[#1a1a1a] border-b border-[#2a2a2a] px-4 py-3 flex items-center justify-between z-[110]">
           <button onClick={onClose} className="flex items-center gap-2 text-gray-400 hover:text-white">
             <FaArrowLeft /> Volver
@@ -325,84 +324,122 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* ✅ AVISO DE ROTACIÓN PARA MÓVIL */}
-        {!isLandscape && window.innerWidth < 768 && (
-          <div className="bg-purple-900/30 border-b border-purple-500/30 text-purple-200 text-xs p-3 flex items-center justify-center gap-2 sticky top-[57px] z-[105]">
-            <FaMobileAlt className="rotate-90 text-lg" /> 
-            <span>Para una mejor experiencia, gira tu dispositivo a horizontal 📱➡️💻</span>
-          </div>
-        )}
-
-        <div className={`max-w-7xl mx-auto p-4 gap-4 pb-20 ${isLandscape ? 'grid grid-cols-1 lg:grid-cols-4' : 'flex flex-col'}`}>
-          
-          {/* Panel izquierdo: Herramientas generales */}
-          <div className={`${isLandscape ? 'lg:col-span-1' : 'w-full'} space-y-4`}>
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2"><FaPlus size={12}/> Agregar módulo</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-                {AVAILABLE_MODULES.map(mod => (
-                  <button key={mod.type} onClick={() => addModule(mod.type)} className="w-full px-3 py-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-gray-300 hover:border-purple-500 hover:text-white transition-all flex items-center gap-2">
-                    {mod.icon && React.createElement(mod.icon, { className: "text-sm" })}
-                    <span>{mod.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <h3 className="text-white font-bold mb-3 text-sm">Distribución</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {(['one-column', 'two-columns', 'grid'] as const).map(l => (
-                  <button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`p-2 rounded-lg text-xs transition-all flex flex-col items-center gap-1 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>
-                    {l === 'one-column' ? <FaMobileAlt size={16}/> : <FaDesktop size={16}/>}
-                    <span>{l === 'one-column' ? '1 Col' : l === 'two-columns' ? '2 Cols' : 'Grid'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2"><FaPalette size={12}/> Fondo del perfil</h3>
-              <select value={layout.backgroundType} onChange={(e) => setLayout(prev => ({ ...prev, backgroundType: e.target.value as any }))} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white mb-2">
-                <option value="solid">Color sólido</option>
-                <option value="gradient">Degradado</option>
-              </select>
-              {/* @ts-ignore */}
-              <HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color) => setLayout(prev => ({ ...prev, backgroundValue: color }))} />
-            </div>
-          </div>
-
-          {/* Panel central: Vista previa */}
-          <div className={`${isLandscape ? 'lg:col-span-3' : 'w-full'} min-h-[50vh]`}>
-            <div className="rounded-xl p-4 sm:p-6 min-h-[500px] transition-colors duration-300 border border-[#2a2a2a]" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
-              <p className="text-gray-500 text-xs mb-4 text-center">Toca un módulo para editar sus opciones. Arrastra para reordenar.</p>
+        {/* ✅ LAYOUT ADAPTABLE: En móvil todo en columna, en desktop en grid */}
+        <div className="max-w-7xl mx-auto p-4 pb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            
+            {/* Panel izquierdo: Botones desplegables (en móvil) / Panel fijo (en desktop) */}
+            <div className="lg:col-span-1 space-y-3 order-2 lg:order-1">
               
-              {/* @ts-ignore */}
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                {/* @ts-ignore */}
-                <SortableContext items={layout.modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                  <div className={`grid gap-3 ${
-                    layout.layout === 'one-column' ? 'grid-cols-1' :
-                    layout.layout === 'two-columns' ? 'grid-cols-1 md:grid-cols-2' :
-                    'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-                  }`}>
-                    {layout.modules.map(module => (
-                      <ModulePreview key={module.id} module={module} profile={profile} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />
+              {/* ✅ BOTÓN DESPLEGABLE: Agregar módulos */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden">
+                <button 
+                  onClick={() => toggleSection('modules')}
+                  className="w-full px-4 py-3 flex items-center justify-between text-white font-semibold hover:bg-[#222] transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    <FaPlus size={12} className="text-purple-400" /> Agregar módulo
+                  </span>
+                  {openSection === 'modules' ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+                </button>
+                {openSection === 'modules' && (
+                  <div className="p-3 border-t border-[#2a2a2a] space-y-2 animate-[slideDown_0.2s_ease-out]">
+                    {AVAILABLE_MODULES.map(mod => (
+                      <button key={mod.type} onClick={() => addModule(mod.type)} className="w-full px-3 py-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-gray-300 hover:border-purple-500 hover:text-white transition-all flex items-center gap-2">
+                        {mod.icon && React.createElement(mod.icon, { className: "text-sm" })}
+                        <span>{mod.label}</span>
+                        <FaPlus size={10} className="ml-auto" />
+                      </button>
                     ))}
                   </div>
-                </SortableContext>
-              </DndContext>
+                )}
+              </div>
+
+              {/* ✅ BOTÓN DESPLEGABLE: Distribución */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden">
+                <button 
+                  onClick={() => toggleSection('layout')}
+                  className="w-full px-4 py-3 flex items-center justify-between text-white font-semibold hover:bg-[#222] transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    <FaDesktop size={12} className="text-purple-400" /> Distribución
+                  </span>
+                  {openSection === 'layout' ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+                </button>
+                {openSection === 'layout' && (
+                  <div className="p-3 border-t border-[#2a2a2a] space-y-2 animate-[slideDown_0.2s_ease-out]">
+                    {(['one-column', 'two-columns', 'grid'] as const).map(l => (
+                      <button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`w-full px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>
+                        {l === 'one-column' ? <FaMobileAlt /> : <FaDesktop />}
+                        {l === 'one-column' ? 'Una columna' : l === 'two-columns' ? 'Dos columnas' : 'Cuadrícula'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ✅ BOTÓN DESPLEGABLE: Fondo del perfil */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden">
+                <button 
+                  onClick={() => toggleSection('background')}
+                  className="w-full px-4 py-3 flex items-center justify-between text-white font-semibold hover:bg-[#222] transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    <FaPalette size={12} className="text-purple-400" /> Fondo del perfil
+                  </span>
+                  {openSection === 'background' ? <FaChevronUp className="text-gray-400" /> : <FaChevronDown className="text-gray-400" />}
+                </button>
+                {openSection === 'background' && (
+                  <div className="p-3 border-t border-[#2a2a2a] space-y-3 animate-[slideDown_0.2s_ease-out]">
+                    <select value={layout.backgroundType} onChange={(e) => setLayout(prev => ({ ...prev, backgroundType: e.target.value as any }))} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
+                      <option value="solid">Color sólido</option>
+                      <option value="gradient">Degradado</option>
+                    </select>
+                    {/* @ts-ignore */}
+                    <HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color) => setLayout(prev => ({ ...prev, backgroundValue: color }))} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Panel central: Vista previa (PROTAGONISTA) */}
+            <div className="lg:col-span-3 order-1 lg:order-2">
+              <div className="rounded-xl p-4 sm:p-6 min-h-[60vh] transition-colors duration-300 border border-[#2a2a2a]" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
+                <p className="text-gray-500 text-xs mb-4 text-center">Toca un módulo para editar sus opciones. Arrastra para reordenar.</p>
+                
+                {/* @ts-ignore */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  {/* @ts-ignore */}
+                  <SortableContext items={layout.modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                    <div className={`grid gap-3 ${
+                      layout.layout === 'one-column' ? 'grid-cols-1' :
+                      layout.layout === 'two-columns' ? 'grid-cols-1 md:grid-cols-2' :
+                      'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+                    }`}>
+                      {layout.modules.map(module => (
+                        <ModulePreview key={module.id} module={module} profile={profile} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+
+                {layout.modules.length === 0 && (
+                  <div className="text-center py-20 text-gray-500">
+                    <p className="text-lg">No hay módulos</p>
+                    <p className="text-sm">Toca "Agregar módulo" para comenzar</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ MODAL DE EDICIÓN DE MÓDULO (Se abre al tocar un módulo) */}
+      {/* ✅ MODAL DE EDICIÓN DE MÓDULO */}
       {editingModule && currentModule && (
         <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-[fadeIn_0.2s_ease-out]">
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_0.3s_ease-out]">
             
-            {/* Header del Modal */}
             <div className="sticky top-0 bg-[#1a1a1a] border-b border-[#2a2a2a] p-4 flex items-center justify-between z-10">
               <h3 className="text-white font-bold flex items-center gap-2">
                 {currentModule.type === 'photo' && <FaImage className="text-purple-400"/>}
@@ -415,9 +452,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
-            {/* Contenido del Modal */}
             <div className="p-4 space-y-4">
-              {/* Tamaño */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Tamaño del módulo</label>
                 <select value={currentModule.config.size} onChange={(e) => updateModuleConfig(currentModule.id, { size: e.target.value as any })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
@@ -428,7 +463,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </select>
               </div>
 
-              {/* Forma (Solo para foto) */}
               {currentModule.type === 'photo' && (
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Forma de la foto</label>
@@ -443,7 +477,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              {/* Mascota al lado (Solo para foto) */}
               {currentModule.type === 'photo' && (
                 <div className="flex items-center gap-3 p-3 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
                   <input type="checkbox" checked={currentModule.config.showMascotAlongside || false} onChange={(e) => updateModuleConfig(currentModule.id, { showMascotAlongside: e.target.checked })} className="w-5 h-5 accent-purple-600 rounded" />
@@ -451,7 +484,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              {/* Icono de acompañamiento */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Icono decorativo de la caja</label>
                 <select value={currentModule.config.selectedIcon || ''} onChange={(e) => updateModuleConfig(currentModule.id, { selectedIcon: e.target.value })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
@@ -461,7 +493,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </select>
               </div>
 
-              {/* Bordes */}
               <div className="flex items-center gap-3 p-3 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
                 <input type="checkbox" checked={currentModule.config.showBorder} onChange={(e) => updateModuleConfig(currentModule.id, { showBorder: e.target.checked })} className="w-5 h-5 accent-purple-600 rounded" />
                 <label className="text-sm text-gray-300 font-medium">Mostrar borde personalizado</label>
@@ -497,7 +528,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              {/* Colores base */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Color de fondo de la caja</label>
                 <div className="flex items-center gap-2">
@@ -513,7 +543,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </div>
               </div>
 
-              {/* Contenido de texto */}
               {(currentModule.type === 'custom' || currentModule.type === 'bio') && (
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Contenido de texto</label>
@@ -527,7 +556,6 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* Footer del Modal */}
             <div className="sticky bottom-0 bg-[#1a1a1a] border-t border-[#2a2a2a] p-4 flex gap-3">
               <button onClick={() => removeModule(currentModule.id)} className="flex-1 py-3 bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg font-semibold hover:bg-red-900/40 transition-colors flex items-center justify-center gap-2">
                 <FaTrash size={14} /> Eliminar
