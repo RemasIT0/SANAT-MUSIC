@@ -23,7 +23,7 @@ import {
   FaArrowLeft, FaPlus, FaTrash, FaGripVertical,
   FaUndo, FaCheck, FaDesktop, FaMobileAlt, FaImage,
   FaUser, FaGuitar, FaMapMarkerAlt, FaLink, FaChartBar,
-  FaMusic, FaStar, FaHeart, FaBolt, FaMicrophone
+  FaMusic, FaStar, FaHeart, FaBolt, FaMicrophone, FaTimes, FaPalette
 } from 'react-icons/fa'
 import Mascot from './Mascot'
 import Toast from './Toast'
@@ -81,7 +81,7 @@ function ModulePreview({
    <div 
   ref={isEditor ? setNodeRef : null} 
   className={`${sizeClass} ${borderRadiusClass} relative group p-4 transition-all ${
-    isEditor ? 'hover:ring-2 hover:ring-purple-500/50 cursor-pointer' : ''
+    isEditor ? 'hover:ring-2 hover:ring-purple-500/50 cursor-pointer ring-1 ring-transparent' : ''
   }`}
   onClick={() => isEditor && onEdit?.(module.id)}
   style={{
@@ -103,7 +103,6 @@ function ModulePreview({
       )}
 
       <div className="pt-2">
-        {/* ✅ TÍTULOS SOLO EN EDITOR */}
         {isEditor && (
           <div className="flex items-center gap-2 mb-3">
             {module.config.selectedIcon && ICON_MAP[module.config.selectedIcon] && (
@@ -119,7 +118,6 @@ function ModulePreview({
             <div className={`${module.config.shape === 'square' ? 'rounded-xl' : 'rounded-full'} w-24 h-24 bg-gray-700 flex items-center justify-center text-3xl overflow-hidden border-2 border-white/20 flex-shrink-0`}>
               {profile.avatar_url ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <FaUser className="opacity-50" />}
             </div>
-            {/* ✅ MASCOTA AL LADO DE LA FOTO */}
             {module.config.showMascotAlongside && (
               <Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={profile.expression || 'normal'} />
             )}
@@ -195,6 +193,17 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [editingModule, setEditingModule] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+  
+  // ✅ NUEVO: Detectar orientación de la pantalla
+  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -316,17 +325,25 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 pb-20">
-          {/* Panel izquierdo */}
-          <div className="lg:col-span-1 space-y-4">
+        {/* ✅ AVISO DE ROTACIÓN PARA MÓVIL */}
+        {!isLandscape && window.innerWidth < 768 && (
+          <div className="bg-purple-900/30 border-b border-purple-500/30 text-purple-200 text-xs p-3 flex items-center justify-center gap-2 sticky top-[57px] z-[105]">
+            <FaMobileAlt className="rotate-90 text-lg" /> 
+            <span>Para una mejor experiencia, gira tu dispositivo a horizontal 📱➡️💻</span>
+          </div>
+        )}
+
+        <div className={`max-w-7xl mx-auto p-4 gap-4 pb-20 ${isLandscape ? 'grid grid-cols-1 lg:grid-cols-4' : 'flex flex-col'}`}>
+          
+          {/* Panel izquierdo: Herramientas generales */}
+          <div className={`${isLandscape ? 'lg:col-span-1' : 'w-full'} space-y-4`}>
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <h3 className="text-white font-bold mb-3 text-sm">Agregar módulo</h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+              <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2"><FaPlus size={12}/> Agregar módulo</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
                 {AVAILABLE_MODULES.map(mod => (
                   <button key={mod.type} onClick={() => addModule(mod.type)} className="w-full px-3 py-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-gray-300 hover:border-purple-500 hover:text-white transition-all flex items-center gap-2">
                     {mod.icon && React.createElement(mod.icon, { className: "text-sm" })}
                     <span>{mod.label}</span>
-                    <FaPlus size={10} className="ml-auto" />
                   </button>
                 ))}
               </div>
@@ -334,18 +351,18 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
 
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
               <h3 className="text-white font-bold mb-3 text-sm">Distribución</h3>
-              <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
                 {(['one-column', 'two-columns', 'grid'] as const).map(l => (
-                  <button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`w-full px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>
-                    {l === 'one-column' ? <FaMobileAlt /> : <FaDesktop />}
-                    {l === 'one-column' ? 'Una columna' : l === 'two-columns' ? 'Dos columnas' : 'Cuadrícula'}
+                  <button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`p-2 rounded-lg text-xs transition-all flex flex-col items-center gap-1 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>
+                    {l === 'one-column' ? <FaMobileAlt size={16}/> : <FaDesktop size={16}/>}
+                    <span>{l === 'one-column' ? '1 Col' : l === 'two-columns' ? '2 Cols' : 'Grid'}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <h3 className="text-white font-bold mb-3 text-sm">Fondo del perfil</h3>
+              <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2"><FaPalette size={12}/> Fondo del perfil</h3>
               <select value={layout.backgroundType} onChange={(e) => setLayout(prev => ({ ...prev, backgroundType: e.target.value as any }))} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white mb-2">
                 <option value="solid">Color sólido</option>
                 <option value="gradient">Degradado</option>
@@ -355,10 +372,10 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Panel central */}
-          <div className="lg:col-span-2">
-            <div className="rounded-xl p-6 min-h-[600px] transition-colors duration-300" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
-              <p className="text-gray-500 text-xs mb-4 text-center">Vista previa en tiempo real. Arrastra para reordenar.</p>
+          {/* Panel central: Vista previa */}
+          <div className={`${isLandscape ? 'lg:col-span-3' : 'w-full'} min-h-[50vh]`}>
+            <div className="rounded-xl p-4 sm:p-6 min-h-[500px] transition-colors duration-300 border border-[#2a2a2a]" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
+              <p className="text-gray-500 text-xs mb-4 text-center">Toca un módulo para editar sus opciones. Arrastra para reordenar.</p>
               
               {/* @ts-ignore */}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -377,138 +394,155 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
               </DndContext>
             </div>
           </div>
-
-          {/* Panel derecho: Configuración */}
-          <div className="lg:col-span-1">
-            {currentModule ? (
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 space-y-4 sticky top-20 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-bold text-sm">Editar módulo</h3>
-                  <button onClick={() => setEditingModule(null)} className="text-gray-500 hover:text-white">✕</button>
-                </div>
-
-                {/* Tamaño */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Tamaño</label>
-                  <select value={currentModule.config.size} onChange={(e) => updateModuleConfig(currentModule.id, { size: e.target.value as any })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
-                    <option value="small">Pequeño</option>
-                    <option value="medium">Mediano</option>
-                    <option value="large">Grande</option>
-                    <option value="xlarge">Extra Grande</option>
-                  </select>
-                </div>
-
-                {/* Forma (Solo para foto) */}
-                {currentModule.type === 'photo' && (
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Forma de la foto</label>
-                    <div className="flex gap-2">
-                      <button onClick={() => updateModuleConfig(currentModule.id, { shape: 'rounded' })} className={`flex-1 py-2 rounded-lg text-sm border ${currentModule.config.shape === 'rounded' ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-300'}`}>Redonda</button>
-                      <button onClick={() => updateModuleConfig(currentModule.id, { shape: 'square' })} className={`flex-1 py-2 rounded-lg text-sm border ${currentModule.config.shape === 'square' ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-300'}`}>Cuadrada</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ✅ NUEVO: Mascota al lado de la foto */}
-                {currentModule.type === 'photo' && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <input 
-                      type="checkbox" 
-                      checked={currentModule.config.showMascotAlongside || false} 
-                      onChange={(e) => updateModuleConfig(currentModule.id, { showMascotAlongside: e.target.checked })} 
-                      className="w-4 h-4 accent-purple-600" 
-                    />
-                    <label className="text-sm text-gray-300">Mostrar mascota al lado de la foto</label>
-                  </div>
-                )}
-
-                {/* Icono de acompañamiento */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Icono de la caja</label>
-                  <select value={currentModule.config.selectedIcon || ''} onChange={(e) => updateModuleConfig(currentModule.id, { selectedIcon: e.target.value })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
-                    {BOX_ICONS.map(icon => (
-                      <option key={icon.value} value={icon.value}>{icon.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Bordes */}
-                <div className="flex items-center gap-2 pt-2">
-                  <input type="checkbox" checked={currentModule.config.showBorder} onChange={(e) => updateModuleConfig(currentModule.id, { showBorder: e.target.checked })} className="w-4 h-4 accent-purple-600" />
-                  <label className="text-sm text-gray-300">Mostrar borde</label>
-                </div>
-
-                {currentModule.config.showBorder && (
-                  <>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Grosor del borde</label>
-                      <select value={currentModule.config.borderWidth} onChange={(e) => updateModuleConfig(currentModule.id, { borderWidth: e.target.value as any })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
-                        <option value="1px">1px (Fino)</option>
-                        <option value="2px">2px (Normal)</option>
-                        <option value="3px">3px (Grueso)</option>
-                        <option value="4px">4px (Muy grueso)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Estilo del borde</label>
-                      <select value={currentModule.config.borderStyle} onChange={(e) => updateModuleConfig(currentModule.id, { borderStyle: e.target.value as any })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
-                        <option value="solid">Sólido</option>
-                        <option value="dashed">Discontinuo (---)</option>
-                        <option value="dotted">Punteado (...)</option>
-                        <option value="double">Doble (=)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Color del borde</label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={currentModule.config.borderColor} onChange={(e) => updateModuleConfig(currentModule.id, { borderColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0" />
-                        <input type="text" value={currentModule.config.borderColor} onChange={(e) => updateModuleConfig(currentModule.id, { borderColor: e.target.value })} className="flex-1 p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-xs text-white font-mono" />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Colores base */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Color de fondo</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={currentModule.config.bgColor} onChange={(e) => updateModuleConfig(currentModule.id, { bgColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0" />
-                    <input type="text" value={currentModule.config.bgColor} onChange={(e) => updateModuleConfig(currentModule.id, { bgColor: e.target.value })} className="flex-1 p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-xs text-white font-mono" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Color de texto</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={currentModule.config.textColor} onChange={(e) => updateModuleConfig(currentModule.id, { textColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0" />
-                    <input type="text" value={currentModule.config.textColor} onChange={(e) => updateModuleConfig(currentModule.id, { textColor: e.target.value })} className="flex-1 p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-xs text-white font-mono" />
-                  </div>
-                </div>
-
-                {/* Contenido de texto */}
-                {(currentModule.type === 'custom' || currentModule.type === 'bio') && (
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Contenido de texto</label>
-                    <textarea 
-                      value={currentModule.config.content || ''} 
-                      onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} 
-                      className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white h-32 resize-none focus:border-purple-500 focus:outline-none" 
-                      placeholder="Escribe aquí el contenido..." 
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 text-center text-gray-500 text-sm sticky top-20">
-                <p>Haz clic en un módulo del panel central para editar sus colores, bordes y contenido.</p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Modal de Vista Previa */}
+      {/* ✅ MODAL DE EDICIÓN DE MÓDULO (Se abre al tocar un módulo) */}
+      {editingModule && currentModule && (
+        <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_0.3s_ease-out]">
+            
+            {/* Header del Modal */}
+            <div className="sticky top-0 bg-[#1a1a1a] border-b border-[#2a2a2a] p-4 flex items-center justify-between z-10">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                {currentModule.type === 'photo' && <FaImage className="text-purple-400"/>}
+                {currentModule.type === 'bio' && <FaUser className="text-purple-400"/>}
+                {currentModule.type === 'custom' && <FaGuitar className="text-purple-400"/>}
+                Editar {AVAILABLE_MODULES.find(m => m.type === currentModule.type)?.label}
+              </h3>
+              <button onClick={() => setEditingModule(null)} className="text-gray-400 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors">
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-4 space-y-4">
+              {/* Tamaño */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Tamaño del módulo</label>
+                <select value={currentModule.config.size} onChange={(e) => updateModuleConfig(currentModule.id, { size: e.target.value as any })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
+                  <option value="small">Pequeño</option>
+                  <option value="medium">Mediano</option>
+                  <option value="large">Grande</option>
+                  <option value="xlarge">Extra Grande</option>
+                </select>
+              </div>
+
+              {/* Forma (Solo para foto) */}
+              {currentModule.type === 'photo' && (
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Forma de la foto</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => updateModuleConfig(currentModule.id, { shape: 'rounded' })} className={`flex-1 py-2.5 rounded-lg text-sm border flex items-center justify-center gap-2 ${currentModule.config.shape === 'rounded' ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-300'}`}>
+                      <div className="w-4 h-4 rounded-full bg-current"></div> Redonda
+                    </button>
+                    <button onClick={() => updateModuleConfig(currentModule.id, { shape: 'square' })} className={`flex-1 py-2.5 rounded-lg text-sm border flex items-center justify-center gap-2 ${currentModule.config.shape === 'square' ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-300'}`}>
+                      <div className="w-4 h-4 rounded bg-current"></div> Cuadrada
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mascota al lado (Solo para foto) */}
+              {currentModule.type === 'photo' && (
+                <div className="flex items-center gap-3 p-3 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+                  <input type="checkbox" checked={currentModule.config.showMascotAlongside || false} onChange={(e) => updateModuleConfig(currentModule.id, { showMascotAlongside: e.target.checked })} className="w-5 h-5 accent-purple-600 rounded" />
+                  <label className="text-sm text-gray-300">Mostrar mascota al lado de la foto</label>
+                </div>
+              )}
+
+              {/* Icono de acompañamiento */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Icono decorativo de la caja</label>
+                <select value={currentModule.config.selectedIcon || ''} onChange={(e) => updateModuleConfig(currentModule.id, { selectedIcon: e.target.value })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
+                  {BOX_ICONS.map(icon => (
+                    <option key={icon.value} value={icon.value}>{icon.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bordes */}
+              <div className="flex items-center gap-3 p-3 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
+                <input type="checkbox" checked={currentModule.config.showBorder} onChange={(e) => updateModuleConfig(currentModule.id, { showBorder: e.target.checked })} className="w-5 h-5 accent-purple-600 rounded" />
+                <label className="text-sm text-gray-300 font-medium">Mostrar borde personalizado</label>
+              </div>
+
+              {currentModule.config.showBorder && (
+                <div className="space-y-3 pl-2 border-l-2 border-purple-600/30">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Grosor</label>
+                    <select value={currentModule.config.borderWidth} onChange={(e) => updateModuleConfig(currentModule.id, { borderWidth: e.target.value as any })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
+                      <option value="1px">1px (Fino)</option>
+                      <option value="2px">2px (Normal)</option>
+                      <option value="3px">3px (Grueso)</option>
+                      <option value="4px">4px (Muy grueso)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Estilo</label>
+                    <select value={currentModule.config.borderStyle} onChange={(e) => updateModuleConfig(currentModule.id, { borderStyle: e.target.value as any })} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white">
+                      <option value="solid">Sólido</option>
+                      <option value="dashed">Discontinuo (---)</option>
+                      <option value="dotted">Punteado (...)</option>
+                      <option value="double">Doble (=)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Color del borde</label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={currentModule.config.borderColor} onChange={(e) => updateModuleConfig(currentModule.id, { borderColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent" />
+                      <input type="text" value={currentModule.config.borderColor} onChange={(e) => updateModuleConfig(currentModule.id, { borderColor: e.target.value })} className="flex-1 p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white font-mono" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Colores base */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Color de fondo de la caja</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={currentModule.config.bgColor} onChange={(e) => updateModuleConfig(currentModule.id, { bgColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent" />
+                  <input type="text" value={currentModule.config.bgColor} onChange={(e) => updateModuleConfig(currentModule.id, { bgColor: e.target.value })} className="flex-1 p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white font-mono" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Color del texto</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={currentModule.config.textColor} onChange={(e) => updateModuleConfig(currentModule.id, { textColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent" />
+                  <input type="text" value={currentModule.config.textColor} onChange={(e) => updateModuleConfig(currentModule.id, { textColor: e.target.value })} className="flex-1 p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white font-mono" />
+                </div>
+              </div>
+
+              {/* Contenido de texto */}
+              {(currentModule.type === 'custom' || currentModule.type === 'bio') && (
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Contenido de texto</label>
+                  <textarea 
+                    value={currentModule.config.content || ''} 
+                    onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} 
+                    className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white h-32 resize-none focus:border-purple-500 focus:outline-none" 
+                    placeholder="Escribe aquí el contenido..." 
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Footer del Modal */}
+            <div className="sticky bottom-0 bg-[#1a1a1a] border-t border-[#2a2a2a] p-4 flex gap-3">
+              <button onClick={() => removeModule(currentModule.id)} className="flex-1 py-3 bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg font-semibold hover:bg-red-900/40 transition-colors flex items-center justify-center gap-2">
+                <FaTrash size={14} /> Eliminar
+              </button>
+              <button onClick={() => setEditingModule(null)} className="flex-[2] py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                <FaCheck /> Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Vista Previa Final */}
       {showPreview && (
-        <div className="fixed inset-0 bg-black/90 z-[120] flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/90 z-[140] flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-5xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between">
               <h3 className="text-white font-bold text-lg flex items-center gap-2"><FaCheck className="text-purple-400" /> Vista Previa del Perfil</h3>
