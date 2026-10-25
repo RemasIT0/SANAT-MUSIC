@@ -5,6 +5,10 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { type Profile } from '../types'
 
+// ✅ IMPORTS PARA EL DISEÑO PERSONALIZADO
+import type { ProfileLayout, ProfileModule } from '../types/profileLayout'
+import { AVAILABLE_MODULES } from '../types/profileLayout'
+
 import Mascot from '../components/Mascot'
 import Avatar from '../components/Avatar'
 import PostModal from '../components/PostModal'
@@ -16,7 +20,8 @@ import { isUserOnline } from '../hooks/useOnlineStatus'
 import { 
   FaMapMarkerAlt, FaGuitar, FaMusic, FaEnvelope, FaSpinner, 
   FaImage, FaEdit, FaTrash, FaExclamationTriangle, FaBullseye, 
-  FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus, FaUserMinus, FaHeart
+  FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus, 
+  FaUserMinus, FaHeart, FaPalette, FaLink, FaChartBar, FaUndo // ✅ Agregado FaUndo
 } from 'react-icons/fa'
 
 const GENEROS_FIJOS = [
@@ -66,6 +71,9 @@ export default function VerPerfil() {
   const [loading, setLoading] = useState(true)
   const [isFriend, setIsFriend] = useState(false)
 
+  // ✅ ESTADO PARA EL DISEÑO PERSONALIZADO
+  const [customLayout, setCustomLayout] = useState<ProfileLayout | null>(null)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<any>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -93,6 +101,24 @@ export default function VerPerfil() {
 
         if (profileError) throw profileError
         setProfile(profileData)
+
+        // ✅ CARGAR DISEÑO PERSONALIZADO SI EXISTE
+        const { data: layoutData } = await supabase
+          .from('profile_layouts')
+          .select('*')
+          .eq('user_id', id)
+          .single()
+
+        if (layoutData) {
+          setCustomLayout({
+            layout: layoutData.layout_config?.layout || 'one-column',
+            modules: layoutData.layout_config?.modules || [],
+            backgroundType: layoutData.background_type || 'solid',
+            backgroundValue: layoutData.background_value || '#0f0f0f',
+          })
+        } else {
+          setCustomLayout(null)
+        }
 
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
@@ -127,6 +153,105 @@ export default function VerPerfil() {
     if (id) fetchData()
   }, [id, user])
 
+  // ✅ FUNCIÓN PARA RENDERIZAR MÓDULOS PERSONALIZADOS (SIN TÍTULOS, SIN ERRORES DE STYLE)
+  const renderModule = (module: ProfileModule) => {
+    const modInfo = AVAILABLE_MODULES.find(m => m.type === module.type)
+    const sizeClass = {
+      small: 'col-span-1',
+      medium: 'col-span-1 md:col-span-2',
+      large: 'col-span-1 md:col-span-2 lg:col-span-3',
+      xlarge: 'col-span-1 md:col-span-2 lg:col-span-4',
+    }[module.config.size] || 'col-span-1'
+
+    const borderRadiusClass = {
+      none: 'rounded-none', sm: 'rounded-sm', md: 'rounded-md',
+      lg: 'rounded-lg', xl: 'rounded-xl', full: 'rounded-full',
+    }[module.config.borderRadius] || 'rounded-xl'
+
+    if (!profile) return null
+
+    const borderStyle = module.config.showBorder 
+      ? `${module.config.borderWidth || '2px'} ${module.config.borderStyle || 'solid'} ${module.config.borderColor}`
+      : 'none'
+
+    return (
+      <div 
+        key={module.id}
+        className={`${sizeClass} ${borderRadiusClass} p-4 transition-all`}
+        style={{
+          backgroundColor: module.config.bgColor,
+          color: module.config.textColor,
+          border: borderStyle,
+        }}
+      >
+        <div className="pt-2">
+          {module.type === 'photo' && (
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className={`${module.config.shape === 'square' ? 'rounded-xl' : 'rounded-full'} w-24 h-24 bg-gray-700 flex items-center justify-center text-3xl overflow-hidden border-2 border-white/20 flex-shrink-0`}>
+                {profile.avatar_url ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" /> : <span></span>}
+              </div>
+              {module.config.showMascotAlongside && (
+                <Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={(profile as any).expression || 'normal'} />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xl truncate">{profile.display_name}</p>
+                <p className="text-sm opacity-70 truncate">@{profile.username}</p>
+              </div>
+            </div>
+          )}
+
+          {module.type === 'mascot' && (
+            <div className="flex justify-center py-4">
+              <Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={(profile as any).expression || 'normal'} />
+            </div>
+          )}
+
+          {module.type === 'bio' && <p className="text-base opacity-90 leading-relaxed break-words">{profile.bio || 'Sin biografía'}</p>}
+          
+          {module.type === 'instruments' && (
+            <div className="flex flex-wrap gap-2">
+              {profile.instruments?.map((inst: any, i: number) => (
+                <span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-2 max-w-full">
+                  <FaGuitar className="flex-shrink-0" /> 
+                  <span className="truncate">{inst.name}</span> 
+                  <span className="opacity-60 truncate">({inst.level})</span>
+                </span>
+              )) || <span className="text-sm opacity-60">Sin instrumentos</span>}
+            </div>
+          )}
+          
+          {module.type === 'genres' && (
+            <div className="flex flex-wrap gap-2">
+              {profile.genres?.map((g: string, i: number) => (
+                <span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 truncate">#{g}</span>
+              )) || <span className="text-sm opacity-60">Sin géneros</span>}
+            </div>
+          )}
+          
+          {module.type === 'location' && (
+            <p className="text-base flex items-center gap-2 flex-wrap">
+              <FaMapMarkerAlt className="flex-shrink-0" /> 
+              <span className="truncate">{profile.localidad || 'Sin ubicación'}, {profile.departamento || 'Tucumán'}</span>
+            </p>
+          )}
+
+          {module.type === 'gallery' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="aspect-square bg-white/5 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/20">
+                <FaImage className="text-3xl opacity-50 mb-2" />
+                <span className="text-sm opacity-70">Galería (Próximamente)</span>
+              </div>
+            </div>
+          )}
+          
+          {module.type === 'custom' && <p className="text-base whitespace-pre-wrap opacity-90 break-words">{module.config.content || ''}</p>}
+          {module.type === 'social-links' && <p className="text-sm opacity-60 flex items-center gap-2"><FaLink /> Redes sociales</p>}
+          {module.type === 'stats' && <p className="text-sm opacity-60 flex items-center gap-2"><FaChartBar /> Estadísticas</p>}
+        </div>
+      </div>
+    )
+  }
+
   const handleDeletePost = async () => {
     if (!deletingPostId) return
     try {
@@ -155,7 +280,6 @@ export default function VerPerfil() {
     if (!id) return
     setLoadingLikes(true)
     try {
-      // 1. Traer los IDs de los posts a los que este usuario le dio like
       const { data: likesData, error: likesError } = await supabase
         .from('post_likes')
         .select('post_id')
@@ -164,12 +288,9 @@ export default function VerPerfil() {
 
       if (likesError) throw likesError
 
-      console.log(" DEBUG LIKES ENCONTRADOS:", likesData)
-
       if (likesData && likesData.length > 0) {
         const postIds = likesData.map(l => l.post_id)
         
-        // 2. Traer los posts (sin join)
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
           .select('id, user_id, content, intention, genres, created_at, updated_at')
@@ -178,9 +299,6 @@ export default function VerPerfil() {
 
         if (postsError) throw postsError
 
-        console.log("🔍 DEBUG POSTS TRAÍDOS:", postsData)
-
-        // 3. Traer los perfiles de los autores de esos posts
         if (postsData && postsData.length > 0) {
           const userIds = [...new Set(postsData.map(p => p.user_id))]
           
@@ -191,9 +309,6 @@ export default function VerPerfil() {
 
           if (profilesError) throw profilesError
 
-          console.log("🔍 DEBUG PERFILES TRAÍDOS:", profilesData)
-
-          // 4. Combinar posts con sus autores
           const combined = postsData.map(post => {
             const author = profilesData?.find(p => p.id.toString() === post.user_id.toString())
             return { ...post, profiles: author || {} }
@@ -310,92 +425,147 @@ export default function VerPerfil() {
       <AnimatedBackground />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <main className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        
-        {/* Tarjeta de Perfil */}
-        <div className="bg-[#1a1a1a] border rounded-2xl p-6 md:p-8 relative" style={{ borderColor: themeColor }}>
-          {!isMyProfile && (
-            <button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20" title="Reportar usuario">
-              <FaFlag size={18} />
-            </button>
-          )}
+      {/* ✅ HEADER SIN BOTÓN VOLVER, CON ÍCONO DE ADMIN ARRIBA A LA DERECHA */}
+      <div className="sticky top-0 z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] px-4 py-3 flex items-center justify-between">
+        <h1 className="text-white font-bold text-lg truncate pr-4">{profile.display_name}</h1>
+        {isMyProfile && user?.email === 'remaslove281@gmail.com' && (
+          <button 
+            onClick={() => navigate('/admin')} 
+            className="p-2 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50 hover:text-purple-300 transition-all flex-shrink-0"
+            title="Panel de Administrador"
+          >
+            <FaUserShield size={18} />
+          </button>
+        )}
+      </div>
 
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="bg-[#0f0f0f] p-4 rounded-xl border flex items-end gap-2" style={{ borderColor: themeColor + '40' }}>
-              <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={140} isOnline={isUserOnline((profile as any).last_seen)} />
-              <Mascot color={profile.avatar_color || '#333'} size={50} expression={profile.expression as any || 'normal'} />
+      <main className="w-full max-w-none px-2 md:px-4 space-y-4">        
+        {/* ✅ RENDERIZADO CONDICIONAL: Diseño Personalizado vs Clásico */}
+        {customLayout ? (
+          <div className="w-full rounded-none md:rounded-2xl p-6 transition-colors duration-300 relative" style={{ backgroundColor: customLayout.backgroundValue || '#0f0f0f' }}>
+            {!isMyProfile && (
+              <button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20 z-10" title="Reportar usuario">
+                <FaFlag size={18} />
+              </button>
+            )}
+            
+            <div className={`grid gap-4 ${
+              customLayout.layout === 'one-column' ? 'grid-cols-1' :
+              customLayout.layout === 'two-columns' ? 'grid-cols-1 md:grid-cols-2' :
+              'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            }`}>
+              {[...customLayout.modules]
+                .sort((a, b) => a.order - b.order)
+                .map(module => renderModule(module))}
             </div>
 
-            <div className="flex-1 text-center md:text-left w-full">
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">{profile.display_name}</h2>
-              <p className="text-gray-500 text-sm mb-4">@{profile.username}</p>
+            {/* ✅ BOTONES DE ACCIÓN Y RESTABLECER (SOLO SI ES MI PERFIL) */}
+            {isMyProfile && (
+              <div className="mt-6 flex flex-wrap gap-3 justify-center border-t border-[#2a2a2a] pt-4">
+                <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-3 px-6 bg-[#0f0f0f] border text-white font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}>
+                  <FaEdit size={16} style={{ color: themeColor }} /> <span>Editar datos</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    if (confirm('¿Restablecer tu perfil al diseño por defecto? Se eliminará tu diseño personalizado.')) {
+                      supabase.from('profile_layouts').delete().eq('user_id', user.id).then(() => {
+                        setCustomLayout(null)
+                        setToast({ message: 'Perfil restablecido al diseño por defecto', type: 'success' })
+                      })
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 py-3 px-6 bg-red-900/20 border border-red-700/50 text-red-400 font-semibold rounded-lg transition-all hover:bg-red-900/40"
+                >
+                  <FaUndo size={16} /> <span>Restablecer diseño</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ⬇️ DISEÑO CLÁSICO (FALLBACK) CON BOTONES ORIGINALES ⬇️ */
+          <div className="bg-[#1a1a1a] border border-x-0 md:border-x w-full rounded-none md:rounded-2xl p-6 md:p-8 relative" style={{ borderColor: themeColor }}>
+            {!isMyProfile && (
+              <button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20" title="Reportar usuario">
+                <FaFlag size={18} />
+              </button>
+            )}
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-6 text-sm">
-                <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}>
-                  <FaGuitar style={{ color: themeColor }} />
-                  <span className="text-gray-300">{profile.instruments?.[0]?.name || 'Sin instrumento'}</span>
-                  <span className="text-gray-600">•</span>
-                  <span className="text-gray-400">{profile.instruments?.[0]?.level || 'N/A'}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}>
-                  <FaMapMarkerAlt style={{ color: themeColor }} />
-                  <span className="text-gray-300">{profile.localidad}, {profile.departamento}</span>
-                </div>
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="bg-[#0f0f0f] p-4 rounded-xl border flex items-end gap-2" style={{ borderColor: themeColor + '40' }}>
+                <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={140} isOnline={isUserOnline((profile as any).last_seen)} />
+                <Mascot color={profile.avatar_color || '#333'} size={50} expression={(profile as any).expression || 'normal'} />
               </div>
 
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Sobre mí</h3>
-                <p className="text-gray-300 leading-relaxed bg-[#0f0f0f] p-4 rounded-lg border break-words" style={{ borderColor: themeColor + '40' }}>
-                  {profile.bio || 'Este usuario aún no escribió su biografía.'}
-                </p>
-              </div>
+              <div className="flex-1 text-center md:text-left w-full">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">{profile.display_name}</h2>
+                <p className="text-gray-500 text-sm mb-4">@{profile.username}</p>
 
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Géneros</h3>
-                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                  {profile.genres?.map((genre, idx) => (
-                    <span key={`${genre}-${idx}`} className="px-3 py-1.5 text-sm rounded-full border" style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '60', color: themeColor }}>
-                      {genre}
-                    </span>
-                  ))}
+                <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-6 text-sm">
+                  <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}>
+                    <FaGuitar style={{ color: themeColor }} />
+                    <span className="text-gray-300">{profile.instruments?.[0]?.name || 'Sin instrumento'}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-400">{profile.instruments?.[0]?.level || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}>
+                    <FaMapMarkerAlt style={{ color: themeColor }} />
+                    <span className="text-gray-300">{profile.localidad}, {profile.departamento}</span>
+                  </div>
                 </div>
-              </div>
 
-              {!isMyProfile && isBlocked && (
-                <div className="mb-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg">
-                  <FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Sobre mí</h3>
+                  <p className="text-gray-300 leading-relaxed bg-[#0f0f0f] p-4 rounded-lg border break-words" style={{ borderColor: themeColor + '40' }}>
+                    {profile.bio || 'Este usuario aún no escribió su biografía.'}
+                  </p>
                 </div>
-              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {!isMyProfile ? (
-                  <>
-                    <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-lg transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: themeColor }}>
-                      <FaEnvelope size={16} /> <span>Enviar mensaje</span>
-                    </button>
-                    <button onClick={handleToggleFriend} className={`flex items-center justify-center gap-2 py-3 px-4 font-semibold rounded-lg transition-all border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400 hover:bg-green-900/40' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-400 hover:bg-purple-900/20'}`}>
-                      {isFriend ? <FaUserMinus size={16} /> : <FaUserPlus size={16} />} <span>{isFriend ? 'Quitar Amigo' : 'Agregar Amigo'}</span>
-                    </button>
-                    <button onClick={() => setShowBlockModal(true)} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-400 font-semibold rounded-lg transition-all hover:bg-gray-800 hover:text-white">
-                      <FaBan size={16} /> <span>Bloquear</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border text-white font-semibold rounded-lg transition-all hover:brightness-125 sm:col-span-2" style={{ borderColor: themeColor, color: themeColor }}>
-                      <FaEdit size={16} style={{ color: themeColor }} /> <span>Editar mi perfil</span>
-                    </button>
-                    {user?.email === 'remaslove281@gmail.com' && (
-                      <button onClick={() => navigate('/admin')} className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-800/50 border border-gray-700 text-gray-300 font-semibold rounded-lg transition-all hover:bg-gray-700 hover:text-white hover:border-purple-600/50">
-                        <FaUserShield className="text-purple-400" size={16} /> <span>Panel Admin</span>
-                      </button>
-                    )}
-                  </>
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Géneros</h3>
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                    {profile.genres?.map((genre, idx) => (
+                      <span key={`${genre}-${idx}`} className="px-3 py-1.5 text-sm rounded-full border" style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '60', color: themeColor }}>
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {!isMyProfile && isBlocked && (
+                  <div className="mb-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg">
+                    <FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.
+                  </div>
                 )}
+
+                {/* ✅ BOTONES ORIGINALES RESTAURADOS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {!isMyProfile ? (
+                    <>
+                      <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-lg transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: themeColor }}>
+                        <FaEnvelope size={16} /> <span>Enviar mensaje</span>
+                      </button>
+                      <button onClick={handleToggleFriend} className={`flex items-center justify-center gap-2 py-3 px-4 font-semibold rounded-lg transition-all border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400 hover:bg-green-900/40' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-400 hover:bg-purple-900/20'}`}>
+                        {isFriend ? <FaUserMinus size={16} /> : <FaUserPlus size={16} />} <span>{isFriend ? 'Quitar Amigo' : 'Agregar Amigo'}</span>
+                      </button>
+                      <button onClick={() => setShowBlockModal(true)} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-400 font-semibold rounded-lg transition-all hover:bg-gray-800 hover:text-white">
+                        <FaBan size={16} /> <span>Bloquear</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border text-white font-semibold rounded-lg transition-all hover:brightness-125 sm:col-span-1" style={{ borderColor: themeColor, color: themeColor }}>
+                        <FaEdit size={16} style={{ color: themeColor }} /> <span>Editar datos</span>
+                      </button>
+                      <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg transition-all hover:opacity-90 sm:col-span-1">
+                        <FaPalette size={16} /> <span>Diseñar perfil</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Sección de Pestañas y Publicaciones */}
         <div>
@@ -422,13 +592,12 @@ export default function VerPerfil() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* ✅ DISEÑO COMPLETO RESTAURADO PARA LA PESTAÑA PUBLICACIONES */}
                 {posts.map((post) => (
                   <div key={post.id} className="bg-[#1a1a1a] border rounded-2xl p-5 transition-colors" style={{ borderColor: themeColor + '40' }}>
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex items-end gap-1">
                         <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={45} isOnline={isUserOnline((profile as any).last_seen)} />
-                        <Mascot color={profile.avatar_color || '#333'} size={20} expression={profile.expression as any || 'normal'} />
+                        <Mascot color={profile.avatar_color || '#333'} size={20} expression={(profile as any).expression || 'normal'} />
                       </div>                
                       <div className="flex-1">
                         <h4 className="text-white font-bold text-sm">{profile.display_name}</h4>

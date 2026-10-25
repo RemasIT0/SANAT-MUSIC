@@ -24,6 +24,8 @@ import RetroRadio from './components/RetroRadio'
 import Toast from './components/Toast'
 import MaintenanceScreen from './components/MaintenanceScreen'
 
+import ProfileEditor from './components/ProfileEditor'
+
 import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelope, FaPaperPlane, FaSpinner, } from 'react-icons/fa'
 import { FaRadio } from "react-icons/fa6";
 import { FaUser } from "react-icons/fa";
@@ -200,6 +202,13 @@ function RequireVerified() {
   return <Outlet />
 }
 
+// Componente wrapper para usar useNavigate correctamente
+function ProfileEditorRoute() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  return <ProfileEditor onClose={() => navigate(`/perfil/${user?.id}`)} />
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -222,6 +231,7 @@ function App() {
 
             <Route path="/perfil/:id" element={<VerPerfil />} />
             <Route path="/editar-perfil" element={<EditarPerfil />} />
+            <Route path="/editar-perfil/diseno" element={<ProfileEditorRoute />} />
             <Route path="/bandeja" element={<Bandeja />} />
             <Route path="/admin" element={<AdminPanel />} />
           </Route>

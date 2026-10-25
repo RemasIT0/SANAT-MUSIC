@@ -39,7 +39,7 @@ export default function ChatRoom() {
 
   // ✅ NUEVO: Estados para el indicador "Escribiendo..."
   const [isOtherTyping, setIsOtherTyping] = useState(false)
-const typingTimeoutRef = useRef<any>(null)
+  const typingTimeoutRef = useRef<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const myThemeColor = profile?.theme_color || '#a855f7'

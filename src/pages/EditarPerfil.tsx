@@ -478,6 +478,16 @@ export default function EditarPerfil() {
               })}
             </div>
           </div>
+           
+
+           <button
+  type="button"
+  onClick={() => navigate('/editar-perfil/diseno')}
+  className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 mb-4"
+>
+  🎨 Diseñar mi perfil
+</button>
+
 
           <button 
             type="submit" 
