@@ -14,6 +14,7 @@ interface Message {
   receiver_id: string
   content: string
   is_read: boolean
+  read_at?: string | null
   post_id: string | null
   post_content?: string | null
   post_intention?: string | null
@@ -80,9 +81,13 @@ export default function ChatRoom() {
         setMessages(formatted)
 
         // ✅ TU LÓGICA ORIGINAL DE MARCAR COMO LEÍDO (Intacta)
+                // ✅ MARCAR COMO LEÍDO CON TIMESTAMP
         await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ 
+            is_read: true,
+            read_at: new Date().toISOString() 
+          })
           .eq('sender_id', userId)
           .eq('receiver_id', user.id)
           .eq('is_read', false)
@@ -117,15 +122,16 @@ export default function ChatRoom() {
       .subscribe()
 
     // ✅ NUEVO: Canal de "Escribiendo..." (Broadcast)
-    const typingChannel = supabase.channel(`typing-room-${userId}`)
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        if (payload.senderId !== user?.id) {
-          setIsOtherTyping(true)
-          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-          typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000)
-        }
-      })
-      .subscribe()
+   // ✅ CANAL DE "ESCRIBIENDO..." (BROADCAST)
+const typingChannel = supabase.channel(`typing-room-${userId}`)
+  .on('broadcast', { event: 'typing' }, (payload) => {
+    if (payload.senderId !== user?.id) {
+      setIsOtherTyping(true)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000)
+    }
+  })
+  .subscribe()
 
     return () => { 
       supabase.removeChannel(channel)
@@ -138,13 +144,13 @@ export default function ChatRoom() {
   }, [messages])
 
   // ✅ NUEVO: Función para avisar que estoy escribiendo
-  const handleTyping = () => {
-    supabase.channel(`typing-room-${userId}`).send({
-      type: 'broadcast',
-      event: 'typing',
-      payload: { senderId: user?.id }
-    })
-  }
+ const handleTyping = () => {
+  supabase.channel(`typing-room-${userId}`).send({
+    type: 'broadcast',
+    event: 'typing',
+    payload: { senderId: user?.id }
+  })
+}
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -277,10 +283,16 @@ export default function ChatRoom() {
                         <p className={`text-xs line-clamp-2 ${isMine ? 'text-white/80' : 'text-gray-300'}`}>{msg.post_content}</p>
                       </div>
                     )}
-                    <p className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${textColor}`}>{msg.content}</p>
-                    <p className={`text-[10px] mt-1.5 text-right ${timeColor}`}>
-                      {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                                        <div className="flex items-center justify-end gap-1 mt-1.5">
+                      <p className={`text-[10px] ${timeColor}`}>
+                        {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {msg.sender_id === user?.id && (
+                        <span className={`text-[10px] ${msg.read_at ? 'text-blue-400' : 'text-gray-500'}`}>
+                          {msg.read_at ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
