@@ -8,7 +8,7 @@ import {
   FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash, 
   FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, 
   FaRegEnvelope, FaTimes, FaPaperPlane, FaQuestionCircle, FaEnvelopeOpenText,
-  FaFlag, FaHeart, FaFire
+  FaFlag, FaHeart, FaFire, FaUser
 } from 'react-icons/fa'
 
 import { IoIosTime } from "react-icons/io"
@@ -22,6 +22,7 @@ import AnimatedBackground from '../components/AnimatedBackground'
 import Avatar from '../components/Avatar'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
 import WelcomeModal from '../components/WelcomeModal'
+import RetroTV from '../components/RetroTV'
 
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
@@ -87,9 +88,15 @@ export default function Home() {
   const hiddenIds = useHiddenUsers()
   const [hasOwnPost, setHasOwnPost] = useState(false)
   
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  
+  // ✅ NUEVO: Lista de todos los usuarios para el directorio
+  const [allUsers, setAllUsers] = useState<any[]>([])
+  const [loadingAllUsers, setLoadingAllUsers] = useState(false)
+
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -114,11 +121,16 @@ export default function Home() {
 
   const [filterSort, setFilterSort] = useState<'recientes' | 'populares'>('recientes')
 
-  // ✅ ESTADOS PARA EL MODAL DE LIKERS EN MI PUBLICACIÓN
   const [showLikersModal, setShowLikersModal] = useState(false)
   const [likersList, setLikersList] = useState<any[]>([])
-  const [viewedLikes, setViewedLikes] = useState(false)
   const [loadingLikers, setLoadingLikers] = useState(false)
+
+  const [viewedLikes, setViewedLikes] = useState(() => {
+    return localStorage.getItem('sanat_viewed_likes') === 'true'
+  })
+  const [lastKnownLikesCount, setLastKnownLikesCount] = useState(() => {
+    return parseInt(localStorage.getItem('sanat_last_likes_count') || '0')
+  })
 
   const handleToggleLike = async (postId: string, postOwnerId?: string) => {
     if (!user) return;
@@ -145,11 +157,9 @@ export default function Home() {
 
       if (existingLike) {
         await supabase.from('post_likes').delete().eq('id', existingLike.id);
-        // Si existe la tabla de notificaciones, también borramos la notificación
         try { await supabase.from('notifications').delete().eq('post_id', postId).eq('actor_id', user.id).eq('type', 'like'); } catch(e) {}
       } else {
         await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
-        // Si existe la tabla de notificaciones, creamos la notificación
         if (postOwnerId && postOwnerId !== user.id) {
           try {
             await supabase.from('notifications').insert({ 
@@ -167,11 +177,18 @@ export default function Home() {
     }
   }
 
-  // ✅ FUNCIÓN PARA TRAER A LOS QUE DIERON LIKE A MI POST
   const handleViewLikers = async (postId: string) => {
     setLoadingLikers(true)
     setShowLikersModal(true)
-    setViewedLikes(true) // ✅ Marcamos como visto al abrirlo, la pelotita desaparece
+    
+    setViewedLikes(true)
+    localStorage.setItem('sanat_viewed_likes', 'true')
+    
+    const currentMyPost = posts.find(p => p.user_id === user?.id)
+    if (currentMyPost) {
+      setLastKnownLikesCount(currentMyPost.likes_count || 0)
+      localStorage.setItem('sanat_last_likes_count', (currentMyPost.likes_count || 0).toString())
+    }
 
     try {
       const { data: likesData } = await supabase
@@ -182,12 +199,10 @@ export default function Home() {
 
       if (likesData && likesData.length > 0) {
         const userIds = likesData.map((l: any) => l.user_id)
-        
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('id, display_name, username, avatar_url, avatar_color')
           .in('id', userIds)
-
         setLikersList(profilesData || [])
       } else {
         setLikersList([])
@@ -255,6 +270,32 @@ export default function Home() {
 
   useEffect(() => { fetchPosts(false); }, [])
 
+  useEffect(() => {
+    if (isSearchOpen && allUsers.length === 0) {
+      const loadAllUsers = async () => {
+        setLoadingAllUsers(true)
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url, avatar_color, instruments, last_seen')
+            .order('display_name', { ascending: true })
+            .limit(100) // Límite razonable para no sobrecargar
+          
+          if (!error && data) {
+            // Filtrar al usuario actual y los ocultos
+            const filtered = data.filter(p => p.id !== user?.id && !hiddenIds.includes(p.id))
+            setAllUsers(filtered)
+          }
+        } catch (error) {
+          console.error('Error al cargar usuarios:', error)
+        } finally {
+          setLoadingAllUsers(false)
+        }
+      }
+      loadAllUsers()
+    }
+  }, [isSearchOpen])
+
   const handleDepartamentoChange = (dep: string) => { setFilterDepartamento(dep); setFilterLocalidad('Todas'); }
   
   const filteredPosts = posts.filter(p => {
@@ -273,6 +314,18 @@ export default function Home() {
       }
       return 0;
     });  
+
+  useEffect(() => {
+    if (myPost) {
+      const currentCount = myPost.likes_count || 0
+      if (currentCount > lastKnownLikesCount) {
+        setViewedLikes(false)
+        localStorage.setItem('sanat_viewed_likes', 'false')
+      }
+      setLastKnownLikesCount(currentCount)
+      localStorage.setItem('sanat_last_likes_count', currentCount.toString())
+    }
+  }, [myPost?.likes_count])
 
   const openCreateModal = () => { 
     if (hasOwnPost) {
@@ -299,15 +352,22 @@ export default function Home() {
     }
   }
 
-  const handleUserSearch = async (query: string) => {
+  const handleUserSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.length < 2) { setSearchResults([]); return; }
-    setIsSearching(true);
-    try {
-      const { data, error } = await supabase.from('profiles').select('id, username, display_name, avatar_url, avatar_color, instruments').or(`username.ilike.%${query}%,display_name.ilike.%${query}%`).limit(5);
-      if (!error && data) setSearchResults(data.filter(p => p.id !== user?.id && !hiddenIds.includes(p.id)));
-    } catch (error) { console.error('Error al buscar usuarios:', error); }
-    finally { setIsSearching(false); }
+    
+    if (query.length < 2) {
+      // Si hay poco texto, mostrar todos los usuarios
+      setSearchResults([])
+      return;
+    }
+    
+    // Filtrar la lista ya cargada (más rápido que consultar la BD)
+    const queryLower = query.toLowerCase().trim();
+    const filtered = allUsers.filter(p => 
+      p.display_name?.toLowerCase().includes(queryLower) || 
+      p.username?.toLowerCase().includes(queryLower)
+    );
+    setSearchResults(filtered);
   }
 
   const handleOpenReport = (type: 'post' | 'user', id: string, userId: string) => {
@@ -353,6 +413,29 @@ export default function Home() {
     }
   }
 
+  // ✅ Función para renderizar cada usuario en la lista (reutilizable)
+  const renderUserItem = (profile: any) => (
+    <div 
+      key={profile.id} 
+      onClick={() => { navigate(`/perfil/${profile.id}`); setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} 
+      className="flex items-center gap-3 p-3 hover:bg-[#2a2a2a] rounded-xl cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#3a3a3a]"
+    >
+      <div className="relative">
+        <Avatar url={profile.avatar_url} name={profile.display_name} color={profile.avatar_color || '#333'} size={45} isOnline={isUserOnline(profile.last_seen)} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white font-semibold text-sm truncate group-hover:text-purple-400 transition-colors">{profile.display_name}</p>
+        <p className="text-gray-500 text-xs truncate">@{profile.username}</p>
+        {profile.instruments?.length > 0 && (
+          <p className="text-purple-400/70 text-[10px] mt-0.5 flex items-center gap-1">
+            <FaGuitar size={8} /> {profile.instruments[0].name}
+          </p>
+        )}
+      </div>
+      <FaChevronRight className="text-gray-600 group-hover:text-purple-500 group-hover:translate-x-1 transition-all duration-200" size={14} />
+    </div>
+  )
+
   return (
     <div className="min-h-screen relative text-gray-200 font-sans pb-24">
       <AnimatedBackground />
@@ -360,27 +443,23 @@ export default function Home() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 shadow-lg shadow-purple-900/5">
-          <div className="relative group">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors duration-300" size={16} />
-            <input type="text" placeholder="Buscar músicos por @usuario o nombre..." value={searchQuery} onChange={(e) => handleUserSearch(e.target.value)} className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300 placeholder:text-gray-600 text-sm" />
+        
+       <div className="space-y-4 w-full">
+          
+          {/* Fila 1: Barra de búsqueda (ancho completo) */}
+          <button 
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start md:gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
+          >
+            <FaSearch className="text-purple-500 group-hover:scale-110 transition-transform flex-shrink-0" size={18} />
+            <span className="text-sm font-medium truncate">Buscar músicos por @usuario o nombre...</span>
+          </button>
+
+          {/* Fila 2: Televisión Retro (CENTRADA) */}
+          <div className="flex justify-center">
+            <RetroTV />
           </div>
-          {searchQuery.length >= 2 && (
-            <div className="mt-3 space-y-2 max-h-60 overflow-y-auto custom-scrollbar animate-[slideDown_0.2s_ease-out]">
-              {isSearching ? (<div className="flex justify-center py-4"><FaSpinner className="animate-spin text-purple-600" /></div>) : searchResults.length > 0 ? (
-                searchResults.map((profile) => (
-                  <div key={profile.id} onClick={() => { navigate(`/perfil/${profile.id}`); setSearchQuery(''); setSearchResults([]); }} className="flex items-center gap-3 p-2 hover:bg-[#2a2a2a] rounded-xl cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#3a3a3a]">
-                    <Avatar url={profile.avatar_url} name={profile.display_name} color={profile.avatar_color || '#333'} size={40} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm truncate group-hover:text-purple-400 transition-colors">{profile.display_name}</p>
-                      <p className="text-gray-500 text-xs truncate">@{profile.username}</p>
-                    </div>
-                    <FaChevronRight className="text-gray-600 group-hover:text-purple-500 group-hover:translate-x-1 transition-all duration-200" size={14} />
-                  </div>
-                ))
-              ) : (<div className="text-center py-4"><p className="text-gray-500 text-sm">No se encontraron músicos con ese nombre.</p></div>)}
-            </div>
-          )}
+          
         </div>
 
         {loading ? (
@@ -396,13 +475,7 @@ export default function Home() {
             </div>
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-end gap-1">
-                <Avatar 
-                  url={myPost.avatar_url || null} 
-                  name={myPost.display_name} 
-                  color={myPost.avatar_color || '#333'} 
-                  size={50} 
-                  isOnline={isUserOnline(myPost.last_seen)} 
-                />
+                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={50} isOnline={isUserOnline(myPost.last_seen)} />
                 <Mascot color={myPost.avatar_color || '#333'} size={24} expression={(myPost.expression as any) || 'normal'} />
               </div>         
               <div className="flex-1">
@@ -421,24 +494,19 @@ export default function Home() {
               {myPost.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
             </div>
             
-            {/* ✅ BOTONES DE ACCIÓN DE MI PUBLICACIÓN (CON MODAL DE LIKERS) */}
             <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-purple-600/20 pl-[62px] md:pl-[62px]">
               <button 
                 onClick={() => handleViewLikers(myPost.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border relative ${
-                  myPost.is_liked_by_me 
-                    ? 'bg-red-900/20 text-red-500 border-red-800/50' 
-                    : 'bg-[#0f0f0f] text-gray-400 border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'
+                  myPost.is_liked_by_me ? 'bg-red-900/20 text-red-500 border-red-800/50' : 'bg-[#0f0f0f] text-gray-400 border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'
                 }`}
               >
                 <FaHeart size={14} className={myPost.is_liked_by_me ? 'animate-pulse' : ''} />
-                <span className="text-xs font-bold">{myPost.likes_count || null} Ver likes</span>
+                <span className="text-xs font-bold">{myPost.likes_count || 0} Ver likes</span>
                 
-                {/* ✅ PELOTITA ROJA: Aparece si hay likes y aún no se abrió el modal */}
                 {(myPost.likes_count || 0) > 0 && !viewedLikes && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse"></span>
+                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
                 )}
-                
               </button>
 
               <button onClick={openEditModal} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all"><FaEdit size={12} className="text-purple-400" /> Editar</button>
@@ -448,9 +516,7 @@ export default function Home() {
         ) : hasOwnPost ? (
           <div className="bg-[#1a1a1a] border border-purple-600/40 rounded-2xl p-8 text-center">
             <p className="text-gray-300 text-sm mb-4">Ya tenés una publicación activa en tu perfil.</p>
-            <button onClick={() => navigate(`/perfil/${user?.id}`)} className="text-purple-400 hover:text-purple-300 text-sm font-semibold underline">
-              Ir a mi perfil para editarla o eliminarla
-            </button>
+            <button onClick={() => navigate(`/perfil/${user?.id}`)} className="text-purple-400 hover:text-purple-300 text-sm font-semibold underline">Ir a mi perfil para editarla o eliminarla</button>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-purple-900/15 to-[#1a1a1a] border-2 border-dashed border-purple-600/40 rounded-2xl p-8 md:p-10 text-center">
@@ -511,7 +577,7 @@ export default function Home() {
                 </div>
               </div>
               {(filterDepartamento !== 'Todos' || filterLocalidad !== 'Todas' || filterGenre !== '' || filterIntention !== 'Todas') && (
-                <button onClick={() => { setFilterDepartamento('Todos'); setFilterLocalidad('Todas'); setFilterGenre(''); setFilterIntention('Todas'); }} className="text-xs text-purple-400 hover:text-purple-300 font-medium">✕ Limpiar filtros</button>
+                <button onClick={() => { setFilterDepartamento('Todos'); setFilterLocalidad('Todas'); setFilterGenre(''); setFilterIntention('Todas'); }} className="text-xs text-purple-400 hover:text-purple-300 font-medium"> Limpiar filtros</button>
               )}
             </div>
           )}
@@ -519,16 +585,10 @@ export default function Home() {
 
         <div>
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
-            <button 
-              onClick={() => setFilterSort('recientes')}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'recientes' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}
-            >
+            <button onClick={() => setFilterSort('recientes')} className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'recientes' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}>
               <IoIosTime className="text-lg" /> Más Recientes
             </button>
-            <button 
-              onClick={() => setFilterSort('populares')}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'populares' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}
-            >
+            <button onClick={() => setFilterSort('populares')} className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'populares' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}>
               <FaHeart className="text-lg" /> Más me gusta
             </button>
           </div>
@@ -544,13 +604,7 @@ export default function Home() {
                   <div key={post.id || post.user_id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 hover:border-purple-600/30 transition-colors flex flex-col">
                     <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.user_id}`)}>
                       <div className="flex items-end gap-1">
-                        <Avatar 
-                          url={post.avatar_url || null} 
-                          name={post.display_name} 
-                          color={post.avatar_color || '#333'} 
-                          size={45} 
-                          isOnline={isUserOnline(post.last_seen)} 
-                        />
+                        <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={45} isOnline={isUserOnline(post.last_seen)} />
                         <Mascot color={post.avatar_color || '#333'} size={20} expression={(post.expression as any) || 'normal'} />
                       </div>                
                       <div className="flex-1">
@@ -571,30 +625,16 @@ export default function Home() {
                     </div>
                     
                     <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a]">
-                      <button 
-                        onClick={() => handleToggleLike(post.id, post.user_id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                          post.is_liked_by_me 
-                            ? 'bg-red-900/20 text-red-500 border border-red-800/50' 
-                            : 'bg-[#0f0f0f] text-gray-400 border border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'
-                        }`}
-                      >
+                      <button onClick={() => handleToggleLike(post.id, post.user_id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${post.is_liked_by_me ? 'bg-red-900/20 text-red-500 border border-red-800/50' : 'bg-[#0f0f0f] text-gray-400 border border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'}`}>
                         <FaHeart size={14} className={post.is_liked_by_me ? 'animate-pulse' : ''} />
                         <span className="text-xs font-bold">{post.likes_count || 0}</span>
                       </button>
 
                       <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => navigate(`/chat/${post.user_id}?post=${post.id}`)} 
-                          className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all"
-                        >
+                        <button onClick={() => navigate(`/chat/${post.user_id}?post=${post.id}`)} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all">
                           <FaEnvelope size={12} className="text-purple-400" /> <span className="hidden sm:inline">Enviar mensaje</span>
                         </button>
-                        
-                        <button 
-                          onClick={() => handleOpenReport('post', post.id, post.user_id)} 
-                          className="flex items-center gap-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors"
-                        >
+                        <button onClick={() => handleOpenReport('post', post.id, post.user_id)} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors">
                           <FaFlag size={12} />
                         </button>
                       </div>
@@ -614,12 +654,89 @@ export default function Home() {
         </div>
       </main>
 
-      {/* ✅ MODAL SIMPLE DE LIKERS DE MI PUBLICACIÓN */}
+      {/* ✅ CAJÓN DESLIZANTE DE BÚSQUEDA CON DIRECTORIO DE USUARIOS */}
+      {isSearchOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-[fadeIn_0.3s_ease-out]" 
+            onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} 
+          />
+          <div className="fixed top-0 left-0 h-full w-full max-w-sm bg-[#1a1a1a] border-r border-[#2a2a2a] z-50 shadow-2xl transform transition-transform duration-300 ease-out animate-[slideInLeft_0.3s_ease-out] flex flex-col">
+            <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between bg-[#1a1a1a]">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <FaUser className="text-purple-500" /> 
+                {searchQuery.length >= 2 ? 'Resultados' : 'Directorio de Músicos'}
+              </h3>
+              <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-[#2a2a2a]">
+              <div className="relative group">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors" size={14} />
+                <input 
+                  type="text" 
+                  autoFocus
+                  placeholder="Filtrar músicos por nombre o @usuario..." 
+                  value={searchQuery} 
+                  onChange={(e) => handleUserSearch(e.target.value)} 
+                  className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder:text-gray-600 text-sm" 
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => { setSearchQuery(''); setSearchResults([]); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                )}
+              </div>
+              {/* Contador de usuarios */}
+              <p className="text-[10px] text-gray-500 mt-2 text-center">
+                {searchQuery.length >= 2 
+                  ? `${searchResults.length} músico${searchResults.length !== 1 ? 's' : ''} encontrado${searchResults.length !== 1 ? 's' : ''}`
+                  : `${allUsers.length} músico${allUsers.length !== 1 ? 's' : ''} en la comunidad`
+                }
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+              {loadingAllUsers ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <FaSpinner className="animate-spin text-purple-600 text-2xl" />
+                  <p className="text-gray-500 text-sm">Cargando músicos...</p>
+                </div>
+              ) : searchQuery.length >= 2 ? (
+                // Modo búsqueda: mostrar resultados filtrados
+                searchResults.length > 0 ? (
+                  searchResults.map(renderUserItem)
+                ) : (
+                  <div className="text-center py-12">
+                    <FaSearch className="text-4xl mx-auto mb-3 opacity-30 text-gray-600" />
+                    <p className="text-gray-500 text-sm">No se encontraron músicos con "{searchQuery}"</p>
+                  </div>
+                )
+              ) : (
+                // Modo directorio: mostrar todos los usuarios
+                allUsers.length > 0 ? (
+                  allUsers.map(renderUserItem)
+                ) : (
+                  <div className="text-center py-12">
+                    <FaUser className="text-4xl mx-auto mb-3 opacity-30 text-gray-600" />
+                    <p className="text-gray-500 text-sm">Aún no hay músicos en la comunidad.</p>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {showLikersModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLikersModal(false)} />
           <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <FaHeart className="text-gray-500" /> Les gustó tu post
@@ -634,11 +751,10 @@ export default function Home() {
                 <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : likersList.length === 0 ? (
-  <div className="flex flex-col items-center justify-center py-6 gap-3">
-    {/* Personajito en gris con expresión pensativa */}
-    <Mascot color="#9ca3af" size={80} expression="pensativo" />
-   
-  </div>            ) : (
+              <div className="flex flex-col items-center justify-center py-6 gap-3">
+                <Mascot color="#9ca3af" size={80} expression="pensativo" />
+              </div>
+            ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {likersList.map((liker: any) => (
                   <div 
@@ -664,9 +780,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReportModalOpen(false)} />
           <div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-900/30 rounded-full flex items-center justify-center">
-                <FaFlag className="text-red-400" size={20} />
-              </div>
+              <div className="w-10 h-10 bg-red-900/30 rounded-full flex items-center justify-center"><FaFlag className="text-red-400" size={20} /></div>
               <h3 className="text-xl font-bold text-white">Reportar publicación</h3>
             </div>
             <p className="text-gray-400 text-sm mb-4">Tu reporte es anónimo para el usuario. Selecciona un motivo:</p>

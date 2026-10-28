@@ -2,24 +2,22 @@
 import { 
   FaImage, FaAlignLeft, FaGuitar, FaMusic, 
   FaMapMarkerAlt, FaLink, FaChartBar, FaEdit, 
-  FaImages, FaUserAstronaut
+  FaImages, FaUserAstronaut, FaInstagram, FaYoutube, 
+  FaSpotify, FaTiktok, FaTwitter 
 } from 'react-icons/fa'
 
 export type ModuleType = 
-  | 'photo'
-  | 'mascot'
-  | 'bio'
-  | 'instruments'
-  | 'genres'
-  | 'location'
-  | 'gallery'
-  | 'social-links'
-  | 'stats'
-  | 'custom'
+  | 'photo' | 'mascot' | 'bio' | 'instruments' | 'genres' 
+  | 'location' | 'gallery' | 'social-links' | 'stats' | 'custom'
 
 export type LayoutStyle = 'one-column' | 'two-columns' | 'grid'
 export type BgType = 'solid' | 'gradient' | 'image' | 'pattern'
 export type ModuleSize = 'small' | 'medium' | 'large' | 'xlarge'
+
+export interface SocialLink {
+  platform: string
+  url: string
+}
 
 export interface ModuleConfig {
   bgColor: string
@@ -31,9 +29,10 @@ export interface ModuleConfig {
   borderStyle: 'solid' | 'dashed' | 'dotted' | 'double'
   borderWidth: '1px' | '2px' | '3px' | '4px'
   shape?: 'rounded' | 'square'
-  showMascotAlongside?: boolean // ✅ NUEVO
+  showMascotAlongside?: boolean
   content?: string
-  images?: string[]
+  images?: string[]          // ✅ NUEVO: URLs de la galería
+  socialLinks?: SocialLink[] // ✅ NUEVO: Links de redes sociales
   selectedIcon?: string
 }
 
@@ -77,6 +76,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   showMascotAlongside: false,
   content: '',
   images: [],
+  socialLinks: [],
   selectedIcon: '',
 }
 
