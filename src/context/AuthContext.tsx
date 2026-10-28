@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [showSuggestionModal, setShowSuggestionModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
 
-  // 🚫 BAN: si el perfil está baneado, cierra sesión y guarda el motivo
   const applyBannedCheck = async (data: any): Promise<boolean> => {
     if (data?.is_banned) {
       localStorage.setItem('sanat_ban_reason', data.ban_reason || 'Sin motivo especificado')
@@ -74,6 +73,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const closeSuggestionModal = () => setShowSuggestionModal(false)
   const openHelpModal = () => setShowHelpModal(true)
   const closeHelpModal = () => setShowHelpModal(false)
+
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel(`ban-check-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          if (payload.new.is_banned === true) {
+            localStorage.setItem('sanat_ban_reason', payload.new.ban_reason || 'Sin motivo especificado')
+            await supabase.auth.signOut()
+            // Forzar redirección y recarga para limpiar cualquier estado en memoria
+            window.location.href = '/login'
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
 
   useEffect(() => {
     let isMounted = true

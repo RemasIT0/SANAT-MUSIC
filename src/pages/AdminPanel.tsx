@@ -94,7 +94,6 @@ export default function AdminPanel() {
         })))
       } else { setReportsList([]) }
 
-      // ✅ Cargar anuncios
       const { data: adsData } = await supabase.from('ads').select('*').order('created_at', { ascending: false })
       setAdsList(adsData || [])
 
@@ -167,7 +166,6 @@ export default function AdminPanel() {
     } catch { setToast({ message: 'Error al archivar', type: 'error' }) }
   }
 
-  // ✅ Funciones para anuncios
   const openAdModal = (ad: any = null) => {
     if (ad) {
       setEditingAd(ad)
@@ -185,19 +183,29 @@ export default function AdminPanel() {
       return
     }
     try {
+      // ✅ Construimos el payload omitiendo campos vacíos para evitar errores de "null" en la BD
+      const payload: any = {
+        title: adForm.title.trim(),
+        is_active: adForm.is_active
+      }
+      
+      if (adForm.message?.trim()) payload.message = adForm.message.trim()
+      if (adForm.image_url?.trim()) payload.image_url = adForm.image_url.trim()
+
       if (editingAd) {
-        const { error } = await supabase.from('ads').update(adForm).eq('id', editingAd.id)
+        const { error } = await supabase.from('ads').update(payload).eq('id', editingAd.id)
         if (error) throw error
         setToast({ message: 'Anuncio actualizado', type: 'success' })
       } else {
-        const { error } = await supabase.from('ads').insert(adForm)
+        const { error } = await supabase.from('ads').insert(payload)
         if (error) throw error
         setToast({ message: 'Anuncio creado y transmitido', type: 'success' })
       }
       setShowAdModal(false)
       fetchData()
     } catch (error: any) {
-      setToast({ message: 'Error: ' + error.message, type: 'error' })
+      console.error('Error detallado:', error)
+      setToast({ message: 'Error: ' + (error.message || 'Desconocido'), type: 'error' })
     }
   }
 
@@ -227,7 +235,7 @@ export default function AdminPanel() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f0f0f] gap-4">
       <FaSpinner className="animate-spin text-4xl text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-      <p className="text-cyan-400 font-mono text-sm tracking-widest animate-pulse">ACCEDIENDO AL NÚCLEO...</p>
+      <p className="text-cyan-400 font-mono text-sm tracking-widest animate-pulse">PANEL ADMIN</p>
     </div>
   )
 
@@ -237,7 +245,6 @@ export default function AdminPanel() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors group">
             <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> <span className="font-mono text-sm">SALIR</span>
@@ -248,10 +255,8 @@ export default function AdminPanel() {
           <div className="w-20"></div>
         </div>
 
-        {/* Panel Principal */}
         <div className="bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-2xl p-6 min-h-[500px] shadow-2xl">
           
-          {/* ✅ NÚCLEO - Gráfico de Red */}
           {activeTab === 'stats' && (
             <div className="space-y-8">
               <div className="relative w-full h-72 md:h-96 bg-[#0a0a0a] rounded-xl border border-purple-500/30 overflow-hidden shadow-[0_0_30px_rgba(168,85,247,0.1)]">
@@ -272,19 +277,20 @@ export default function AdminPanel() {
                     </filter>
                   </defs>
                   
-                  {/* Líneas de conexión (sin animación) */}
+                  {/* Líneas de conexión */}
                   <line x1="400" y1="200" x2="180" y2="90" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="620" y2="90" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="180" y2="310" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="620" y2="310" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="400" y2="60" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
+                  <line x1="400" y1="200" x2="400" y2="340" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   
                   {/* Nodo Central */}
                   <circle cx="400" cy="200" r="40" fill="#1a1a1a" stroke="#a855f7" strokeWidth="3" filter="url(#glow)" />
                   <text x="400" y="195" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="bold" fontFamily="monospace">CORE</text>
                   <text x="400" y="212" textAnchor="middle" fill="#a855f7" fontSize="10" fontFamily="monospace">{stats.users} NODOS</text>
                   
-                  {/* Nodos Externos - SIN hover scale, cursor pointer */}
+                  {/* Nodos Externos */}
                   <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('users')}>
                     <circle cx="180" cy="90" r="28" fill="#1a1a1a" stroke="#3b82f6" strokeWidth="2" filter="url(#glow)" />
                     <text x="180" y="95" textAnchor="middle" fill="#3b82f6" fontSize="11" fontWeight="bold" fontFamily="monospace">USERS</text>
@@ -309,10 +315,15 @@ export default function AdminPanel() {
                     <circle cx="400" cy="60" r="28" fill="#1a1a1a" stroke="#ec4899" strokeWidth="2" filter="url(#glow)" />
                     <text x="400" y="65" textAnchor="middle" fill="#ec4899" fontSize="11" fontWeight="bold" fontFamily="monospace">TV ADS</text>
                   </g>
+
+                  {/* ✅ NUEVO NODO: BUZÓN DE SUGERENCIAS */}
+                  <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('suggestions')}>
+                    <circle cx="400" cy="340" r="28" fill="#1a1a1a" stroke="#8b5cf6" strokeWidth="2" filter="url(#glow)" />
+                    <text x="400" y="345" textAnchor="middle" fill="#8b5cf6" fontSize="11" fontWeight="bold" fontFamily="monospace">BUZON</text>
+                  </g>
                 </svg>
               </div>
 
-              {/* Tarjetas de Datos */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <NeonCard icon={FaUsers} label="MÚSICOS" value={stats.users} color="blue" shadow="rgba(59,130,246,0.4)" />
                 <NeonCard icon={FaNewspaper} label="PUBLICACIONES" value={stats.posts} color="amber" shadow="rgba(245,158,11,0.4)" />
@@ -339,7 +350,6 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* ✅ SECCIONES CON FLECHA PARA VOLVER */}
           {activeTab !== 'stats' && (
             <>
               <button 
@@ -444,7 +454,6 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* ✅ SECCIÓN DE ANUNCIOS - CRUD COMPLETO */}
               {activeTab === 'ads' && (
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -496,7 +505,6 @@ export default function AdminPanel() {
         </div>
       </main>
 
-      {/* MODAL DE BANEO */}
       {banningUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBanningUser(null)} />
@@ -511,7 +519,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* MODAL DE DESBANEO */}
       {unbanningUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setUnbanningUser(null)} />
@@ -525,7 +532,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* MODAL DE ELIMINAR PUBLICACIÓN */}
       {deletingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDeletingPostId(null)} />
@@ -546,7 +552,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* ✅ MODAL DE ANUNCIOS (CREAR/EDITAR) */}
       {showAdModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAdModal(false)} />

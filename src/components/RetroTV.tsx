@@ -60,35 +60,21 @@ export default function RetroTV() {
   const currentAd = ads[currentIndex]
 
   return (
-    // ✅ CAMBIO: ml-auto empuja la TV a la derecha. max-w-[400px] le da más espacio para los anuncios.
-<div className="w-full max-w-[340px]">    
+    <div className="w-full max-w-[340px]">    
       <div className="relative bg-gradient-to-br from-[#3a2f28] via-[#2a221c] to-[#1a1510] rounded-lg p-2 shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#1a1510]">
-        
-        {/* Contenido interno: Pantalla + Panel derecho */}
         <div className="flex gap-1.5">
-          
-          {/* PANTALLA (75% del ancho) */}
           <div className="flex-[3] relative">
-            {/* Marco interior de la pantalla (bisel) */}
             <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-sm p-1.5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.9)]">
-              {/* Pantalla CRT con bordes curvos */}
               <div className="relative aspect-[4/3] bg-black overflow-hidden rounded-[8%] shadow-[inset_0_0_20px_rgba(0,0,0,1)]">
-                
-                {/* Scanlines */}
                 <div 
                   className="absolute inset-0 z-20 pointer-events-none opacity-40"
                   style={{
                     background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0px, rgba(0,0,0,0.3) 1px, transparent 1px, transparent 3px)'
                   }}
                 />
-
-                {/* Curvatura CRT (viñeta) */}
                 <div className="absolute inset-0 z-20 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.6)_100%)]" />
-
-                {/* Brillo de pantalla */}
                 <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-br from-white/10 via-transparent to-transparent" />
 
-                {/* Contenido */}
                 <div className="absolute inset-0 z-10 flex items-center justify-center p-2">
                   {loading ? (
                     <div className="text-center">
@@ -103,7 +89,6 @@ export default function RetroTV() {
                     </div>
                   ) : (
                     <>
-                      {/* Imagen de fondo */}
                       {currentAd?.image_url && (
                         <img 
                           src={currentAd.image_url} 
@@ -112,7 +97,6 @@ export default function RetroTV() {
                         />
                       )}
 
-                      {/* Estática */}
                       {isStatic && (
                         <div className="absolute inset-0 bg-gray-400 animate-pulse z-30" 
                              style={{ 
@@ -122,7 +106,6 @@ export default function RetroTV() {
                         />
                       )}
 
-                      {/* Texto del anuncio */}
                       <div className={`relative z-30 text-center px-2 transition-all duration-500 ${isStatic ? 'blur-sm opacity-0' : 'blur-0 opacity-100'}`}>
                         <h3 className="text-white font-bold text-xs md:text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,1)] mb-0.5 leading-tight">
                           {currentAd?.title}
@@ -140,9 +123,7 @@ export default function RetroTV() {
             </div>
           </div>
 
-          {/* PANEL DERECHO (25% del ancho) - Rejilla + Perillas */}
           <div className="flex-[1] flex flex-col gap-1.5">
-            {/* Rejilla del altavoz */}
             <div className="flex-1 bg-gradient-to-b from-[#1a1510] to-[#0f0c08] rounded-sm p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]">
               <div className="h-full flex flex-col justify-evenly gap-[2px]">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -151,7 +132,6 @@ export default function RetroTV() {
               </div>
             </div>
 
-            {/* Perilla superior (Canal) */}
             <div className="flex justify-center">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4a4038] to-[#1a1510] border border-[#0a0805] shadow-[0_2px_4px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] flex items-center justify-center relative">
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#2a221c] to-[#0a0805] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] flex items-center justify-center">
@@ -160,7 +140,6 @@ export default function RetroTV() {
               </div>
             </div>
 
-            {/* Perilla inferior (Volumen) */}
             <div className="flex justify-center">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4a4038] to-[#1a1510] border border-[#0a0805] shadow-[0_2px_4px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] flex items-center justify-center relative">
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#2a221c] to-[#0a0805] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] flex items-center justify-center">
@@ -171,7 +150,6 @@ export default function RetroTV() {
           </div>
         </div>
 
-        {/* Indicador de canal (abajo) */}
         <div className="flex items-center justify-between mt-1.5 px-1">
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.8)] animate-pulse"></div>
