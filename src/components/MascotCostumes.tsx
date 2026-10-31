@@ -10,7 +10,7 @@ export type MascotExpression =
   | 'normal' | 'feliz' | 'pensativo' | 'rockero'
   | 'halloween' | 'punk' | 'gaucho' | 'melenudo' | 'murcielago'
   | 'conejo' | 'dj' | 'astronauta' | 'rapero'
-  | 'turro' | 'zombie' | 'esqueleto' | 'otaku'
+  | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -19,6 +19,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'pensativo', label: 'Pensativo' },
   { id: 'rockero', label: 'Rockero' },
   { id: 'melenudo', label: 'Melenudo' },
+  { id: 'blackmetal', label: 'Black metal' },
   { id: 'punk', label: 'Punk' },
   { id: 'gaucho', label: 'Gaucho' },
   { id: 'rapero', label: 'Rapero' },
@@ -31,6 +32,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'halloween', label: 'Halloween' },
   { id: 'zombie', label: 'Zombie' },
   { id: 'esqueleto', label: 'Esqueleto' },
+  { id: 'fantasma', label: 'Fantasma' },
 ]
 
 interface CostumeCtx {
@@ -568,5 +570,68 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         </svg>
       </>
     ),
+  },
+
+  blackmetal: {
+    // Melena larga y lacia, negra
+    back: () => (
+      <Layer top={-12} left={-34} w={168} h={150}>
+        <path d="M30 34 Q34 0 84 0 Q134 0 138 34 L156 140 L140 132 L132 146 L120 138 L114 60 L54 60 L48 138 L36 146 L28 132 L12 140 Z" fill="#0a0a0a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M22 60 L16 122 M146 60 L152 122 M32 76 L30 132 M136 76 L138 132 M40 20 L36 46 M128 20 L132 46" stroke="#52525b" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Raya al medio */}
+        <Layer top={-6} left={-4} w={108} h={28} className="z-20">
+          <path d="M0 26 L0 8 Q54 -8 108 8 L108 26 L96 18 Q80 8 56 10 L54 4 L52 10 Q28 8 12 18 Z" fill="#0a0a0a" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+        {/* Muñequeras con pinchos */}
+        {[-20, 96].map(left => (
+          <Layer key={left} top={70} left={left} w={24} h={16} className="z-20">
+            <rect x="1" y="6" width="22" height="9" rx="2" fill="#1f1f1f" stroke={INK} strokeWidth="2" />
+            <polygon points="3,6 6,0 9,6" fill="#d1d5db" stroke={INK} strokeWidth="1" />
+            <polygon points="9,6 12,0 15,6" fill="#d1d5db" stroke={INK} strokeWidth="1" />
+            <polygon points="15,6 18,0 21,6" fill="#d1d5db" stroke={INK} strokeWidth="1" />
+          </Layer>
+        ))}
+      </>
+    ),
+    // Corpse paint
+    face: ({ eye }) => (
+      <svg width="80" height="78" viewBox="0 0 80 78" className="mt-3">
+        <path d="M8 6 Q40 -2 72 6 L74 50 Q40 84 6 50 Z" fill="#f4f4f5" />
+        <polygon points="6,14 14,18 16,8 22,16 30,6 32,18 37,22 32,30 34,40 24,34 16,42 14,32 6,30 12,24" fill={INK} />
+        <polygon points="74,14 66,18 64,8 58,16 50,6 48,18 43,22 48,30 46,40 56,34 64,42 66,32 74,30 68,24" fill={INK} />
+        <circle cx={22 + eye.x * 0.6} cy={25 + eye.y * 0.6} r="3" fill="#fff" />
+        <circle cx={58 + eye.x * 0.6} cy={25 + eye.y * 0.6} r="3" fill="#fff" />
+        <polygon points="36,40 44,40 40,46" fill={INK} />
+        <path d="M26 54 Q40 48 54 54 L52 60 Q40 56 28 60 Z" fill={INK} />
+        <path d="M30 60 L29 70 M40 58 L40 75 M50 60 L51 70" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+
+  fantasma: {
+    // Sábana que cubre el cuerpo, teñida apenas con el color del usuario
+    front: ({ color, eye }) => {
+      const sheet = 'M22 4 L106 4 Q120 4 120 18 L120 52 L125 66 Q128 74 120 74 L118 72 L118 112 Q109 124 100 112 Q91 124 82 112 Q73 124 64 112 Q55 124 46 112 Q37 124 28 112 Q19 124 10 112 L10 72 L8 74 Q0 74 3 66 L8 52 L8 18 Q8 4 22 4 Z'
+      return (
+        <Layer top={-8} left={-14} w={128} h={128} className="z-20" style={{ filter: 'drop-shadow(5px 5px 0 #000)' }}>
+          <path d={sheet} fill="#f8fafc" />
+          <path d={sheet} fill={color} opacity="0.18" />
+          <path d={sheet} fill="none" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <ellipse cx="48" cy="50" rx="8" ry="11" fill={INK} />
+          <ellipse cx="80" cy="50" rx="8" ry="11" fill={INK} />
+          <circle cx={46 + eye.x * 0.6} cy={46 + eye.y * 0.6} r="3" fill="#fff" />
+          <circle cx={78 + eye.x * 0.6} cy={46 + eye.y * 0.6} r="3" fill="#fff" />
+          <ellipse cx="38" cy="66" rx="6" ry="3.5" fill="#f9a8d4" opacity="0.7" />
+          <ellipse cx="90" cy="66" rx="6" ry="3.5" fill="#f9a8d4" opacity="0.7" />
+          <ellipse cx="64" cy="76" rx="7" ry="9" fill={INK} />
+        </Layer>
+      )
+    },
+    // La cara se dibuja sobre la sábana
+    face: () => null,
   },
 }

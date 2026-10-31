@@ -80,14 +80,14 @@ export default function RetroRadio() {
       {/* Pestaña colgando del borde superior izquierdo */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="fixed right-3 z-[60] flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-b-xl border-2 border-t-0 border-black/30 transition-transform hover:translate-y-0.5"
+        className="fixed right-3 z-[45] flex items-center gap-1.5 h-8 px-2.5 sm:pr-3 rounded-b-xl border-2 border-t-0 border-black/30 transition-transform hover:translate-y-0.5"
         style={{ top: 'var(--banner-h, 0px)', backgroundColor: themeColor, color: tabTextColor, boxShadow: `0 4px 14px ${themeColor}80` }}
         title={isPlaying ? `Sonando: ${currentStation.name}` : 'SANAT Radio'}
         aria-label="Abrir radio"
         aria-expanded={isExpanded}
       >
         <PiCassetteTapeFill size={18} />
-        <span className="text-[11px] font-extrabold tracking-widest">RADIO</span>
+        <span className="hidden sm:inline text-[11px] font-extrabold tracking-widest">RADIO</span>
         {isPlaying && (
           <span className="flex items-end gap-[2px] h-3" aria-hidden="true">
             {[0, 1, 2].map(i => (
@@ -97,7 +97,7 @@ export default function RetroRadio() {
         )}
       </button>
 
-      <div className="fixed right-3 z-[60] w-72 sm:w-80" style={{ top: 'calc(var(--banner-h, 0px) + 2.5rem)' }}>
+      <div className="fixed right-3 z-[45] w-72 sm:w-80" style={{ top: 'calc(var(--banner-h, 0px) + 2.5rem)' }}>
         {isExpanded && (
           <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-[slideDown_0.25s_ease-out]">
             

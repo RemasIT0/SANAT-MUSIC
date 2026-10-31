@@ -2,6 +2,7 @@
 // Control del panel de admin para prender/apagar la franja de aviso
 import { useState, useEffect } from 'react'
 import { useAppSettings, DEFAULT_BANNER_TEXT } from '../hooks/useAppSettings'
+import { logAdminAction } from '../lib/adminLog'
 import { FaExclamationTriangle, FaSpinner, FaToggleOn, FaToggleOff } from 'react-icons/fa'
 
 export default function AdminBannerControl({ onResult }: { onResult: (message: string, type: 'success' | 'error') => void }) {
@@ -24,7 +25,10 @@ export default function AdminBannerControl({ onResult }: { onResult: (message: s
     const error = await updateSettings(changes)
     setSaving(false)
     if (error) onResult('Error: ' + error.message, 'error')
-    else onResult(okMessage, 'success')
+    else {
+      onResult(okMessage, 'success')
+      logAdminAction(okMessage, changes.banner_text ?? (changes.banner_enabled ? 'franja visible' : 'franja oculta'))
+    }
   }
 
   const enabled = settings.banner_enabled

@@ -14,6 +14,7 @@ import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { markAdminAlertsSeen } from '../hooks/useAdminAlerts'
 import AdminBannerControl from '../components/AdminBannerControl'
+import { logAdminAction } from '../lib/adminLog'
 
 export default function AdminPanel() {
   const { user } = useAuth()
@@ -144,6 +145,7 @@ export default function AdminPanel() {
       if (error) throw error
       ensureAffected(data)
       setToast({ message: `${banningUser.display_name || 'Usuario'} fue baneado`, type: 'success' })
+      logAdminAction('Baneo', `${banningUser.display_name} (@${banningUser.username}) — motivo: ${banReasonInput.trim()}`)
       setBanningUser(null)
       setBanReasonInput('')
       fetchData()
@@ -159,6 +161,7 @@ export default function AdminPanel() {
       if (error) throw error
       ensureAffected(data)
       setToast({ message: `${unbanningUser.display_name || 'Usuario'} fue restablecido`, type: 'success' })
+      logAdminAction('Desbaneo', `${unbanningUser.display_name} (@${unbanningUser.username})`)
       setUnbanningUser(null)
       fetchData()
     } catch (error: any) {
@@ -177,6 +180,8 @@ export default function AdminPanel() {
       setPostsList(prev => prev.filter(p => p.id !== deletingPostId))
       setStats(prev => ({ ...prev, posts: Math.max(0, prev.posts - 1) }))
       setToast({ message: 'Publicación eliminada', type: 'success' })
+      const deletedPost = postsList.find(p => p.id === deletingPostId)
+      logAdminAction('Publicación borrada', deletedPost ? `"${(deletedPost.content || '').slice(0, 80)}"` : `id ${deletingPostId}`)
       setDeletingPostId(null)
     } catch (error: any) {
       setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
@@ -193,6 +198,8 @@ export default function AdminPanel() {
         setReportsList(prev => prev.filter(r => r.id !== reportId))
         setStats(prev => ({ ...prev, reports: Math.max(0, prev.reports - 1) }))
         setToast({ message: 'Reporte archivado', type: 'success' })
+        const report = reportsList.find(r => r.id === reportId)
+        logAdminAction('Reporte archivado', report ? `${report.reported?.display_name || 'usuario'}: "${report.reason}"` : `id ${reportId}`)
       } catch (error: any) {
         setToast({ message: 'Error al archivar: ' + error.message, type: 'error' })
       }
@@ -209,6 +216,8 @@ export default function AdminPanel() {
         setSuggestionsList(prev => prev.filter(s => s.id !== suggestionId))
         setStats(prev => ({ ...prev, suggestions: Math.max(0, prev.suggestions - 1) }))
         setToast({ message: 'Sugerencia eliminada', type: 'success' })
+        const suggestion = suggestionsList.find(s => s.id === suggestionId)
+        logAdminAction('Sugerencia borrada', suggestion ? `de ${suggestion.profiles?.display_name || 'anónimo'}: "${(suggestion.content || '').slice(0, 80)}"` : `id ${suggestionId}`)
       } catch (error: any) {
         setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
       }
@@ -246,6 +255,7 @@ export default function AdminPanel() {
         if (error) throw error
         ensureAffected(data)
         setToast({ message: 'Anuncio actualizado', type: 'success' })
+        logAdminAction('Anuncio editado', payload.title)
       } else {
         // Al crear se omiten los campos vacíos para no mandar nulls
         if (adForm.message.trim()) payload.message = adForm.message.trim()
@@ -254,6 +264,7 @@ export default function AdminPanel() {
         if (error) throw error
         ensureAffected(data)
         setToast({ message: 'Anuncio creado y transmitido', type: 'success' })
+        logAdminAction('Anuncio creado', payload.title)
       }
       setShowAdModal(false)
       fetchData()
@@ -272,6 +283,7 @@ export default function AdminPanel() {
       ensureAffected(data)
       setAdsList(prev => prev.map(a => a.id === ad.id ? { ...a, is_active: !ad.is_active } : a))
       setToast({ message: ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', type: 'success' })
+      logAdminAction(ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', ad.title)
     } catch (error: any) {
       setToast({ message: 'Error: ' + error.message, type: 'error' })
     }
@@ -286,6 +298,7 @@ export default function AdminPanel() {
         ensureAffected(data)
         setAdsList(prev => prev.filter(a => a.id !== ad.id))
         setToast({ message: 'Anuncio eliminado', type: 'success' })
+        logAdminAction('Anuncio borrado', ad.title)
       } catch (error: any) {
         setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
       }
