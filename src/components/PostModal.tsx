@@ -37,6 +37,8 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
   const [intention, setIntention] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  // Después de guardar, el botón queda bloqueado hasta que el modal se cierra
+  const [saved, setSaved] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const [originalData, setOriginalData] = useState({ content: '', intention: '', genres: [] as string[] })
@@ -53,6 +55,7 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
       
       setOriginalData({ content: initialContent, intention: initialIntention, genres: initialGenres })
       setToast(null)
+      setSaved(false)
     }
   }, [isOpen, existingPost])
 
@@ -68,7 +71,7 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !isFormValid) return
+    if (!user || !isFormValid || loading || saved) return
     
     const hasChanges = 
       content.trim() !== originalData.content ||
@@ -82,6 +85,15 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
     
     setLoading(true)
     try {
+      // Solo se permite una publicación por usuario: verificar antes de crear
+      if (!existingPost?.id) {
+        const { data: existing } = await supabase.from('posts').select('id').eq('user_id', user.id).limit(1)
+        if (existing && existing.length > 0) {
+          setToast({ message: 'Ya tenés una publicación activa. Editala o eliminala para crear otra.', type: 'info' })
+          return
+        }
+      }
+
       let query;
       
       if (existingPost?.id) {
@@ -111,6 +123,7 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
       
       const successMessage = existingPost ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente'
       setToast({ message: successMessage, type: 'success' })
+      setSaved(true)
       
       setTimeout(() => {
         onPostSaved()
@@ -189,14 +202,14 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
 
           <button
             type="submit"
-            disabled={loading || !isFormValid}
+            disabled={loading || saved || !isFormValid}
             className={`w-full py-3 font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 mt-2 ${
-              loading || !isFormValid
+              loading || saved || !isFormValid
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                 : 'bg-purple-700 text-white hover:bg-purple-600 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]'
             }`}
           >
-            {loading ? <><FaSpinner className="animate-spin" /> Guardando...</> : (existingPost ? 'Guardar cambios' : 'Publicar')}
+            {loading ? <><FaSpinner className="animate-spin" /> Guardando...</> : saved ? '¡Listo!' : (existingPost ? 'Guardar cambios' : 'Publicar')}
           </button>
           
           {!isFormValid && !loading && (

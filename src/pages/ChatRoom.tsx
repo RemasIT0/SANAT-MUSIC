@@ -7,6 +7,7 @@ import { type Profile } from '../types'
 import Avatar from '../components/Avatar'
 import Mascot from '../components/Mascot'
 import AnimatedBackground from '../components/AnimatedBackground'
+import { isUserOnline, formatLastSeen } from '../hooks/useOnlineStatus'
 import { FaArrowLeft, FaPaperPlane, FaSpinner, FaQuoteLeft, FaChevronDown, FaChevronUp, FaGuitar, FaMapMarkerAlt } from 'react-icons/fa'
 
 interface Message {
@@ -56,6 +57,17 @@ export default function ChatRoom() {
       if (data) setOtherProfile(data)
     }
     if (userId) loadProfile()
+  }, [userId])
+
+  // Refrescar el estado "en línea" del otro usuario cada 30s
+  useEffect(() => {
+    if (!userId) return
+    const refreshLastSeen = async () => {
+      const { data } = await supabase.from('profiles').select('last_seen').eq('id', userId).single()
+      if (data) setOtherProfile(prev => prev ? { ...prev, last_seen: data.last_seen } : prev)
+    }
+    const interval = setInterval(refreshLastSeen, 30000)
+    return () => clearInterval(interval)
   }, [userId])
 
   useEffect(() => {
@@ -233,7 +245,7 @@ export default function ChatRoom() {
 
   if (!otherProfile) {
     return (
-      <div className="h-[100dvh] flex items-center justify-center text-gray-400 bg-[#0f0f0f]">
+      <div className="h-[calc(100dvh-var(--banner-h,0px))] flex items-center justify-center text-gray-400 bg-[#0f0f0f]">
         <FaSpinner className="animate-spin text-3xl text-cyan-400 mr-3 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
         <span className="text-cyan-400 font-medium">Conectando al canal...</span>
       </div>
@@ -241,7 +253,7 @@ export default function ChatRoom() {
   }
 
   return (
-    <div className="h-[100dvh] relative text-gray-200 font-sans flex flex-col overflow-hidden bg-[#0f0f0f]">
+    <div className="h-[calc(100dvh-var(--banner-h,0px))] relative text-gray-200 font-sans flex flex-col overflow-hidden bg-[#0f0f0f]">
       <AnimatedBackground />
       
       {/* ✅ FONDO CYBERPUNK: Grid sutil */}
@@ -250,7 +262,7 @@ export default function ChatRoom() {
       </div>
       
       <header 
-        className="sticky top-0 z-30 bg-[#1a1a1a]/90 backdrop-blur-md border-b px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[#222] transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+        className="sticky top-[var(--banner-h,0px)] z-30 bg-[#1a1a1a]/90 backdrop-blur-md border-b px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[#222] transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
         style={{ borderColor: otherThemeColor + '60' }}
         onClick={() => setShowUserInfo(!showUserInfo)}
       >
@@ -258,13 +270,14 @@ export default function ChatRoom() {
           <FaArrowLeft />
         </button>
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="relative">
-            <Avatar url={otherProfile.avatar_url || null} name={otherProfile.display_name} color={otherProfile.avatar_color || '#333'} size={40} />
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1a1a1a] shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-          </div>
+          <Avatar url={otherProfile.avatar_url || null} name={otherProfile.display_name} color={otherProfile.avatar_color || '#333'} size={40} isOnline={isUserOnline(otherProfile.last_seen)} />
           <div className="flex-1 min-w-0">
             <h2 className="text-white font-semibold text-sm truncate drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{otherProfile.display_name}</h2>
-            <p className="text-gray-400 text-xs truncate">@{otherProfile.username}</p>
+            <p className="text-xs truncate">
+              {isOtherTyping
+                ? <span className="text-cyan-400">escribiendo...</span>
+                : <span className={isUserOnline(otherProfile.last_seen) ? 'text-green-400' : 'text-gray-500'}>{formatLastSeen(otherProfile.last_seen)}</span>}
+            </p>
           </div>
           {showUserInfo ? <FaChevronUp className="text-cyan-400" /> : <FaChevronDown className="text-gray-400" />}
         </div>

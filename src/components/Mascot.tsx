@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { COSTUMES, type MascotExpression } from "./MascotCostumes";
 
-type ExpressionType = 'normal' | 'feliz' | 'pensativo' | 'rockero';
+type ExpressionType = MascotExpression;
 
 interface MascotProps {
   color: string;
@@ -37,7 +38,11 @@ export default function Mascot({ color, size = 140, expression = 'normal' }: Mas
   const scale = size / 100;
 
   // --- RENDERIZADO DE CARA SEGÚN EXPRESIÓN ---
+  const costume = COSTUMES[expression];
+  const costumeCtx = { color, eye: eyeOffset };
+
   const renderFace = () => {
+    if (costume) return costume.face(costumeCtx);
     switch (expression) {
       case 'feliz':
         return (
@@ -134,6 +139,9 @@ export default function Mascot({ color, size = 140, expression = 'normal' }: Mas
         {/* Sombra de piso */}
         <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70px] h-[10px] bg-black/20 rounded-[50%]" style={{ filter: 'blur(3px)' }} />
 
+        {/* Capa del disfraz detrás del cuerpo (pelo, alas, orejas) */}
+        {costume?.back?.(costumeCtx)}
+
         {/* Brazos */}
         <div className="absolute top-[60%] -left-4 w-4 h-8 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000", transform: expression === 'rockero' ? "rotate(-20deg)" : "rotate(10deg)" }} />
         <div className="absolute top-[60%] -right-4 w-4 h-8 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000", transform: expression === 'rockero' ? "rotate(20deg)" : "rotate(-10deg)" }} />
@@ -150,6 +158,9 @@ export default function Mascot({ color, size = 140, expression = 'normal' }: Mas
         >
           {renderFace()}
         </div>
+
+        {/* Capa del disfraz encima del cuerpo (sombreros, accesorios) */}
+        {costume?.front?.(costumeCtx)}
       </div>
     </div>
   );

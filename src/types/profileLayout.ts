@@ -3,8 +3,13 @@ import {
   FaImage, FaAlignLeft, FaGuitar, FaMusic, 
   FaMapMarkerAlt, FaLink, FaChartBar, FaEdit, 
   FaImages, FaUserAstronaut, FaInstagram, FaYoutube, 
-  FaSpotify, FaTiktok, FaTwitter 
+  FaSpotify, FaTiktok, FaTwitter, FaMicrophone, FaStar, FaHeart, FaBolt
 } from 'react-icons/fa'
+
+// Íconos decorativos que se pueden elegir para cada módulo
+export const MODULE_ICON_MAP: Record<string, any> = {
+  FaMusic, FaGuitar, FaMicrophone, FaStar, FaHeart, FaBolt, FaMapMarkerAlt, FaLink
+}
 
 export type ModuleType = 
   | 'photo' | 'mascot' | 'bio' | 'instruments' | 'genres' 
@@ -31,8 +36,8 @@ export interface ModuleConfig {
   shape?: 'rounded' | 'square'
   showMascotAlongside?: boolean
   content?: string
-  images?: string[]          // ✅ NUEVO: URLs de la galería
-  socialLinks?: SocialLink[] // ✅ NUEVO: Links de redes sociales
+  images?: string[]          
+  socialLinks?: SocialLink[] 
   selectedIcon?: string
 }
 
@@ -62,6 +67,27 @@ export const AVAILABLE_MODULES: { type: ModuleType; label: string; icon: any }[]
   { type: 'stats', label: 'Estadísticas', icon: FaChartBar },
   { type: 'custom', label: 'Caja personalizada', icon: FaEdit },
 ]
+
+// Columnas de la grilla según la distribución elegida
+export const LAYOUT_GRID_CLASS: Record<LayoutStyle, string> = {
+  'one-column': 'grid-cols-1',
+  'two-columns': 'grid-cols-1 md:grid-cols-2',
+  'grid': 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+}
+
+// Ancho del módulo: nunca ocupa más columnas de las que tiene la distribución
+export const getModuleSpanClass = (layout: LayoutStyle, size: ModuleSize) => {
+  if (layout === 'one-column' || size === 'small') return 'col-span-1'
+  if (layout === 'two-columns' || size === 'medium') return 'col-span-1 md:col-span-2'
+  return 'col-span-full'
+}
+
+export const getBackgroundStyle = (type: BgType, value: string) => {
+  const color = value || '#0f0f0f'
+  return type === 'gradient'
+    ? { background: `linear-gradient(160deg, ${color} 0%, #0f0f0f 100%)` }
+    : { backgroundColor: color }
+}
 
 export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   bgColor: '#1a1a1a',

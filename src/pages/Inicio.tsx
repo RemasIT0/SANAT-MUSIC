@@ -1,5 +1,5 @@
 // src/pages/Inicio.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
@@ -98,6 +98,7 @@ export default function Home() {
   const [loadingAllUsers, setLoadingAllUsers] = useState(false)
 
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
+  const [myPost, setMyPost] = useState<PostWithAuthor | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -125,12 +126,21 @@ export default function Home() {
   const [likersList, setLikersList] = useState<any[]>([])
   const [loadingLikers, setLoadingLikers] = useState(false)
 
-  const [viewedLikes, setViewedLikes] = useState(() => {
-    return localStorage.getItem('sanat_viewed_likes') === 'true'
+  // Cantidad de likes que el usuario ya vio (por cuenta): el punto rojo
+  // aparece solo si el post tiene más likes que esa cantidad
+  const likesSeenKey = `sanat_likes_seen_${user?.id}`
+  const [seenLikes, setSeenLikes] = useState(() => {
+    try { return parseInt(localStorage.getItem(likesSeenKey) || '0') } catch { return 0 }
   })
-  const [lastKnownLikesCount, setLastKnownLikesCount] = useState(() => {
-    return parseInt(localStorage.getItem('sanat_last_likes_count') || '0')
-  })
+  const markLikesSeen = (count: number) => {
+    setSeenLikes(count)
+    try { localStorage.setItem(likesSeenKey, count.toString()) } catch {}
+  }
+
+  // Paginación: offset real en la BD (independiente de los posts filtrados)
+  const offsetRef = useRef(0)
+  const isFetchingRef = useRef(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const handleToggleLike = async (postId: string, postOwnerId?: string) => {
     if (!user) return;
@@ -180,15 +190,7 @@ export default function Home() {
   const handleViewLikers = async (postId: string) => {
     setLoadingLikers(true)
     setShowLikersModal(true)
-    
-    setViewedLikes(true)
-    localStorage.setItem('sanat_viewed_likes', 'true')
-    
-    const currentMyPost = posts.find(p => p.user_id === user?.id)
-    if (currentMyPost) {
-      setLastKnownLikesCount(currentMyPost.likes_count || 0)
-      localStorage.setItem('sanat_last_likes_count', (currentMyPost.likes_count || 0).toString())
-    }
+    markLikesSeen(myPost?.likes_count || 0)
 
     try {
       const { data: likesData } = await supabase
@@ -214,61 +216,97 @@ export default function Home() {
     }
   }
 
+  // Likes de cada post: la cantidad viene de la función get_like_counts (no revela quién dio like)
+  // y "likedByMe" de mis propios likes. Si la función aún no existe en Supabase, se cuentan a mano.
+  const fetchLikesInfo = async (postIds: string[]) => {
+    const likesMap: Record<string, { count: number; likedByMe: boolean }> = {};
+    postIds.forEach(id => { likesMap[id] = { count: 0, likedByMe: false } });
+    const [countsRes, mineRes] = await Promise.all([
+      supabase.rpc('get_like_counts', { post_ids: postIds.map(String) }),
+      supabase.from('post_likes').select('post_id').eq('user_id', user?.id).in('post_id', postIds)
+    ]);
+    if (!countsRes.error) {
+      countsRes.data?.forEach((row: any) => { if (likesMap[row.post_id]) likesMap[row.post_id].count = Number(row.likes) });
+    } else {
+      const { data } = await supabase.from('post_likes').select('post_id').in('post_id', postIds);
+      data?.forEach(like => { if (likesMap[like.post_id]) likesMap[like.post_id].count++ });
+    }
+    mineRes.data?.forEach(like => { if (likesMap[like.post_id]) likesMap[like.post_id].likedByMe = true });
+    return likesMap;
+  }
+
+  // Agrega autor y likes a una lista de posts
+  const enrichPosts = async (postsData: any[]): Promise<PostWithAuthor[]> => {
+    if (postsData.length === 0) return [];
+    const userIds = [...new Set(postsData.map(p => p.user_id))];
+    const postIds = postsData.map(p => p.id);
+
+    const [profilesResponse, likesMap] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad, last_seen').in('id', userIds),
+      fetchLikesInfo(postIds)
+    ]);
+
+    return postsData.map(post => {
+      const author = profilesResponse.data?.find(p => p.id.toString() === post.user_id.toString());
+      const likeInfo = likesMap[post.id] || { count: 0, likedByMe: false };
+      return {
+        ...post,
+        ...(author || {}),
+        id: post.id,
+        user_id: post.user_id,
+        likes_count: likeInfo.count,
+        is_liked_by_me: likeInfo.likedByMe
+      };
+    }).filter(p => p.display_name);
+  }
+
+  // Mi publicación se busca aparte, así aparece aunque no esté en la primera página
+  const fetchMyPost = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('posts').select('*').eq('user_id', user.id).limit(1).maybeSingle();
+    const [enriched] = data ? await enrichPosts([data]) : [];
+    setMyPost(enriched || null);
+    setHasOwnPost(!!data);
+  }
+
   const fetchPosts = async (isLoadMore = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     if (isLoadMore) setLoadingMore(true); else setLoading(true);
     try {
-      const start = isLoadMore ? posts.length : 0;
-      const end = start + POSTS_PER_PAGE - 1;
-      const { data: postsData, error: postsError } = await supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, end);
+      const start = isLoadMore ? offsetRef.current : 0;
+      let query = supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, start + POSTS_PER_PAGE - 1);
+      if (user) query = query.neq('user_id', user.id);
+      const { data: postsData, error: postsError } = await query;
       if (postsError) throw postsError;
 
-      if (user && !isLoadMore) {
-        const { data: userPost } = await supabase.from('posts').select('id').eq('user_id', user.id).limit(1).single()
-        setHasOwnPost(!!userPost)
-      }
+      if (!isLoadMore) await fetchMyPost();
 
-      if (postsData && postsData.length > 0) {
-        const userIds = [...new Set(postsData.map(p => p.user_id))];
-        const postIds = postsData.map(p => p.id);
-
-        const [profilesResponse, likesResponse] = await Promise.all([
-          supabase.from('profiles').select('id, display_name, username, avatar_color, avatar_url, expression, instruments, departamento, localidad, last_seen').in('id', userIds),
-          supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds)
-        ]);
-
-        const profilesData = profilesResponse.data;
-        const likesData = likesResponse.data;
-
-        const likesMap: Record<string, { count: number; likedByMe: boolean }> = {};
-        likesData?.forEach(like => {
-          if (!likesMap[like.post_id]) likesMap[like.post_id] = { count: 0, likedByMe: false };
-          likesMap[like.post_id].count++;
-          if (like.user_id === user?.id) likesMap[like.post_id].likedByMe = true;
-        });
-
-        const combined: PostWithAuthor[] = postsData.map(post => {
-          const author = profilesData?.find(p => p.id.toString() === post.user_id.toString());
-          const likeInfo = likesMap[post.id] || { count: 0, likedByMe: false };
-          return { 
-            ...post, 
-            ...(author || {}), 
-            id: post.id, 
-            user_id: post.user_id,
-            likes_count: likeInfo.count,
-            is_liked_by_me: likeInfo.likedByMe
-          };
-        }).filter(p => p.display_name);
-
-        if (isLoadMore) setPosts(prev => [...prev, ...combined]); else setPosts(combined);
-        if (postsData.length < POSTS_PER_PAGE) setHasMore(false);
-      } else { setHasMore(false); }
-    } catch (error) { 
+      const combined = await enrichPosts(postsData || []);
+      offsetRef.current = start + (postsData?.length || 0);
+      if (isLoadMore) setPosts(prev => [...prev, ...combined]); else setPosts(combined);
+      setHasMore((postsData?.length || 0) === POSTS_PER_PAGE);
+    } catch (error) {
       console.error('Error al cargar feed:', error);
       setToast({ message: 'Error al cargar publicaciones', type: 'error' });
-    } finally { setLoading(false); setLoadingMore(false); }
+    } finally {
+      isFetchingRef.current = false;
+      setLoading(false); setLoadingMore(false);
+    }
   }
 
   useEffect(() => { fetchPosts(false); }, [])
+
+  // Scroll infinito: cuando el final del feed entra en pantalla, cargar la siguiente página
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loading) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) fetchPosts(true);
+    }, { rootMargin: '300px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, posts.length])
 
   useEffect(() => {
     if (isSearchOpen && allUsers.length === 0) {
@@ -305,7 +343,6 @@ export default function Home() {
            (filterIntention === 'Todas' || p.intention === filterIntention);
   })
 
-  const myPost = posts.find(p => p.user_id === user?.id)
   const otherPosts = filteredPosts
     .filter(p => p.user_id !== user?.id && !hiddenIds.includes(p.user_id))
     .sort((a, b) => {
@@ -315,17 +352,13 @@ export default function Home() {
       return 0;
     });  
 
+  const myLikes = myPost?.likes_count || 0
+  const hasNewLikes = myLikes > seenLikes
+
+  // Si alguien quitó su like, bajar el contador visto para detectar likes nuevos después
   useEffect(() => {
-    if (myPost) {
-      const currentCount = myPost.likes_count || 0
-      if (currentCount > lastKnownLikesCount) {
-        setViewedLikes(false)
-        localStorage.setItem('sanat_viewed_likes', 'false')
-      }
-      setLastKnownLikesCount(currentCount)
-      localStorage.setItem('sanat_last_likes_count', currentCount.toString())
-    }
-  }, [myPost?.likes_count])
+    if (myPost && myLikes < seenLikes) markLikesSeen(myLikes)
+  }, [myLikes])
 
   const openCreateModal = () => { 
     if (hasOwnPost) {
@@ -343,8 +376,8 @@ export default function Home() {
     try {
       const { error } = await supabase.from('posts').delete().eq('user_id', user.id);
       if (error) throw error;
-      setPosts(posts.filter(p => p.user_id !== user.id));
-      setHasOwnPost(false); 
+      setMyPost(null);
+      setHasOwnPost(false);
       setShowDeleteModal(false);
       setToast({ message: 'Publicación eliminada correctamente', type: 'success' });
     } catch (error: any) {
@@ -413,7 +446,7 @@ export default function Home() {
     }
   }
 
-  // ✅ Función para renderizar cada usuario en la lista (reutilizable)
+  // Función para renderizar cada usuario en la lista (reutilizable)
   const renderUserItem = (profile: any) => (
     <div 
       key={profile.id} 
@@ -442,11 +475,11 @@ export default function Home() {
       <WelcomeModal />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 pt-10 pb-6 space-y-6">
         
        <div className="space-y-4 w-full">
           
-          {/* Fila 1: Barra de búsqueda (ancho completo) */}
+          {/* Fila 1: Barra de búsqueda  */}
           <button 
             onClick={() => setIsSearchOpen(true)}
             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start md:gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
@@ -504,7 +537,7 @@ export default function Home() {
                 <FaHeart size={14} className={myPost.is_liked_by_me ? 'animate-pulse' : ''} />
                 <span className="text-xs font-bold">{myPost.likes_count || 0} Ver likes</span>
                 
-                {(myPost.likes_count || 0) > 0 && !viewedLikes && (
+                {hasNewLikes && (
                   <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
                 )}
               </button>
@@ -515,8 +548,8 @@ export default function Home() {
           </div>
         ) : hasOwnPost ? (
           <div className="bg-[#1a1a1a] border border-purple-600/40 rounded-2xl p-8 text-center">
-            <p className="text-gray-300 text-sm mb-4">Ya tenés una publicación activa en tu perfil.</p>
-            <button onClick={() => navigate(`/perfil/${user?.id}`)} className="text-purple-400 hover:text-purple-300 text-sm font-semibold underline">Ir a mi perfil para editarla o eliminarla</button>
+            <FaSpinner className="animate-spin text-3xl text-purple-600 mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Cargando tu publicación...</p>
           </div>
         ) : (
           <div className="bg-gradient-to-br from-purple-900/15 to-[#1a1a1a] border-2 border-dashed border-purple-600/40 rounded-2xl p-8 md:p-10 text-center">
@@ -642,14 +675,16 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              {hasMore && (
-                <div className="flex justify-center mt-8">
-                  <button onClick={() => fetchPosts(true)} disabled={loadingMore} className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-600/50 hover:bg-[#222] rounded-xl text-sm text-gray-300 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    {loadingMore ? <FaSpinner className="animate-spin" /> : <FaPlus />} {loadingMore ? 'Cargando más...' : 'Cargar más publicaciones'}
-                  </button>
-                </div>
-              )}
             </>
+          )}
+          {/* Marcador invisible: al verse en pantalla se carga la siguiente página */}
+          {!loading && hasMore && (
+            <div ref={sentinelRef} className="flex justify-center items-center gap-2 py-8 text-sm text-gray-500">
+              {loadingMore && <><FaSpinner className="animate-spin text-purple-500" /> Cargando más publicaciones...</>}
+            </div>
+          )}
+          {!loading && !hasMore && posts.length > 0 && (
+            <p className="text-center text-xs text-gray-600 py-8">No hay más publicaciones</p>
           )}
         </div>
       </main>
@@ -661,7 +696,7 @@ export default function Home() {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-[fadeIn_0.3s_ease-out]" 
             onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} 
           />
-          <div className="fixed top-0 left-0 h-full w-full max-w-sm bg-[#1a1a1a] border-r border-[#2a2a2a] z-50 shadow-2xl transform transition-transform duration-300 ease-out animate-[slideInLeft_0.3s_ease-out] flex flex-col">
+          <div className="fixed top-[var(--banner-h,0px)] bottom-0 left-0 w-full max-w-sm bg-[#1a1a1a] border-r border-[#2a2a2a] z-50 shadow-2xl transform transition-transform duration-300 ease-out animate-[slideInLeft_0.3s_ease-out] flex flex-col">
             <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between bg-[#1a1a1a]">
               <h3 className="text-white font-bold flex items-center gap-2">
                 <FaUser className="text-purple-500" /> 
@@ -821,7 +856,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      <PostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} existingPost={isEditing ? myPost : null} onPostSaved={() => fetchPosts(false)} />
+      <PostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} existingPost={isEditing ? myPost : null} onPostSaved={() => { setHasOwnPost(true); fetchMyPost() }} />
     </div>
   )
 }

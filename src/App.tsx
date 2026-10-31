@@ -23,6 +23,8 @@ import AnimatedBackground from './components/AnimatedBackground'
 import RetroRadio from './components/RetroRadio'
 import Toast from './components/Toast'
 import MaintenanceScreen from './components/MaintenanceScreen'
+import AdminSecretGate from './components/AdminSecretGate'
+import TestBanner from './components/TestBanner'
 
 import ProfileEditor from './components/ProfileEditor'
 
@@ -198,6 +200,11 @@ function RequireVerified() {
   if (IS_MAINTENANCE_MODE && user.email !== ADMIN_EMAIL) {
     return <MaintenanceScreen />
   }
+
+  // La cuenta admin necesita responder la pregunta secreta antes de entrar
+  if (user.email === ADMIN_EMAIL) {
+    return <AdminSecretGate><Outlet /></AdminSecretGate>
+  }
   
   return <Outlet />
 }
@@ -213,6 +220,7 @@ function App() {
   return (
     <BrowserRouter>
       <AnimatedBackground />
+      <TestBanner />
       <BanRedirect /> 
       <Routes>
         <Route path="/login" element={<Login />} />

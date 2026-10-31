@@ -6,7 +6,8 @@ import type {
   ProfileLayout, ProfileModule, ModuleType, ModuleConfig, SocialLink
 } from '../types/profileLayout'
 import { 
-  AVAILABLE_MODULES, DEFAULT_MODULE_CONFIG, DEFAULT_LAYOUT 
+  AVAILABLE_MODULES, DEFAULT_MODULE_CONFIG, DEFAULT_LAYOUT,
+  LAYOUT_GRID_CLASS, getModuleSpanClass, getBackgroundStyle
 } from '../types/profileLayout'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -33,6 +34,11 @@ import {
 import Mascot from './Mascot'
 import Toast from './Toast'
 
+
+// ✅ FIX infalible para el error de TypeScript con browser-image-compression
+import * as _imageCompression from 'browser-image-compression';
+const imageCompression = (_imageCompression as any).default || _imageCompression;
+
 const BOX_ICONS = [
   { label: 'Ninguno', value: '' },
   { label: 'Música', value: 'FaMusic' },
@@ -58,17 +64,15 @@ const SOCIAL_PLATFORMS = [
 ]
 
 function ModulePreview({ 
-  module, profile, isEditor = false, onEdit, onRemove 
+  module, profile, layoutStyle, isEditor = false, onEdit, onRemove 
 }: { 
-  module: ProfileModule; profile: any; isEditor?: boolean; onEdit?: (id: string) => void; onRemove?: (id: string) => void
+  module: ProfileModule; profile: any; layoutStyle: ProfileLayout['layout']; isEditor?: boolean; onEdit?: (id: string) => void; onRemove?: (id: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: module.id })
   const dragStyle = { transform: CSS.Transform.toString(transform), transition }
 
   const modInfo = AVAILABLE_MODULES.find(m => m.type === module.type)
-  const sizeClass = {
-    small: 'col-span-1', medium: 'col-span-1 md:col-span-2', large: 'col-span-1 md:col-span-2 lg:col-span-3', xlarge: 'col-span-1 md:col-span-2 lg:col-span-4',
-  }[module.config.size] || 'col-span-1'
+  const sizeClass = getModuleSpanClass(layoutStyle, module.config.size)
 
   const borderRadiusClass = { none: 'rounded-none', sm: 'rounded-sm', md: 'rounded-md', lg: 'rounded-lg', xl: 'rounded-xl', full: 'rounded-full', }[module.config.borderRadius] || 'rounded-xl'
   const borderStyle = module.config.showBorder ? `${module.config.borderWidth || '2px'} ${module.config.borderStyle || 'solid'} ${module.config.borderColor}` : 'none'
@@ -105,7 +109,7 @@ function ModulePreview({
           </div>
         )}
         {module.type === 'mascot' && profile && <div className="flex justify-center py-4"><Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={profile.expression || 'normal'} /></div>}
-        {module.type === 'bio' && profile && <p className="text-base opacity-90 leading-relaxed break-words">{profile.bio || 'Sin biografía'}</p>}
+        {module.type === 'bio' && profile && <p className="text-base opacity-90 leading-relaxed break-words whitespace-pre-wrap">{module.config.content || profile.bio || 'Sin biografía'}</p>}
         {module.type === 'instruments' && profile && (
           <div className="flex flex-wrap gap-2">{profile.instruments?.map((inst: any, i: number) => (<span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-2 max-w-full"><FaGuitar className="flex-shrink-0" /><span className="truncate">{inst.name}</span><span className="opacity-60 truncate">({inst.level})</span></span>)) || <span className="text-sm opacity-60">Sin instrumentos</span>}</div>
         )}
@@ -145,8 +149,7 @@ function ModulePreview({
         )}
 
         {module.type === 'stats' && (
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-white/5 p-2 rounded-lg"><p className="text-xl font-bold text-purple-400">--</p><p className="text-[10px] opacity-70">Likes</p></div>
+          <div className="grid grid-cols-2 gap-2 text-center">
             <div className="bg-white/5 p-2 rounded-lg"><p className="text-xl font-bold text-cyan-400">--</p><p className="text-[10px] opacity-70">Amigos</p></div>
             <div className="bg-white/5 p-2 rounded-lg"><p className="text-xl font-bold text-pink-400">--</p><p className="text-[10px] opacity-70">Posts</p></div>
           </div>
@@ -180,7 +183,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const loadLayout = async () => {
       if (!user) return
-      const { data } = await supabase.from('profile_layouts').select('*').eq('user_id', user.id).single()
+      const { data } = await supabase.from('profile_layouts').select('*').eq('user_id', user.id).maybeSingle()
       if (data) {
         setLayout({
           layout: data.layout_config?.layout || 'one-column',
@@ -203,6 +206,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
         const newModules = arrayMove(prev.modules, oldIndex, newIndex).map((m, i) => ({ ...m, order: i }))
         return { ...prev, modules: newModules }
       })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -210,11 +214,13 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
     if (type === 'photo' && layout.modules.some(m => m.type === 'photo')) { setToast({ message: 'Solo puedes tener un módulo de Foto', type: 'error' }); return }
     const newModule: ProfileModule = { id: `mod-${Date.now()}`, type, order: layout.modules.length, config: { ...DEFAULT_MODULE_CONFIG } }
     setLayout(prev => ({ ...prev, modules: [...prev.modules, newModule] }))
+    setHasUnsavedChanges(true)
   }
 
   const removeModule = (id: string) => { 
     setLayout(prev => ({ ...prev, modules: prev.modules.filter(m => m.id !== id).map((m, i) => ({ ...m, order: i })) }))
-    setEditingModule(null) 
+    setEditingModule(null)
+    setHasUnsavedChanges(true)
   }
 
   const updateModuleConfig = (id: string, config: Partial<ModuleConfig>) => { 
@@ -225,9 +231,10 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
   const openPreview = () => setShowPreview(true)
   const toggleSection = (section: string) => { setOpenSection(openSection === section ? null : section) }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !editingModule || !currentModule) return
     setUploadingImages(true)
+    
     const currentImages = currentModule.config.images || []
     const newImages = [...currentImages]
     const newSessionImages: string[] = []
@@ -235,24 +242,53 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
     try {
       for (let i = 0; i < e.target.files.length; i++) {
         const file = e.target.files[i]
-        if (file.size > 2 * 1024 * 1024) { setToast({ message: `${file.name} es muy grande (max 2MB)`, type: 'error' }); continue }
+        
+        // ✅ 1. CONFIGURACIÓN DE COMPRESIÓN
+        const options = {
+          maxSizeMB: 1,             // Tamaño máximo final: 1 MB
+          maxWidthOrHeight: 1024,   // Redimensionar si es más grande que 1024px
+          useWebWorker: true,       // Usa el hilo del navegador para no congelar la UI
+        }
+
+        let fileToUpload: File | Blob = file
+
+        // ✅ 2. COMPRIMIR SOLO SI ES UNA IMAGEN
+        if (file.type.startsWith('image/')) {
+          try {
+            // Ahora TypeScript reconocerá imageCompression como función gracias al import * as
+            fileToUpload = await imageCompression(file, options)
+            console.log(`✅ Imagen comprimida: de ${(file.size / 1024 / 1024).toFixed(2)} MB a ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`)
+          } catch (compressionError) {
+            console.warn('Error al comprimir, se subirá el original:', compressionError)
+          }
+        }
+
+        // Validar tamaño final (por si la compresión falla y el original es > 2MB)
+        if (fileToUpload.size > 2 * 1024 * 1024) { 
+          setToast({ message: `${file.name} es demasiado grande incluso comprimido (max 2MB)`, type: 'error' })
+          continue 
+        }
         
         const fileExt = file.name.split('.').pop()
         const fileName = `${user?.id}-${Date.now()}-${i}.${fileExt}`
         const filePath = `gallery/${fileName}`
 
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+        // ✅ 3. SUBIR EL ARCHIVO COMPRIMIDO A SUPABASE
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, fileToUpload)
         if (uploadError) throw uploadError
 
         const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
         const publicUrl = urlData.publicUrl
+        
         newImages.push(publicUrl)
-        newSessionImages.push(publicUrl) // ✅ Rastrear para posible limpieza
+        newSessionImages.push(publicUrl)
       }
+      
       updateModuleConfig(editingModule, { images: newImages })
-      setSessionUploadedImages(prev => [...prev, ...newSessionImages]) // ✅ Guardar en el rastreador
-      setHasUnsavedChanges(true) // ✅ Marcar que hay cambios sin guardar
-      setToast({ message: 'Imágenes agregadas', type: 'success' })
+      setSessionUploadedImages(prev => [...prev, ...newSessionImages])
+      setHasUnsavedChanges(true)
+      setToast({ message: 'Imágenes optimizadas y agregadas', type: 'success' })
+      
     } catch (error: any) {
       setToast({ message: 'Error al subir: ' + error.message, type: 'error' })
     } finally {
@@ -376,22 +412,22 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
               </div>
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
                 <button onClick={() => toggleSection('layout')} className="w-full px-2 py-2 flex items-center justify-between text-white hover:bg-[#222] transition-colors"><FaDesktop size={12} className="text-purple-400" />{openSection === 'layout' ? <FaChevronUp className="text-gray-400" size={12}/> : <FaChevronDown className="text-gray-400" size={12}/>}</button>
-                {openSection === 'layout' && (<div className="p-2 border-t border-[#2a2a2a] space-y-1">{(['one-column', 'two-columns', 'grid'] as const).map(l => (<button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`w-full px-2 py-1.5 rounded text-[10px] transition-all ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>{l === 'one-column' ? '1 Col' : l === 'two-columns' ? '2 Cols' : 'Grid'}</button>))}</div>)}
+                {openSection === 'layout' && (<div className="p-2 border-t border-[#2a2a2a] space-y-1">{(['one-column', 'two-columns', 'grid'] as const).map(l => (<button key={l} onClick={() => { setLayout(prev => ({ ...prev, layout: l })); setHasUnsavedChanges(true) }} className={`w-full px-2 py-1.5 rounded text-[10px] transition-all ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>{l === 'one-column' ? '1 Col' : l === 'two-columns' ? '2 Cols' : 'Grid'}</button>))}</div>)}
               </div>
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
                 <button onClick={() => toggleSection('background')} className="w-full px-2 py-2 flex items-center justify-between text-white hover:bg-[#222] transition-colors"><FaPalette size={12} className="text-purple-400" />{openSection === 'background' ? <FaChevronUp className="text-gray-400" size={12}/> : <FaChevronDown className="text-gray-400" size={12}/>}</button>
-                {openSection === 'background' && (<div className="p-2 border-t border-[#2a2a2a] space-y-2"><select value={layout.backgroundType} onChange={(e) => setLayout(prev => ({ ...prev, backgroundType: e.target.value as any }))} className="w-full p-1.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded text-[10px] text-white"><option value="solid">Sólido</option><option value="gradient">Degradado</option></select><HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color: string) => setLayout(prev => ({ ...prev, backgroundValue: color }))} /></div>)}
+                {openSection === 'background' && (<div className="p-2 border-t border-[#2a2a2a] space-y-2"><select value={layout.backgroundType} onChange={(e) => { setLayout(prev => ({ ...prev, backgroundType: e.target.value as any })); setHasUnsavedChanges(true) }} className="w-full p-1.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded text-[10px] text-white"><option value="solid">Sólido</option><option value="gradient">Degradado</option></select><HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color: string) => { setLayout(prev => ({ ...prev, backgroundValue: color })); setHasUnsavedChanges(true) }} /></div>)}
               </div>
             </div>
             <div className="min-h-[70vh]">
-              <div className="rounded-lg p-3 min-h-full transition-colors duration-300 border border-[#2a2a2a]" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
+              <div className="rounded-lg p-3 min-h-full transition-colors duration-300 border border-[#2a2a2a]" style={getBackgroundStyle(layout.backgroundType, layout.backgroundValue)}>
                 <p className="text-gray-500 text-[10px] mb-2 text-center">Toca para editar</p>
                 {/* @ts-ignore */}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   {/* @ts-ignore */}
                   <SortableContext items={layout.modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
                     <div className={`grid gap-2 ${layout.layout === 'one-column' ? 'grid-cols-1' : layout.layout === 'two-columns' ? 'grid-cols-2' : 'grid-cols-2'}`}>
-                      {layout.modules.map(module => (<ModulePreview key={module.id} module={module} profile={profile} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />))}
+                      {layout.modules.map(module => (<ModulePreview key={module.id} module={module} profile={profile} layoutStyle={layout.layout} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />))}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -407,23 +443,23 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
               </div>
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                 <h3 className="text-white font-bold mb-3 text-sm">Distribución</h3>
-                <div className="space-y-2">{(['one-column', 'two-columns', 'grid'] as const).map(l => (<button key={l} onClick={() => setLayout(prev => ({ ...prev, layout: l }))} className={`w-full px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>{l === 'one-column' ? <FaMobileAlt /> : <FaDesktop />}{l === 'one-column' ? 'Una columna' : l === 'two-columns' ? 'Dos columnas' : 'Cuadrícula'}</button>))}</div>
+                <div className="space-y-2">{(['one-column', 'two-columns', 'grid'] as const).map(l => (<button key={l} onClick={() => { setLayout(prev => ({ ...prev, layout: l })); setHasUnsavedChanges(true) }} className={`w-full px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 ${layout.layout === l ? 'bg-purple-600 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-300 hover:border-purple-500'}`}>{l === 'one-column' ? <FaMobileAlt /> : <FaDesktop />}{l === 'one-column' ? 'Una columna' : l === 'two-columns' ? 'Dos columnas' : 'Cuadrícula'}</button>))}</div>
               </div>
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                 <h3 className="text-white font-bold mb-3 text-sm">Fondo del perfil</h3>
-                <select value={layout.backgroundType} onChange={(e) => setLayout(prev => ({ ...prev, backgroundType: e.target.value as any }))} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white mb-2"><option value="solid">Color sólido</option><option value="gradient">Degradado</option></select>
-                <HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color: string) => setLayout(prev => ({ ...prev, backgroundValue: color }))} />
+                <select value={layout.backgroundType} onChange={(e) => { setLayout(prev => ({ ...prev, backgroundType: e.target.value as any })); setHasUnsavedChanges(true) }} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white mb-2"><option value="solid">Color sólido</option><option value="gradient">Degradado</option></select>
+                <HexColorPicker color={layout.backgroundValue || '#0f0f0f'} onChange={(color: string) => { setLayout(prev => ({ ...prev, backgroundValue: color })); setHasUnsavedChanges(true) }} />
               </div>
             </div>
             <div className="lg:col-span-2">
-              <div className="rounded-xl p-6 min-h-[600px] transition-colors duration-300 border border-[#2a2a2a]" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f' }}>
+              <div className="rounded-xl p-6 min-h-[600px] transition-colors duration-300 border border-[#2a2a2a]" style={getBackgroundStyle(layout.backgroundType, layout.backgroundValue)}>
                 <p className="text-gray-500 text-xs mb-4 text-center">Toca un módulo para editar. Arrastra para reordenar.</p>
                 {/* @ts-ignore */}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   {/* @ts-ignore */}
                   <SortableContext items={layout.modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                    <div className={`grid gap-3 ${layout.layout === 'one-column' ? 'grid-cols-1' : layout.layout === 'two-columns' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
-                      {layout.modules.map(module => (<ModulePreview key={module.id} module={module} profile={profile} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />))}
+                    <div className={`grid gap-3 ${LAYOUT_GRID_CLASS[layout.layout]}`}>
+                      {layout.modules.map(module => (<ModulePreview key={module.id} module={module} profile={profile} layoutStyle={layout.layout} isEditor={true} onEdit={setEditingModule} onRemove={removeModule} />))}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -491,7 +527,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
 
-                  {(currentModule.type === 'custom' || currentModule.type === 'bio') && (<div><label className="text-xs text-gray-400 block mb-1">Contenido</label><textarea value={currentModule.config.content || ''} onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white h-32 resize-none focus:border-purple-500 focus:outline-none" placeholder="Escribe aquí..." /></div>)}
+                  {(currentModule.type === 'custom' || currentModule.type === 'bio') && (<div><label className="text-xs text-gray-400 block mb-1">Contenido</label><textarea value={currentModule.config.content || ''} onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white h-32 resize-none focus:border-purple-500 focus:outline-none" placeholder={currentModule.type === 'bio' ? 'Vacío = se usa la bio de tu perfil' : 'Escribe aquí...'} /></div>)}
                 </div>
               ) : (<div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 text-center text-gray-500 text-sm sticky top-20"><p>Haz clic en un módulo para editar</p></div>)}
             </div>
@@ -561,7 +597,7 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              {(currentModule.type === 'custom' || currentModule.type === 'bio') && (<div><label className="text-[10px] text-gray-400 block mb-1">Contenido</label><textarea value={currentModule.config.content || ''} onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded text-sm text-white h-24 resize-none focus:border-purple-500 focus:outline-none" placeholder="Escribe aquí..." /></div>)}
+              {(currentModule.type === 'custom' || currentModule.type === 'bio') && (<div><label className="text-[10px] text-gray-400 block mb-1">Contenido</label><textarea value={currentModule.config.content || ''} onChange={(e) => updateModuleConfig(currentModule.id, { content: e.target.value })} className="w-full p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded text-sm text-white h-24 resize-none focus:border-purple-500 focus:outline-none" placeholder={currentModule.type === 'bio' ? 'Vacío = se usa la bio de tu perfil' : 'Escribe aquí...'} /></div>)}
             </div>
             <div className="sticky bottom-0 bg-[#1a1a1a] border-t border-[#2a2a2a] p-3 flex gap-2">
               <button onClick={() => removeModule(currentModule.id)} className="flex-1 py-2.5 bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg text-xs font-semibold hover:bg-red-900/40 flex items-center justify-center gap-1"><FaTrash size={12} /> Eliminar</button>
@@ -581,8 +617,8 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-2 text-gray-400 text-sm font-semibold mb-2"><FaDesktop /> Escritorio</div>
                   <div className="bg-white rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700">
                     <div className="h-6 bg-gray-700 flex items-center px-2 gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div><div className="w-2.5 h-2.5 rounded-full bg-green-500"></div></div>
-                    <div className="p-4" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f', minHeight: '400px' }}>
-                      <div className={`grid gap-3 ${layout.layout === 'one-column' ? 'grid-cols-1' : layout.layout === 'two-columns' ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>{layout.modules.map(module => <ModulePreview key={module.id} module={module} profile={profile} isEditor={false} />)}</div>
+                    <div className="p-4" style={{ ...getBackgroundStyle(layout.backgroundType, layout.backgroundValue), minHeight: '400px' }}>
+                      <div className={`grid gap-3 ${LAYOUT_GRID_CLASS[layout.layout]}`}>{layout.modules.map(module => <ModulePreview key={module.id} module={module} profile={profile} layoutStyle={layout.layout} isEditor={false} />)}</div>
                     </div>
                   </div>
                 </div>
@@ -591,8 +627,8 @@ export default function ProfileEditor({ onClose }: { onClose: () => void }) {
                   <div className="bg-black rounded-[2.5rem] p-2 shadow-2xl border-4 border-gray-600 w-[300px]">
                     <div className="bg-gray-800 rounded-[2rem] overflow-hidden relative">
                       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-black rounded-b-xl z-10"></div>
-                      <div className="pt-8 pb-4 px-3" style={{ backgroundColor: layout.backgroundValue || '#0f0f0f', minHeight: '500px' }}>
-                        <div className="grid grid-cols-1 gap-3">{layout.modules.map(module => <ModulePreview key={module.id} module={module} profile={profile} isEditor={false} />)}</div>
+                      <div className="pt-8 pb-4 px-3" style={{ ...getBackgroundStyle(layout.backgroundType, layout.backgroundValue), minHeight: '500px' }}>
+                        <div className="grid grid-cols-1 gap-3">{layout.modules.map(module => <ModulePreview key={module.id} module={module} profile={profile} layoutStyle="one-column" isEditor={false} />)}</div>
                       </div>
                     </div>
                   </div>

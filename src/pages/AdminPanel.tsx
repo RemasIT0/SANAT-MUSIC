@@ -12,6 +12,8 @@ import { LuChartNetwork } from "react-icons/lu";
 
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
+import { markAdminAlertsSeen } from '../hooks/useAdminAlerts'
+import AdminBannerControl from '../components/AdminBannerControl'
 
 export default function AdminPanel() {
   const { user } = useAuth()
@@ -46,6 +48,7 @@ export default function AdminPanel() {
       return
     }
     fetchData()
+    markAdminAlertsSeen()
   }, [user, navigate])
 
   const fetchData = async () => {
@@ -183,7 +186,7 @@ export default function AdminPanel() {
       return
     }
     try {
-      // ✅ Construimos el payload omitiendo campos vacíos para evitar errores de "null" en la BD
+      // Construimos el payload omitiendo campos vacíos para evitar errores de "null" en la BD
       const payload: any = {
         title: adForm.title.trim(),
         is_active: adForm.is_active
@@ -254,6 +257,8 @@ export default function AdminPanel() {
           </h1>
           <div className="w-20"></div>
         </div>
+
+        <AdminBannerControl onResult={(message, type) => setToast({ message, type })} />
 
         <div className="bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-2xl p-6 min-h-[500px] shadow-2xl">
           

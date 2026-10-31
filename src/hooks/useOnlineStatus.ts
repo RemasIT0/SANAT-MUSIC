@@ -39,3 +39,15 @@ export const isUserOnline = (lastSeen: string | null | undefined) => {
   
   return (now - lastSeenDate) < twoMinutes
 }
+
+export const formatLastSeen = (lastSeen: string | null | undefined) => {
+  if (isUserOnline(lastSeen)) return 'En línea'
+  if (!lastSeen) return 'Desconectado'
+
+  const minutes = Math.floor((Date.now() - new Date(lastSeen).getTime()) / 60000)
+  if (minutes < 60) return `Activo hace ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `Activo hace ${hours} h`
+  const days = Math.floor(hours / 24)
+  return `Activo hace ${days} ${days === 1 ? 'día' : 'días'}`
+}

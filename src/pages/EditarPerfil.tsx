@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
+import { ProfileAudioUploader } from '../components/ProfileAudio'
+import { type MascotExpression } from '../components/MascotCostumes'
+import MascotPicker from '../components/MascotPicker'
 import Avatar from '../components/Avatar'
 import Toast from '../components/Toast'
 import { FaUser, FaIdCard, FaGuitar, FaMapMarkerAlt, FaPalette, FaArrowLeft, FaSpinner, FaCamera } from 'react-icons/fa'
@@ -68,7 +71,7 @@ export default function EditarPerfil() {
   
   const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || coloresMascota[0])
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme_color || '#a855f7')
-  const [selectedExpression, setSelectedExpression] = useState<'normal' | 'feliz' | 'pensativo' | 'rockero'>((profile?.expression as any) || 'normal')
+  const [selectedExpression, setSelectedExpression] = useState<MascotExpression>((profile?.expression as any) || 'normal')
   
   // ✅ Estado para leer tu last_seen en tiempo real en esta pantalla
   const [liveLastSeen, setLiveLastSeen] = useState<string | null>(null)
@@ -397,17 +400,7 @@ export default function EditarPerfil() {
 
             <div className="mt-6 w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">¿Cómo se siente tu mascota hoy?</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['normal', 'feliz', 'pensativo', 'rockero'] as const).map((exp) => (
-                  <button key={exp} type="button" onClick={() => setSelectedExpression(exp)}
-                    className={`flex flex-col items-center p-2 rounded-lg border-2 transition-all ${
-                      selectedExpression === exp ? 'border-purple-600 bg-purple-900/20' : 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-gray-500'
-                    }`}>
-                    <Mascot color={selectedColor} size={40} expression={exp} />
-                    <span className="text-[10px] text-gray-400 mt-1 capitalize">{exp}</span>
-                  </button>
-                ))}
-              </div>
+              <MascotPicker color={selectedColor} value={selectedExpression} onChange={setSelectedExpression} />
             </div>
           </div>
 
@@ -507,6 +500,8 @@ export default function EditarPerfil() {
             </p>
           )}
         </form>
+
+        <ProfileAudioUploader />
       </div>
     </div>
   )

@@ -5,21 +5,24 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { type Profile } from '../types'
 import type { ProfileLayout, ProfileModule } from '../types/profileLayout'
-import { AVAILABLE_MODULES } from '../types/profileLayout'
+import { LAYOUT_GRID_CLASS, MODULE_ICON_MAP, getModuleSpanClass, getBackgroundStyle } from '../types/profileLayout'
 import Mascot from '../components/Mascot'
+import { ProfileAudioPlayer, AUDIO_MAX_SECONDS } from '../components/ProfileAudio'
 import Avatar from '../components/Avatar'
 import PostModal from '../components/PostModal'
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
-import { isUserOnline } from '../hooks/useOnlineStatus' 
+import { isUserOnline, formatLastSeen } from '../hooks/useOnlineStatus'
+import { useAdminAlerts } from '../hooks/useAdminAlerts'
 import { 
   FaMapMarkerAlt, FaGuitar, FaMusic, FaEnvelope, FaSpinner, 
   FaImage, FaEdit, FaTrash, FaExclamationTriangle, FaBullseye, 
   FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus, 
   FaUserMinus, FaHeart, FaPalette, FaLink, FaChartBar, FaUndo,
-  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter
+  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaMicrophone
 } from 'react-icons/fa'
+
 
 const GENEROS_FIJOS = [
   { name: 'Rock', color: 'bg-red-500/20 text-red-400 border-red-500/50' },
@@ -58,7 +61,8 @@ export default function VerPerfil() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const hiddenIds = useHiddenUsers()
-  
+  const adminAlerts = useAdminAlerts()
+
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +70,7 @@ export default function VerPerfil() {
   const [customLayout, setCustomLayout] = useState<ProfileLayout | null>(null)
   
   // ✅ Estado para estadísticas reales
-  const [profileStats, setProfileStats] = useState({ likes: 0, friends: 0, posts: 0 })
+  const [profileStats, setProfileStats] = useState({ friends: 0, posts: 0 })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<any>(null)
@@ -91,7 +95,7 @@ export default function VerPerfil() {
         if (profileError) throw profileError
         setProfile(profileData)
 
-        const { data: layoutData } = await supabase.from('profile_layouts').select('*').eq('user_id', id).single()
+        const { data: layoutData } = await supabase.from('profile_layouts').select('*').eq('user_id', id).maybeSingle()
         if (layoutData) {
           setCustomLayout({
             layout: layoutData.layout_config?.layout || 'one-column',
@@ -105,18 +109,9 @@ export default function VerPerfil() {
         if (postsError) throw postsError
         setPosts(postsData || [])
 
-        // ✅ CALCULAR ESTADÍSTICAS REALES
-        let totalLikes = 0
-        if (postsData && postsData.length > 0) {
-          const postIds = postsData.map(p => p.id)
-          const { count } = await supabase.from('post_likes').select('*', { count: 'exact', head: true }).in('post_id', postIds)
-          totalLikes = count || 0
-        }
-
         const { count: friendsCount } = await supabase.from('friends').select('*', { count: 'exact', head: true }).or(`user_id.eq.${id},friend_id.eq.${id}`)
         
         setProfileStats({
-          likes: totalLikes,
           friends: friendsCount || 0,
           posts: postsData?.length || 0
         })
@@ -131,14 +126,15 @@ export default function VerPerfil() {
   }, [id, user])
 
   const renderModule = (module: ProfileModule) => {
-    const modInfo = AVAILABLE_MODULES.find(m => m.type === module.type)
-    const sizeClass = { small: 'col-span-1', medium: 'col-span-1 md:col-span-2', large: 'col-span-1 md:col-span-2 lg:col-span-3', xlarge: 'col-span-1 md:col-span-2 lg:col-span-4', }[module.config.size] || 'col-span-1'
+    const sizeClass = getModuleSpanClass(customLayout?.layout || 'one-column', module.config.size)
+    const DecorIcon = module.config.selectedIcon ? MODULE_ICON_MAP[module.config.selectedIcon] : null
     const borderRadiusClass = { none: 'rounded-none', sm: 'rounded-sm', md: 'rounded-md', lg: 'rounded-lg', xl: 'rounded-xl', full: 'rounded-full', }[module.config.borderRadius] || 'rounded-xl'
     if (!profile) return null
     const borderStyle = module.config.showBorder ? `${module.config.borderWidth || '2px'} ${module.config.borderStyle || 'solid'} ${module.config.borderColor}` : 'none'
 
     return (
-      <div key={module.id} className={`${sizeClass} ${borderRadiusClass} p-4 transition-all`} style={{ backgroundColor: module.config.bgColor, color: module.config.textColor, border: borderStyle }}>
+      <div key={module.id} className={`${sizeClass} ${borderRadiusClass} relative p-4 transition-all`} style={{ backgroundColor: module.config.bgColor, color: module.config.textColor, border: borderStyle }}>
+        {DecorIcon && <DecorIcon className="absolute top-3 right-3 opacity-60" size={16} aria-hidden="true" />}
         <div className="pt-2">
           {module.type === 'photo' && (
             <div className="flex items-center gap-4 flex-wrap">
@@ -150,7 +146,7 @@ export default function VerPerfil() {
             </div>
           )}
           {module.type === 'mascot' && <div className="flex justify-center py-4"><Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={(profile as any).expression || 'normal'} /></div>}
-          {module.type === 'bio' && <p className="text-base opacity-90 leading-relaxed break-words">{profile.bio || 'Sin biografía'}</p>}
+          {module.type === 'bio' && <p className="text-base opacity-90 leading-relaxed break-words whitespace-pre-wrap">{module.config.content || profile.bio || 'Sin biografía'}</p>}
           {module.type === 'instruments' && (
             <div className="flex flex-wrap gap-2">{profile.instruments?.map((inst: any, i: number) => (<span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-2 max-w-full"><FaGuitar className="flex-shrink-0" /><span className="truncate">{inst.name}</span><span className="opacity-60 truncate">({inst.level})</span></span>)) || <span className="text-sm opacity-60">Sin instrumentos</span>}</div>
           )}
@@ -170,7 +166,6 @@ export default function VerPerfil() {
             </div>
           )}
 
-          {/* ✅ RENDERIZADO DE REDES SOCIALES REALES (Seguro contra undefined) */}
           {module.type === 'social-links' && (
             <div className="flex flex-wrap gap-2">
               {(module.config.socialLinks || []).length > 0 ? (module.config.socialLinks || []).map((link, i) => {
@@ -186,8 +181,7 @@ export default function VerPerfil() {
 
           {/* ✅ RENDERIZADO DE ESTADÍSTICAS REALES */}
           {module.type === 'stats' && (
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-white/5 p-3 rounded-lg border border-white/5"><p className="text-2xl font-bold text-purple-400">{profileStats.likes}</p><p className="text-[10px] opacity-70 uppercase tracking-wider mt-1">Likes</p></div>
+            <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-white/5 p-3 rounded-lg border border-white/5"><p className="text-2xl font-bold text-cyan-400">{profileStats.friends}</p><p className="text-[10px] opacity-70 uppercase tracking-wider mt-1">Amigos</p></div>
               <div className="bg-white/5 p-3 rounded-lg border border-white/5"><p className="text-2xl font-bold text-pink-400">{profileStats.posts}</p><p className="text-[10px] opacity-70 uppercase tracking-wider mt-1">Posts</p></div>
             </div>
@@ -237,7 +231,8 @@ export default function VerPerfil() {
     } catch (error) { console.error('Error al cargar likes:', error) } finally { setLoadingLikes(false) }
   }
 
-  useEffect(() => { if (activeTab === 'likes') fetchLikedPosts() }, [activeTab, id])
+  useEffect(() => { if (activeTab === 'likes' && user?.id === id) fetchLikedPosts() }, [activeTab, id])
+  useEffect(() => { setActiveTab('posts') }, [id])
 
   const handleToggleFriend = async () => {
     if (!user || !profile) { setToast({ message: 'Error: Debes estar logueado', type: 'error' }); return }
@@ -290,16 +285,23 @@ export default function VerPerfil() {
     <div className="min-h-screen relative text-gray-200 font-sans pb-24">
       <AnimatedBackground />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="sticky top-0 z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-[var(--banner-h,0px)] z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] pl-4 pr-32 py-3 flex items-center justify-between">
         <h1 className="text-white font-bold text-lg truncate pr-4">{profile.display_name}</h1>
-        {isMyProfile && user?.email === 'remaslove281@gmail.com' && (<button onClick={() => navigate('/admin')} className="p-2 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50 hover:text-purple-300 transition-all flex-shrink-0" title="Panel de Administrador"><FaUserShield size={18} /></button>)}
+        {isMyProfile && adminAlerts.isAdmin && (
+          <button onClick={() => navigate('/admin')} className="relative flex items-center gap-2 p-2 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50 hover:text-purple-300 transition-all flex-shrink-0" title="Panel de Administrador">
+            <FaUserShield size={18} />
+            {adminAlerts.total > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#0f0f0f]">{adminAlerts.total > 9 ? '9+' : adminAlerts.total}</span>
+            )}
+          </button>
+        )}
       </div>
 
       <main className="w-full max-w-none px-2 md:px-4 space-y-4">        
         {customLayout ? (
-          <div className="w-full rounded-none md:rounded-2xl p-6 transition-colors duration-300 relative" style={{ backgroundColor: customLayout.backgroundValue || '#0f0f0f' }}>
+          <div className="w-full rounded-none md:rounded-2xl p-4 md:p-6 transition-colors duration-300 relative" style={getBackgroundStyle(customLayout.backgroundType, customLayout.backgroundValue)}>
             {!isMyProfile && (<button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20 z-10" title="Reportar usuario"><FaFlag size={18} /></button>)}
-            <div className={`grid gap-4 ${customLayout.layout === 'one-column' ? 'grid-cols-1' : customLayout.layout === 'two-columns' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+            <div className={`grid gap-4 ${LAYOUT_GRID_CLASS[customLayout.layout]}`}>
               {[...customLayout.modules].sort((a, b) => a.order - b.order).map(module => renderModule(module))}
             </div>
             {isMyProfile && (
@@ -310,44 +312,98 @@ export default function VerPerfil() {
             )}
           </div>
         ) : (
-          <div className="bg-[#1a1a1a] border border-x-0 md:border-x w-full rounded-none md:rounded-2xl p-6 md:p-8 relative" style={{ borderColor: themeColor }}>
-            {!isMyProfile && (<button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20" title="Reportar usuario"><FaFlag size={18} /></button>)}
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              <div className="bg-[#0f0f0f] p-4 rounded-xl border flex items-end gap-2" style={{ borderColor: themeColor + '40' }}>
-                <Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={140} isOnline={isUserOnline((profile as any).last_seen)} />
-                <Mascot color={profile.avatar_color || '#333'} size={50} expression={(profile as any).expression || 'normal'} />
+          <div className="bg-[#1a1a1a] border border-x-0 md:border-x w-full rounded-none md:rounded-2xl p-4 md:p-6 relative" style={{ borderColor: themeColor }}>
+            {!isMyProfile && (<button onClick={handleOpenReport} className="absolute top-3 right-3 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20" title="Reportar usuario"><FaFlag size={16} /></button>)}
+
+            {/* Cabecera compacta: foto + nombre + estado en una sola fila */}
+            <div className="flex items-center gap-4 pr-8">
+              <div className="relative flex-shrink-0">
+                <div className="md:hidden"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={84} isOnline={isUserOnline(profile.last_seen)} /></div>
+                <div className="hidden md:block"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={112} isOnline={isUserOnline(profile.last_seen)} /></div>
+                <div className="absolute -bottom-3 -left-4 pointer-events-none"><Mascot color={profile.avatar_color || '#333'} size={28} expression={profile.expression || 'normal'} /></div>
               </div>
-              <div className="flex-1 text-center md:text-left w-full">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">{profile.display_name}</h2>
-                <p className="text-gray-500 text-sm mb-4">@{profile.username}</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-6 text-sm">
-                  <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}><FaGuitar style={{ color: themeColor }} /><span className="text-gray-300">{profile.instruments?.[0]?.name || 'Sin instrumento'}</span><span className="text-gray-600">•</span><span className="text-gray-400">{profile.instruments?.[0]?.level || 'N/A'}</span></div>
-                  <div className="flex items-center gap-2 bg-[#0f0f0f] px-3 py-2 rounded-lg border" style={{ borderColor: themeColor + '40' }}><FaMapMarkerAlt style={{ color: themeColor }} /><span className="text-gray-300">{profile.localidad}, {profile.departamento}</span></div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl md:text-3xl text-white leading-tight break-words">{profile.display_name}</h2>
+                <p className="text-gray-500 text-sm truncate">@{profile.username}</p>
+                <p className={`text-xs mt-1 ${isUserOnline(profile.last_seen) ? 'text-green-400' : 'text-gray-500'}`}>{formatLastSeen(profile.last_seen)}</p>
+                {profile.localidad && (
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5 truncate"><FaMapMarkerAlt style={{ color: themeColor }} className="flex-shrink-0" /> {profile.localidad}, {profile.departamento}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Estadísticas */}
+            <div className="grid grid-cols-2 gap-2 mt-5 text-center">
+              {[
+                { label: 'Publicaciones', value: profileStats.posts },
+                { label: 'Amigos', value: profileStats.friends },
+              ].map(stat => (
+                <div key={stat.label} className="bg-[#0f0f0f] rounded-lg py-2 border" style={{ borderColor: themeColor + '30' }}>
+                  <p className="text-lg font-bold text-white">{stat.value}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</p>
                 </div>
-                <div className="mb-6"><h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Sobre mí</h3><p className="text-gray-300 leading-relaxed bg-[#0f0f0f] p-4 rounded-lg border break-words" style={{ borderColor: themeColor + '40' }}>{profile.bio || 'Este usuario aún no escribió su biografía.'}</p></div>
-                <div className="mb-6"><h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Géneros</h3><div className="flex flex-wrap gap-2 justify-center md:justify-start">{profile.genres?.map((genre, idx) => (<span key={`${genre}-${idx}`} className="px-3 py-1.5 text-sm rounded-full border" style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '60', color: themeColor }}>{genre}</span>))}</div></div>
-                {!isMyProfile && isBlocked && (<div className="mb-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg"><FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.</div>)}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {!isMyProfile ? (<>
-                    <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-lg transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: themeColor }}><FaEnvelope size={16} /> <span>Enviar mensaje</span></button>
-                    <button onClick={handleToggleFriend} className={`flex items-center justify-center gap-2 py-3 px-4 font-semibold rounded-lg transition-all border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400 hover:bg-green-900/40' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-400 hover:bg-purple-900/20'}`}>{isFriend ? <FaUserMinus size={16} /> : <FaUserPlus size={16} />} <span>{isFriend ? 'Quitar Amigo' : 'Agregar Amigo'}</span></button>
-                    <button onClick={() => setShowBlockModal(true)} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-400 font-semibold rounded-lg transition-all hover:bg-gray-800 hover:text-white"><FaBan size={16} /> <span>Bloquear</span></button>
-                  </>) : (<>
-                    <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-3 px-4 bg-[#0f0f0f] border text-white font-semibold rounded-lg transition-all hover:brightness-125 sm:col-span-1" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={16} style={{ color: themeColor }} /> <span>Editar datos</span></button>
-                    <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg transition-all hover:opacity-90 sm:col-span-1"><FaPalette size={16} /> <span>Diseñar perfil</span></button>
-                  </>)}
-                </div>
+              ))}
+            </div>
+
+            {!isMyProfile && isBlocked && (<div className="mt-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg"><FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.</div>)}
+
+            {/* Acciones */}
+            <div className={`grid gap-2 mt-4 ${isMyProfile ? 'grid-cols-2' : 'grid-cols-[1fr_1fr_auto]'}`}>
+              {!isMyProfile ? (<>
+                <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center justify-center gap-2 py-2.5 px-3 text-white text-sm font-semibold rounded-lg transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: themeColor }}><FaEnvelope size={14} /> <span>Mensaje</span></button>
+                <button onClick={handleToggleFriend} className={`flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400 hover:bg-green-900/40' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-400 hover:bg-purple-900/20'}`}>{isFriend ? <FaUserMinus size={14} /> : <FaUserPlus size={14} />} <span>{isFriend ? 'Quitar' : 'Agregar'}</span></button>
+                <button onClick={() => setShowBlockModal(true)} className="flex items-center justify-center py-2.5 px-3.5 bg-[#0f0f0f] border border-gray-700 text-gray-400 rounded-lg transition-all hover:bg-gray-800 hover:text-white" title="Bloquear" aria-label="Bloquear usuario"><FaBan size={14} /></button>
+              </>) : (<>
+                <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-2.5 px-3 bg-[#0f0f0f] border text-sm font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={14} /> <span>Editar datos</span></button>
+                <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg transition-all hover:opacity-90"><FaPalette size={14} /> <span>Diseñar perfil</span></button>
+              </>)}
+            </div>
+
+            {/* Información */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 pt-5 border-t border-[#2a2a2a]">
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Sobre mí</h3>
+                <p className="text-gray-300 text-sm leading-relaxed break-words">{profile.bio || 'Este usuario aún no escribió su biografía.'}</p>
+              </div>
+              <div className="space-y-4">
+                {profile.instruments?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Instrumentos</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.instruments.map((inst, idx) => (
+                        <span key={`${inst.name}-${idx}`} className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg bg-[#0f0f0f] border text-gray-300" style={{ borderColor: themeColor + '40' }}>
+                          <FaGuitar style={{ color: themeColor }} size={11} /> {inst.name} <span className="text-gray-500">· {inst.level}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {profile.genres?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Géneros</h3>
+                    <div className="flex flex-wrap gap-2">{profile.genres.map((genre, idx) => (<span key={`${genre}-${idx}`} className="px-2.5 py-1 text-xs rounded-full border" style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '60', color: themeColor }}>{genre}</span>))}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
+        {/* Audio de presentación */}
+        {profile.audio_url ? (
+          <ProfileAudioPlayer url={profile.audio_url} name={profile.display_name} color={themeColor} />
+        ) : isMyProfile && (
+          <button onClick={() => navigate('/editar-perfil')} className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed border-[#2a2a2a] text-gray-400 hover:text-white hover:border-purple-500/50 text-sm transition-colors">
+            <FaMicrophone size={14} /> Subí un audio de {AUDIO_MAX_SECONDS} segundos para que escuchen cómo sonás
+          </button>
+        )}
+
         <div>
           <div className="flex items-center gap-2 mb-4 border-b border-[#2a2a2a] pb-2">
             <button onClick={() => setActiveTab('posts')} className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-semibold transition-all ${activeTab === 'posts' ? 'bg-[#1a1a1a] text-white border border-[#2a2a2a] border-b-transparent' : 'text-gray-500 hover:text-gray-300'}`}><FaMusic style={{ color: activeTab === 'posts' ? themeColor : undefined }} /> Publicaciones</button>
-            <button onClick={() => setActiveTab('likes')} className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-semibold transition-all ${activeTab === 'likes' ? 'bg-[#1a1a1a] text-white border border-[#2a2a2a] border-b-transparent' : 'text-gray-500 hover:text-gray-300'}`}><FaHeart style={{ color: activeTab === 'likes' ? '#ef4444' : undefined }} /> Le gustó</button>
+            {isMyProfile && (<button onClick={() => setActiveTab('likes')} className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-semibold transition-all ${activeTab === 'likes' ? 'bg-[#1a1a1a] text-white border border-[#2a2a2a] border-b-transparent' : 'text-gray-500 hover:text-gray-300'}`}><FaHeart style={{ color: activeTab === 'likes' ? '#ef4444' : undefined }} /> Mis likes</button>)}
           </div>
-          {activeTab === 'posts' ? (
+          {activeTab === 'posts' || !isMyProfile ? (
             posts.length === 0 ? (<div className="text-center py-16 bg-[#1a1a1a] border rounded-2xl" style={{ borderColor: themeColor + '40' }}><FaImage className="text-gray-600 text-4xl mx-auto mb-3" /><p className="text-gray-400">Aún no hay publicaciones.</p></div>) : (
               <div className="space-y-4">{posts.map((post) => (
                 <div key={post.id} className="bg-[#1a1a1a] border rounded-2xl p-5 transition-colors" style={{ borderColor: themeColor + '40' }}>

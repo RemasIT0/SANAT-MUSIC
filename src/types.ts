@@ -1,3 +1,5 @@
+import type { MascotExpression } from './components/MascotCostumes'
+
 export interface Instrument {
   name: string;
   level: 'Principiante' | 'Intermedio' | 'Avanzado' | 'Profesional';
@@ -11,7 +13,9 @@ export interface Profile {
   avatar_url?: string;       
   avatar_color?: string;
   theme_color: string
-  expression?: 'normal' | 'feliz' | 'pensativo' | 'rockero'; 
+  expression?: MascotExpression;
+  last_seen?: string | null;
+  audio_url?: string | null;
   instruments: Instrument[];
   genres: string[];
   departamento: string;

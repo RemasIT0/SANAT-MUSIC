@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { 
-  FaPlay, FaPause, FaMusic, FaXmark, FaRadio, 
+  FaPlay, FaPause, FaXmark, FaRadio, 
   FaGuitar, FaFlag, FaHeadphones, FaRecordVinyl 
 } from 'react-icons/fa6'
+import { PiCassetteTapeFill } from 'react-icons/pi'
 import { IoVolumeHighSharp } from "react-icons/io5"
 import { FaVolumeXmark } from "react-icons/fa6"
 
@@ -15,6 +16,14 @@ const RADIO_STATIONS = [
   { id: '4', name: 'Vorterix (Rock/Alternativo)', icon: FaGuitar, url: 'https://26683.live.streamtheworld.com/VORTERIX_FM_SC' },
   { id: '5', name: 'Clásicos del Rock (Respaldo)', icon: FaRecordVinyl, url: 'https://stream.zeno.fm/yn65fsaurfhvv' }
 ]
+
+// Para elegir texto negro o blanco según qué tan claro sea el color del perfil
+const isLightColor = (hex: string) => {
+  const c = hex.replace('#', '')
+  if (c.length < 6) return false
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16))
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160
+}
 
 export default function RetroRadio() {
   const { profile } = useAuth()
@@ -27,8 +36,9 @@ export default function RetroRadio() {
   const audioRef = useRef<HTMLAudioElement>(null)
   const currentStation = RADIO_STATIONS[currentStationIndex]
   const themeColor = profile?.theme_color || '#a855f7'
+  const tabTextColor = isLightColor(themeColor) ? '#111' : '#fff'
 
-  // 🧠 MEMORIA
+  // MEMORIA
   useEffect(() => {
     const savedStation = localStorage.getItem('sanat_radio_station')
     const savedVolume = localStorage.getItem('sanat_radio_volume')
@@ -67,35 +77,29 @@ export default function RetroRadio() {
     <>
       <audio ref={audioRef} src={currentStation.url} preload="none" style={{ display: 'none' }} />
       
-      {/* ✅ FLOTANTE AL COSTADO: Se achica al mínimo cuando está cerrado */}
-      <div 
-        className={`fixed z-[60] transition-all duration-500 ease-in-out ${
-          isExpanded 
-            ? 'bottom-24 right-4 w-72 sm:w-80' 
-            : 'bottom-24 right-4 w-14 h-14 rounded-full shadow-2xl cursor-pointer hover:scale-110'
-        }`}
-        onClick={() => !isExpanded && setIsExpanded(true)}
+      {/* Pestaña colgando del borde superior izquierdo */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="fixed right-3 z-[60] flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-b-xl border-2 border-t-0 border-black/30 transition-transform hover:translate-y-0.5"
+        style={{ top: 'var(--banner-h, 0px)', backgroundColor: themeColor, color: tabTextColor, boxShadow: `0 4px 14px ${themeColor}80` }}
+        title={isPlaying ? `Sonando: ${currentStation.name}` : 'SANAT Radio'}
+        aria-label="Abrir radio"
+        aria-expanded={isExpanded}
       >
-        {/* 🟢 ESTADO CERRADO: Mínimo, solo un círculo discreto */}
-        {!isExpanded && (
-          <div 
-            className="w-full h-full rounded-full flex items-center justify-center border-2 backdrop-blur-md"
-            style={{ 
-              backgroundColor: isPlaying ? `${themeColor}30` : '#1a1a1a',
-              borderColor: themeColor 
-            }}
-          >
-            {isPlaying ? (
-              <FaPause className="text-white animate-pulse" size={20} />
-            ) : (
-              <FaMusic className="text-gray-400" size={20} />
-            )}
-          </div>
+        <PiCassetteTapeFill size={18} />
+        <span className="text-[11px] font-extrabold tracking-widest">RADIO</span>
+        {isPlaying && (
+          <span className="flex items-end gap-[2px] h-3" aria-hidden="true">
+            {[0, 1, 2].map(i => (
+              <span key={i} className="w-[3px] rounded-sm radio-bar" style={{ backgroundColor: tabTextColor, animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </span>
         )}
+      </button>
 
-        {/* 📻 ESTADO EXPANDIDO: Diseño RETRO ORIGINAL, con controles más notorios para móvil */}
+      <div className="fixed right-3 z-[60] w-72 sm:w-80" style={{ top: 'calc(var(--banner-h, 0px) + 2.5rem)' }}>
         {isExpanded && (
-          <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+          <div className="relative z-10 bg-gradient-to-b from-gray-900 via-black to-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-[slideDown_0.25s_ease-out]">
             
             {/* Etiqueta estilo cassette */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
