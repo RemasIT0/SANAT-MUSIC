@@ -53,6 +53,8 @@ export default function Login() {
           email,
           password,
           options: {
+            // Volver a esta misma web al confirmar el email (no a localhost)
+            emailRedirectTo: window.location.origin,
             data: {
               username: email.split('@')[0],
               display_name: email.split('@')[0]

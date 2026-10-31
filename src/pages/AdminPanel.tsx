@@ -41,6 +41,14 @@ export default function AdminPanel() {
   const [showAdModal, setShowAdModal] = useState(false)
   const [editingAd, setEditingAd] = useState<any>(null)
   const [adForm, setAdForm] = useState({ title: '', message: '', image_url: '', is_active: true })
+  const [adSaving, setAdSaving] = useState(false)
+
+  // Confirmación propia (en vez de window.confirm, que algunos navegadores bloquean)
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; confirmLabel: string; run: () => Promise<void> } | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
+  // Si la sesión no respondió la pregunta secreta, Supabase rechaza todas las acciones
+  const [adminVerified, setAdminVerified] = useState(true)
 
   useEffect(() => {
     if (user?.email !== 'remaslove281@gmail.com') {
@@ -49,6 +57,9 @@ export default function AdminPanel() {
     }
     fetchData()
     markAdminAlertsSeen()
+    supabase.rpc('is_admin_verified').then(({ data, error }) => {
+      setAdminVerified(error?.code === 'PGRST202' || !!data)
+    })
   }, [user, navigate])
 
   const fetchData = async () => {
@@ -108,12 +119,31 @@ export default function AdminPanel() {
     }
   }
 
+  // Supabase no devuelve error cuando las políticas bloquean un update/delete:
+  // simplemente afecta 0 filas. Por eso pedimos las filas afectadas y lo verificamos.
+  const NO_PERMISSION = 'No se aplicó: sin permiso de admin. Recargá la página y respondé la pregunta secreta.'
+  const ensureAffected = (data: any[] | null) => {
+    if (!data || data.length === 0) throw new Error(NO_PERMISSION)
+  }
+
+  const askConfirm = (title: string, message: string, confirmLabel: string, run: () => Promise<void>) =>
+    setConfirmAction({ title, message, confirmLabel, run })
+
+  const runConfirmed = async () => {
+    if (!confirmAction) return
+    setConfirmBusy(true)
+    await confirmAction.run()
+    setConfirmBusy(false)
+    setConfirmAction(null)
+  }
+
   const handleBanUser = async () => {
     if (!banningUser || !banReasonInput.trim()) return
     try {
-      const { error } = await supabase.from('profiles').update({ is_banned: true, ban_reason: banReasonInput }).eq('id', banningUser.id)
+      const { data, error } = await supabase.from('profiles').update({ is_banned: true, ban_reason: banReasonInput.trim() }).eq('id', banningUser.id).select('id')
       if (error) throw error
-      setToast({ message: 'Usuario baneado del sistema', type: 'success' })
+      ensureAffected(data)
+      setToast({ message: `${banningUser.display_name || 'Usuario'} fue baneado`, type: 'success' })
       setBanningUser(null)
       setBanReasonInput('')
       fetchData()
@@ -125,9 +155,10 @@ export default function AdminPanel() {
   const executeUnban = async () => {
     if (!unbanningUser) return
     try {
-      const { error } = await supabase.from('profiles').update({ is_banned: false, ban_reason: null }).eq('id', unbanningUser.id)
+      const { data, error } = await supabase.from('profiles').update({ is_banned: false, ban_reason: null }).eq('id', unbanningUser.id).select('id')
       if (error) throw error
-      setToast({ message: 'Usuario restablecido correctamente', type: 'success' })
+      ensureAffected(data)
+      setToast({ message: `${unbanningUser.display_name || 'Usuario'} fue restablecido`, type: 'success' })
       setUnbanningUser(null)
       fetchData()
     } catch (error: any) {
@@ -140,34 +171,49 @@ export default function AdminPanel() {
   const executeDeletePost = async () => {
     if (!deletingPostId) return
     try {
-      const { error } = await supabase.from('posts').delete().eq('id', deletingPostId)
+      const { data, error } = await supabase.from('posts').delete().eq('id', deletingPostId).select('id')
       if (error) throw error
-      setPostsList(postsList.filter(p => p.id !== deletingPostId))
-      setToast({ message: 'Publicación eliminada permanentemente', type: 'success' })
+      ensureAffected(data)
+      setPostsList(prev => prev.filter(p => p.id !== deletingPostId))
+      setStats(prev => ({ ...prev, posts: Math.max(0, prev.posts - 1) }))
+      setToast({ message: 'Publicación eliminada', type: 'success' })
       setDeletingPostId(null)
     } catch (error: any) {
       setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
     }
   }
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('¿Eliminar este usuario y todo su contenido permanentemente?')) return
-    try {
-      await supabase.from('posts').delete().eq('user_id', userId)
-      await supabase.from('profiles').delete().eq('id', userId)
-      setUsersList(usersList.filter(u => u.id !== userId))
-      setToast({ message: 'Usuario eliminado del sistema', type: 'success' })
-    } catch { setToast({ message: 'Error al eliminar usuario', type: 'error' }) }
-  }
+  const handleDeleteReport = (reportId: string) => askConfirm(
+    '¿Archivar este reporte?', 'El reporte se elimina de la lista.', 'ARCHIVAR',
+    async () => {
+      try {
+        const { data, error } = await supabase.from('reports').delete().eq('id', reportId).select('id')
+        if (error) throw error
+        ensureAffected(data)
+        setReportsList(prev => prev.filter(r => r.id !== reportId))
+        setStats(prev => ({ ...prev, reports: Math.max(0, prev.reports - 1) }))
+        setToast({ message: 'Reporte archivado', type: 'success' })
+      } catch (error: any) {
+        setToast({ message: 'Error al archivar: ' + error.message, type: 'error' })
+      }
+    }
+  )
 
-  const handleDeleteReport = async (reportId: string) => {
-    if (!confirm('¿Archivar y eliminar este reporte?')) return
-    try {
-      await supabase.from('reports').delete().eq('id', reportId)
-      setReportsList(reportsList.filter(r => r.id !== reportId))
-      setToast({ message: 'Reporte archivado', type: 'success' })
-    } catch { setToast({ message: 'Error al archivar', type: 'error' }) }
-  }
+  const handleDeleteSuggestion = (suggestionId: string) => askConfirm(
+    '¿Eliminar esta sugerencia?', 'La sugerencia se borra del buzón.', 'ELIMINAR',
+    async () => {
+      try {
+        const { data, error } = await supabase.from('suggestions').delete().eq('id', suggestionId).select('id')
+        if (error) throw error
+        ensureAffected(data)
+        setSuggestionsList(prev => prev.filter(s => s.id !== suggestionId))
+        setStats(prev => ({ ...prev, suggestions: Math.max(0, prev.suggestions - 1) }))
+        setToast({ message: 'Sugerencia eliminada', type: 'success' })
+      } catch (error: any) {
+        setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+      }
+    }
+  )
 
   const openAdModal = (ad: any = null) => {
     if (ad) {
@@ -185,55 +231,66 @@ export default function AdminPanel() {
       setToast({ message: 'El título es obligatorio', type: 'error' })
       return
     }
+    setAdSaving(true)
     try {
-      // Construimos el payload omitiendo campos vacíos para evitar errores de "null" en la BD
       const payload: any = {
         title: adForm.title.trim(),
         is_active: adForm.is_active
       }
-      
-      if (adForm.message?.trim()) payload.message = adForm.message.trim()
-      if (adForm.image_url?.trim()) payload.image_url = adForm.image_url.trim()
 
       if (editingAd) {
-        const { error } = await supabase.from('ads').update(payload).eq('id', editingAd.id)
+        // Al editar se mandan también los campos vacíos, para poder borrar un mensaje o una imagen
+        payload.message = adForm.message.trim()
+        payload.image_url = adForm.image_url.trim()
+        const { data, error } = await supabase.from('ads').update(payload).eq('id', editingAd.id).select('id')
         if (error) throw error
+        ensureAffected(data)
         setToast({ message: 'Anuncio actualizado', type: 'success' })
       } else {
-        const { error } = await supabase.from('ads').insert(payload)
+        // Al crear se omiten los campos vacíos para no mandar nulls
+        if (adForm.message.trim()) payload.message = adForm.message.trim()
+        if (adForm.image_url.trim()) payload.image_url = adForm.image_url.trim()
+        const { data, error } = await supabase.from('ads').insert(payload).select('id')
         if (error) throw error
+        ensureAffected(data)
         setToast({ message: 'Anuncio creado y transmitido', type: 'success' })
       }
       setShowAdModal(false)
       fetchData()
     } catch (error: any) {
-      console.error('Error detallado:', error)
-      setToast({ message: 'Error: ' + (error.message || 'Desconocido'), type: 'error' })
+      console.error('Error al guardar anuncio:', error)
+      setToast({ message: 'Error al guardar: ' + (error.message || 'Desconocido'), type: 'error' })
+    } finally {
+      setAdSaving(false)
     }
   }
 
   const toggleAdActive = async (ad: any) => {
     try {
-      const { error } = await supabase.from('ads').update({ is_active: !ad.is_active }).eq('id', ad.id)
+      const { data, error } = await supabase.from('ads').update({ is_active: !ad.is_active }).eq('id', ad.id).select('id')
       if (error) throw error
+      ensureAffected(data)
+      setAdsList(prev => prev.map(a => a.id === ad.id ? { ...a, is_active: !ad.is_active } : a))
       setToast({ message: ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', type: 'success' })
-      fetchData()
     } catch (error: any) {
       setToast({ message: 'Error: ' + error.message, type: 'error' })
     }
   }
 
-  const handleDeleteAd = async (adId: string) => {
-    if (!confirm('¿Eliminar este anuncio permanentemente?')) return
-    try {
-      const { error } = await supabase.from('ads').delete().eq('id', adId)
-      if (error) throw error
-      setToast({ message: 'Anuncio eliminado', type: 'success' })
-      fetchData()
-    } catch (error: any) {
-      setToast({ message: 'Error: ' + error.message, type: 'error' })
+  const handleDeleteAd = (ad: any) => askConfirm(
+    '¿Eliminar este anuncio?', `"${ad.title}" se borra de la tele para siempre.`, 'ELIMINAR',
+    async () => {
+      try {
+        const { data, error } = await supabase.from('ads').delete().eq('id', ad.id).select('id')
+        if (error) throw error
+        ensureAffected(data)
+        setAdsList(prev => prev.filter(a => a.id !== ad.id))
+        setToast({ message: 'Anuncio eliminado', type: 'success' })
+      } catch (error: any) {
+        setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+      }
     }
-  }
+  )
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f0f0f] gap-4">
@@ -257,6 +314,14 @@ export default function AdminPanel() {
           </h1>
           <div className="w-20"></div>
         </div>
+
+        {!adminVerified && (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-950/40 border border-red-700/60 text-red-200 text-sm">
+            <FaExclamationTriangle className="text-red-400 flex-shrink-0" size={18} />
+            <p className="flex-1">Tu sesión de admin no está verificada: las acciones no se van a aplicar. Recargá la página y respondé la pregunta secreta.</p>
+            <button onClick={() => window.location.reload()} className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-semibold flex-shrink-0">Recargar</button>
+          </div>
+        )}
 
         <AdminBannerControl onResult={(message, type) => setToast({ message, type })} />
 
@@ -429,7 +494,7 @@ export default function AdminPanel() {
                       <div key={s.id} className="p-4 bg-[#0f0f0f] rounded-lg border border-purple-600/20 hover:border-purple-500/40 transition-all">
                         <div className="flex justify-between items-start mb-2">
                           <div><p className="text-purple-400 text-xs font-bold uppercase tracking-wider font-mono">{s.profiles?.display_name || 'ANÓNIMO'} (@{s.profiles?.username || 'N/A'})</p><p className="text-gray-600 text-[10px] font-mono">{new Date(s.created_at).toLocaleString('es-AR')}</p></div>
-                          <button onClick={() => handleDeleteReport(s.id)} className="text-gray-600 hover:text-red-400 p-2 hover:bg-red-900/20 rounded transition-all"><FaTrash size={14} /></button>
+                          <button onClick={() => handleDeleteSuggestion(s.id)} aria-label="Eliminar sugerencia" className="text-gray-600 hover:text-red-400 p-2 hover:bg-red-900/20 rounded transition-all"><FaTrash size={14} /></button>
                         </div>
                         <p className="text-gray-300 text-sm whitespace-pre-wrap font-mono border-l-2 border-purple-500/50 pl-3">{s.content}</p>
                       </div>
@@ -497,7 +562,7 @@ export default function AdminPanel() {
                           </button>
                           <div className="flex gap-2">
                             <button onClick={() => openAdModal(ad)} className="text-blue-400 hover:text-blue-300 p-2 hover:bg-blue-900/20 rounded-lg transition-all border border-transparent hover:border-blue-900/50 font-mono text-xs">EDITAR</button>
-                            <button onClick={() => handleDeleteAd(ad.id)} className="text-red-500 hover:text-red-400 p-2 hover:bg-red-900/20 rounded-lg transition-all border border-transparent hover:border-red-900/50 font-mono text-xs"><FaTrash /> ELIMINAR</button>
+                            <button onClick={() => handleDeleteAd(ad)} className="text-red-500 hover:text-red-400 p-2 hover:bg-red-900/20 rounded-lg transition-all border border-transparent hover:border-red-900/50 font-mono text-xs"><FaTrash /> ELIMINAR</button>
                           </div>
                         </div>
                       </div>
@@ -557,6 +622,22 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !confirmBusy && setConfirmAction(null)} />
+          <div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2 font-mono">{confirmAction.title}</h3>
+            <p className="text-gray-300 text-sm mb-6">{confirmAction.message}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmAction(null)} disabled={confirmBusy} className="flex-1 py-3 bg-[#2a2a2a] text-gray-200 rounded-lg hover:bg-[#333] transition-all font-mono text-sm font-medium disabled:opacity-50">CANCELAR</button>
+              <button onClick={runConfirmed} disabled={confirmBusy} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-mono text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-60">
+                {confirmBusy && <FaSpinner className="animate-spin" />} {confirmAction.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAdModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAdModal(false)} />
@@ -585,7 +666,7 @@ export default function AdminPanel() {
             </div>
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowAdModal(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-mono text-sm font-medium">CANCELAR</button>
-              <button onClick={handleSaveAd} className="flex-1 py-3 bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition-all font-mono text-sm font-medium shadow-[0_0_15px_rgba(236,72,153,0.4)]">
+              <button onClick={handleSaveAd} disabled={adSaving} className="flex-1 py-3 bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white rounded-lg transition-all font-mono text-sm font-medium shadow-[0_0_15px_rgba(236,72,153,0.4)]">
                 {editingAd ? 'ACTUALIZAR' : 'TRANSMITIR'}
               </button>
             </div>

@@ -30,6 +30,7 @@ export default function VerificarEmail() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: user.email,
+        options: { emailRedirectTo: window.location.origin },
       })
 
       if (error) throw error

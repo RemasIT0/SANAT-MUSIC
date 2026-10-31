@@ -26,7 +26,7 @@ export default function Toast({ message, type, onClose }: ToastProps) {
   }
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-[slideIn_0.4s_ease-out]">
+    <div className="fixed left-1/2 -translate-x-1/2 z-[95] animate-[slideIn_0.4s_ease-out]" style={{ top: 'calc(var(--banner-h, 0px) + 1.5rem)' }}>
       <div className={`flex items-center gap-3 bg-[#1a1a1a] border ${borders[type]} rounded-xl px-5 py-3 shadow-2xl min-w-[280px]`}>
         {icons[type]}
         <p className="text-white text-sm font-medium">{message}</p>
