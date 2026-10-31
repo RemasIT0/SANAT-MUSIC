@@ -11,6 +11,7 @@ export type MascotExpression =
   | 'halloween' | 'punk' | 'gaucho' | 'melenudo' | 'murcielago'
   | 'conejo' | 'dj' | 'astronauta' | 'rapero'
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
+  | 'timido' | 'cerdito' | 'pollito'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -26,6 +27,9 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'turro', label: 'Turro' },
   { id: 'dj', label: 'DJ' },
   { id: 'otaku', label: 'Otaku' },
+  { id: 'timido', label: 'Tímido' },
+  { id: 'cerdito', label: 'Cerdito' },
+  { id: 'pollito', label: 'Pollito' },
   { id: 'astronauta', label: 'Astronauta' },
   { id: 'murcielago', label: 'Murciélago' },
   { id: 'conejo', label: 'Conejo' },
@@ -633,5 +637,90 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
     },
     // La cara se dibuja sobre la sábana
     face: () => null,
+  },
+
+  timido: {
+    // Brotecito en la cabeza
+    back: () => (
+      <Layer top={-26} left={38} w={24} h={30}>
+        <path d="M12 30 L12 12" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+        <path d="M12 30 L12 12" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" />
+        <ellipse cx="6" cy="10" rx="6" ry="4" fill="#4ade80" stroke={INK} strokeWidth="2" transform="rotate(-25 6 10)" />
+        <ellipse cx="18" cy="8" rx="6" ry="4" fill="#4ade80" stroke={INK} strokeWidth="2" transform="rotate(25 18 8)" />
+      </Layer>
+    ),
+    // Gotita de nervios
+    front: () => (
+      <Layer top={14} left={80} w={12} h={16} className="z-20">
+        <path d="M6 1 Q11 9 10 11 Q9 15 6 15 Q3 15 2 11 Q1 9 6 1 Z" fill="#93c5fd" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      </Layer>
+    ),
+    face: ({ eye }) => (
+      <svg width="64" height="44" viewBox="0 0 64 44" className="mt-2">
+        <path d="M10 6 L22 2 M54 6 L42 2" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />
+        <ellipse cx={18 + eye.x * 0.4} cy={16 + eye.y * 0.4} rx="4.5" ry="5.5" fill={INK} />
+        <ellipse cx={46 + eye.x * 0.4} cy={16 + eye.y * 0.4} rx="4.5" ry="5.5" fill={INK} />
+        <circle cx={16.5 + eye.x * 0.4} cy={14 + eye.y * 0.4} r="1.6" fill="#fff" />
+        <circle cx={44.5 + eye.x * 0.4} cy={14 + eye.y * 0.4} r="1.6" fill="#fff" />
+        <ellipse cx="8" cy="28" rx="7" ry="4" fill="#f9a8d4" opacity="0.85" />
+        <ellipse cx="56" cy="28" rx="7" ry="4" fill="#f9a8d4" opacity="0.85" />
+        <path d="M24 33 Q28 30 32 33 Q36 36 40 33" fill="none" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+
+  cerdito: {
+    // Orejitas rosadas
+    back: () => (
+      <Layer top={-14} left={8} w={84} h={22}>
+        <path d="M4 22 L10 3 Q12 0 15 3 L28 18 Z" fill="#f9a8d4" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M80 22 L74 3 Q72 0 69 3 L56 18 Z" fill="#f9a8d4" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+      </Layer>
+    ),
+    // Estrellita
+    front: () => (
+      <Layer top={-8} left={96} w={18} h={18} className="z-20">
+        <path d="M9 1 L11 7 L17 9 L11 11 L9 17 L7 11 L1 9 L7 7 Z" fill="#fde047" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      </Layer>
+    ),
+    face: () => (
+      <svg width="64" height="50" viewBox="0 0 64 50" className="mt-2">
+        {/* Ojos felices cerrados ^ ^ */}
+        <path d="M10 14 Q16 6 22 14 M42 14 Q48 6 54 14" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+        <ellipse cx="7" cy="26" rx="6" ry="3.5" fill="#f472b6" opacity="0.6" />
+        <ellipse cx="57" cy="26" rx="6" ry="3.5" fill="#f472b6" opacity="0.6" />
+        {/* Hocico */}
+        <ellipse cx="32" cy="28" rx="12" ry="8" fill="#f9a8d4" stroke={INK} strokeWidth="2.5" />
+        <ellipse cx="27.5" cy="28" rx="2" ry="3" fill={INK} />
+        <ellipse cx="36.5" cy="28" rx="2" ry="3" fill={INK} />
+        <path d="M28 41 Q32 45 36 41" fill="none" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+
+  pollito: {
+    // Copete
+    back: () => (
+      <Layer top={-22} left={36} w={28} h={26}>
+        <ellipse cx="8" cy="15" rx="4" ry="9" fill="#fde047" stroke={INK} strokeWidth="2" transform="rotate(-25 8 15)" />
+        <ellipse cx="14" cy="11" rx="4" ry="10" fill="#fde047" stroke={INK} strokeWidth="2" />
+        <ellipse cx="20" cy="15" rx="4" ry="9" fill="#fde047" stroke={INK} strokeWidth="2" transform="rotate(25 20 15)" />
+      </Layer>
+    ),
+    face: ({ eye }) => (
+      <svg width="64" height="46" viewBox="0 0 64 46" className="mt-2">
+        <circle cx={18 + eye.x * 0.4} cy={15 + eye.y * 0.4} r="6.5" fill={INK} />
+        <circle cx={46 + eye.x * 0.4} cy={15 + eye.y * 0.4} r="6.5" fill={INK} />
+        <circle cx={15.5 + eye.x * 0.4} cy={12.5 + eye.y * 0.4} r="2.4" fill="#fff" />
+        <circle cx={43.5 + eye.x * 0.4} cy={12.5 + eye.y * 0.4} r="2.4" fill="#fff" />
+        <circle cx={20 + eye.x * 0.4} cy={18 + eye.y * 0.4} r="1.1" fill="#fff" />
+        <circle cx={48 + eye.x * 0.4} cy={18 + eye.y * 0.4} r="1.1" fill="#fff" />
+        <ellipse cx="7" cy="28" rx="6" ry="3.5" fill="#f9a8d4" opacity="0.85" />
+        <ellipse cx="57" cy="28" rx="6" ry="3.5" fill="#f9a8d4" opacity="0.85" />
+        {/* Piquito */}
+        <path d="M24 28 L32 23 L40 28 L32 34 Z" fill="#fb923c" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        <path d="M24 28 L40 28" stroke={INK} strokeWidth="1.5" />
+      </svg>
+    ),
   },
 }
