@@ -8,19 +8,27 @@ import type { ProfileLayout, ProfileModule } from '../types/profileLayout'
 import { LAYOUT_GRID_CLASS, MODULE_ICON_MAP, getModuleSpanClass, getBackgroundStyle } from '../types/profileLayout'
 import Mascot from '../components/Mascot'
 import { ProfileAudioPlayer, AUDIO_MAX_SECONDS } from '../components/ProfileAudio'
+import FreeProfileView from '../components/free/FreeProfileView'
+import ShareModal from '../components/ShareModal'
+import ProfileReviews from '../components/ProfileReviews'
+import ProfileBands from '../components/ProfileBands'
+import { ProfileSkeleton } from '../components/Skeleton'
+import { FaShareAlt } from 'react-icons/fa'
+import { parseFreeLayout, type FreeLayout } from '../types/freeLayout'
 import Avatar from '../components/Avatar'
 import PostModal from '../components/PostModal'
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
+import { useDialog } from '../components/DialogProvider'
 import { isUserOnline, formatLastSeen } from '../hooks/useOnlineStatus'
 import { useAdminAlerts } from '../hooks/useAdminAlerts'
-import { 
-  FaMapMarkerAlt, FaGuitar, FaMusic, FaEnvelope, FaSpinner, 
-  FaImage, FaEdit, FaTrash, FaExclamationTriangle, FaBullseye, 
-  FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus, 
+import {
+  FaMapMarkerAlt, FaGuitar, FaMusic, FaEnvelope, FaSpinner,
+  FaImage, FaEdit, FaTrash, FaExclamationTriangle, FaBullseye,
+  FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus,
   FaUserMinus, FaHeart, FaPalette, FaLink, FaChartBar, FaUndo,
-  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaMicrophone
+  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaMicrophone, FaUserFriends
 } from 'react-icons/fa'
 
 
@@ -32,8 +40,8 @@ const GENEROS_FIJOS = [
   { name: 'Jazz', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' },
   { name: 'Electrónica', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' },
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' },
-  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },       
-  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }    
+  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },
+  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }
 ]
 
 const SOCIAL_ICONS: Record<string, any> = {
@@ -62,13 +70,27 @@ export default function VerPerfil() {
   const { user } = useAuth()
   const hiddenIds = useHiddenUsers()
   const adminAlerts = useAdminAlerts()
+  const { confirm } = useDialog()
+
+  // Quita el diseño publicado (libre o por módulos) y vuelve al perfil por defecto
+  const resetToDefault = async () => {
+    if (!user) return
+    if (!(await confirm({ title: '¿Volver al perfil por defecto?', message: 'Tu diseño publicado se quita del perfil. Los diseños que guardaste en "Mis diseños" se conservan.', confirmLabel: 'Volver al por defecto', danger: true }))) return
+    const { error } = await supabase.from('profile_layouts').delete().eq('user_id', user.id)
+    if (error) { setToast({ message: 'No se pudo restablecer: ' + error.message, type: 'error' }); return }
+    setFreeLayout(null)
+    setCustomLayout(null)
+    setToast({ message: 'Perfil restablecido al diseño por defecto', type: 'success' })
+  }
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isFriend, setIsFriend] = useState(false)
   const [customLayout, setCustomLayout] = useState<ProfileLayout | null>(null)
-  
+  // Diseño libre (estilo MySpace); si existe, tiene prioridad sobre el de módulos
+  const [freeLayout, setFreeLayout] = useState<FreeLayout | null>(null)
+
   // ✅ Estado para estadísticas reales
   const [profileStats, setProfileStats] = useState({ friends: 0, posts: 0 })
 
@@ -82,6 +104,7 @@ export default function VerPerfil() {
   const [reportReason, setReportReason] = useState('')
   const [isReporting, setIsReporting] = useState(false)
   const [showBlockModal, setShowBlockModal] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts')
   const [likedPosts, setLikedPosts] = useState<any[]>([])
@@ -96,7 +119,11 @@ export default function VerPerfil() {
         setProfile(profileData)
 
         const { data: layoutData } = await supabase.from('profile_layouts').select('*').eq('user_id', id).maybeSingle()
-        if (layoutData) {
+        const free = layoutData?.layout_config?.layout === 'free' ? parseFreeLayout(layoutData.layout_config.free) : null
+        setFreeLayout(free)
+        if (free) {
+          setCustomLayout(null)
+        } else if (layoutData) {
           setCustomLayout({
             layout: layoutData.layout_config?.layout || 'one-column',
             modules: layoutData.layout_config?.modules || [],
@@ -110,7 +137,7 @@ export default function VerPerfil() {
         setPosts(postsData || [])
 
         const { count: friendsCount } = await supabase.from('friends').select('*', { count: 'exact', head: true }).or(`user_id.eq.${id},friend_id.eq.${id}`)
-        
+
         setProfileStats({
           friends: friendsCount || 0,
           posts: postsData?.length || 0
@@ -154,7 +181,7 @@ export default function VerPerfil() {
             <div className="flex flex-wrap gap-2">{profile.genres?.map((g: string, i: number) => (<span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 truncate">#{g}</span>)) || <span className="text-sm opacity-60">Sin géneros</span>}</div>
           )}
           {module.type === 'location' && <p className="text-base flex items-center gap-2 flex-wrap"><FaMapMarkerAlt className="flex-shrink-0" /><span className="truncate">{profile.localidad || 'Sin ubicación'}, {profile.departamento || 'Tucumán'}</span></p>}
-          
+
           {/* ✅ RENDERIZADO DE GALERÍA REAL (Seguro contra undefined) */}
           {module.type === 'gallery' && (
             <div className="grid grid-cols-2 gap-2">
@@ -181,9 +208,8 @@ export default function VerPerfil() {
 
           {/* ✅ RENDERIZADO DE ESTADÍSTICAS REALES */}
           {module.type === 'stats' && (
-            <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="grid grid-cols-1 gap-2 text-center">
               <div className="bg-white/5 p-3 rounded-lg border border-white/5"><p className="text-2xl font-bold text-cyan-400">{profileStats.friends}</p><p className="text-[10px] opacity-70 uppercase tracking-wider mt-1">Amigos</p></div>
-              <div className="bg-white/5 p-3 rounded-lg border border-white/5"><p className="text-2xl font-bold text-pink-400">{profileStats.posts}</p><p className="text-[10px] opacity-70 uppercase tracking-wider mt-1">Posts</p></div>
             </div>
           )}
 
@@ -274,7 +300,7 @@ export default function VerPerfil() {
     } catch (error: any) { setToast({ message: 'Error al enviar reporte: ' + error.message, type: 'error' }) } finally { setIsReporting(false) }
   }
 
-  if (loading) return <div className="min-h-screen bg-[#0f0f0f] flex flex-col items-center justify-center gap-4"><FaSpinner className="animate-spin text-4xl text-purple-600" /><p className="text-gray-400 text-sm animate-pulse">Cargando perfil...</p></div>
+  if (loading) return <ProfileSkeleton />
   if (!profile) return <div className="min-h-screen bg-[#0f0f0f] flex flex-col items-center justify-center gap-4 text-gray-400"><p className="text-xl">Perfil no encontrado.</p><button onClick={() => navigate('/home')} className="text-purple-400 hover:text-purple-300 font-medium">Volver al Home</button></div>
 
   const isMyProfile = user?.id === profile.id
@@ -286,7 +312,8 @@ export default function VerPerfil() {
       <AnimatedBackground />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="sticky top-[var(--banner-h,0px)] z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] pl-4 pr-32 py-3 flex items-center justify-between">
-        <h1 className="text-white font-bold text-lg truncate pr-4">{profile.display_name}</h1>
+        <h1 className="text-white font-bold text-lg truncate pr-2 flex-1">{profile.display_name}</h1>
+        <button onClick={() => setShowShare(true)} className="p-2 mr-2 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-gray-200 hover:text-green-400 flex-shrink-0" title="Compartir perfil" aria-label="Compartir perfil"><FaShareAlt size={15} /></button>
         {isMyProfile && adminAlerts.isAdmin && (
           <button onClick={() => navigate('/admin')} className="relative flex items-center gap-2 p-2 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50 hover:text-purple-300 transition-all flex-shrink-0" title="Panel de Administrador">
             <FaUserShield size={18} />
@@ -297,8 +324,24 @@ export default function VerPerfil() {
         )}
       </div>
 
-      <main className="w-full max-w-none px-2 md:px-4 space-y-4">        
-        {customLayout ? (
+      <main className="w-full max-w-none px-2 md:px-4 pt-2 space-y-4">
+        {freeLayout ? (
+          <div className="space-y-3">
+            <FreeProfileView layout={freeLayout} profile={profile} friendsCount={profileStats.friends} />
+            <div className="flex flex-wrap gap-2 justify-center">
+              {isMyProfile ? (<>
+                <button onClick={() => navigate('/editar-perfil')} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border text-sm font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={13} /> Editar datos</button>
+                <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center gap-2 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg hover:opacity-90"><FaPalette size={13} /> Diseñar perfil</button>
+                <button onClick={resetToDefault} className="flex items-center gap-2 py-2.5 px-4 bg-red-900/20 border border-red-700/50 text-red-400 text-sm font-semibold rounded-lg hover:bg-red-900/40"><FaUndo size={13} /> Perfil por defecto</button>
+              </>) : (<>
+                <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center gap-2 py-2.5 px-4 text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: themeColor }}><FaEnvelope size={13} /> Mensaje</button>
+                <button onClick={handleToggleFriend} className={`flex items-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-300'}`}>{isFriend ? <FaUserMinus size={13} /> : <FaUserPlus size={13} />} {isFriend ? 'Quitar' : 'Agregar'}</button>
+                <button onClick={() => setShowBlockModal(true)} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-sm rounded-lg hover:text-white" aria-label="Bloquear usuario"><FaBan size={13} /> Bloquear</button>
+                <button onClick={handleOpenReport} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-sm rounded-lg hover:text-red-400" aria-label="Reportar usuario"><FaFlag size={13} /> Reportar</button>
+              </>)}
+            </div>
+          </div>
+        ) : customLayout ? (
           <div className="w-full rounded-none md:rounded-2xl p-4 md:p-6 transition-colors duration-300 relative" style={getBackgroundStyle(customLayout.backgroundType, customLayout.backgroundValue)}>
             {!isMyProfile && (<button onClick={handleOpenReport} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20 z-10" title="Reportar usuario"><FaFlag size={18} /></button>)}
             <div className={`grid gap-4 ${LAYOUT_GRID_CLASS[customLayout.layout]}`}>
@@ -307,7 +350,7 @@ export default function VerPerfil() {
             {isMyProfile && (
               <div className="mt-6 flex flex-wrap gap-3 justify-center border-t border-[#2a2a2a] pt-4">
                 <button onClick={() => navigate('/editar-perfil')} className="flex items-center justify-center gap-2 py-3 px-6 bg-[#0f0f0f] border text-white font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={16} style={{ color: themeColor }} /> <span>Editar datos</span></button>
-                <button onClick={() => { if (confirm('¿Restablecer tu perfil al diseño por defecto? Se eliminará tu diseño personalizado.')) { supabase.from('profile_layouts').delete().eq('user_id', user.id).then(() => { setCustomLayout(null); setToast({ message: 'Perfil restablecido al diseño por defecto', type: 'success' }) }) } }} className="flex items-center justify-center gap-2 py-3 px-6 bg-red-900/20 border border-red-700/50 text-red-400 font-semibold rounded-lg transition-all hover:bg-red-900/40"><FaUndo size={16} /> <span>Restablecer diseño</span></button>
+                <button onClick={resetToDefault} className="flex items-center justify-center gap-2 py-3 px-6 bg-red-900/20 border border-red-700/50 text-red-400 font-semibold rounded-lg transition-all hover:bg-red-900/40"><FaUndo size={16} /> <span>Restablecer diseño</span></button>
               </div>
             )}
           </div>
@@ -329,21 +372,10 @@ export default function VerPerfil() {
                 {profile.localidad && (
                   <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5 truncate"><FaMapMarkerAlt style={{ color: themeColor }} className="flex-shrink-0" /> {profile.localidad}, {profile.departamento}</p>
                 )}
+                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5"><FaUserFriends style={{ color: themeColor }} className="flex-shrink-0" /> {profileStats.friends} {profileStats.friends === 1 ? 'amigo' : 'amigos'}</p>
               </div>
             </div>
 
-            {/* Estadísticas */}
-            <div className="grid grid-cols-2 gap-2 mt-5 text-center">
-              {[
-                { label: 'Publicaciones', value: profileStats.posts },
-                { label: 'Amigos', value: profileStats.friends },
-              ].map(stat => (
-                <div key={stat.label} className="bg-[#0f0f0f] rounded-lg py-2 border" style={{ borderColor: themeColor + '30' }}>
-                  <p className="text-lg font-bold text-white">{stat.value}</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</p>
-                </div>
-              ))}
-            </div>
 
             {!isMyProfile && isBlocked && (<div className="mt-4 flex items-center gap-2 p-3 bg-red-950/30 border border-red-900/40 text-red-400 text-sm rounded-lg"><FaBan /> Este usuario está bloqueado: no pueden enviarse mensajes ni verse en el feed.</div>)}
 
@@ -389,6 +421,9 @@ export default function VerPerfil() {
           </div>
         )}
 
+        <ProfileBands profileId={profile.id} isMine={isMyProfile} themeColor={themeColor} />
+        <ProfileReviews profileId={profile.id} profileName={profile.display_name.split(' ')[0]} themeColor={themeColor} />
+
         {/* Audio de presentación */}
         {profile.audio_url ? (
           <ProfileAudioPlayer url={profile.audio_url} name={profile.display_name} color={themeColor} />
@@ -408,7 +443,7 @@ export default function VerPerfil() {
               <div className="space-y-4">{posts.map((post) => (
                 <div key={post.id} className="bg-[#1a1a1a] border rounded-2xl p-5 transition-colors" style={{ borderColor: themeColor + '40' }}>
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="flex items-end gap-1"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={45} isOnline={isUserOnline((profile as any).last_seen)} /><Mascot color={profile.avatar_color || '#333'} size={20} expression={(profile as any).expression || 'normal'} /></div>                
+                    <div className="flex items-end gap-1"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={45} isOnline={isUserOnline((profile as any).last_seen)} /><Mascot color={profile.avatar_color || '#333'} size={20} expression={(profile as any).expression || 'normal'} /></div>
                     <div className="flex-1"><h4 className="text-white font-bold text-sm">{profile.display_name}</h4><p className="text-gray-500 text-xs">@{profile.username}</p><div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400"><span className="flex items-center gap-1"><FaGuitar style={{ color: themeColor }} size={10} /> {profile.instruments?.[0]?.name || 'Músico'}</span><span className="text-gray-700">•</span><span className="flex items-center gap-1"><FaMapMarkerAlt style={{ color: themeColor }} size={10} /> {profile.localidad}</span></div></div>
                     <span className="text-gray-600 text-xs">{new Date(post.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
                   </div>
@@ -428,7 +463,7 @@ export default function VerPerfil() {
                 return (
                   <div key={post.id} className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-5 hover:border-purple-600/30 transition-colors">
                     <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.user_id}`)}>
-                      <div className="flex items-end gap-1"><Avatar url={authorAvatar} name={authorName} color={authorColor} size={45} isOnline={isUserOnline((author as any).last_seen)} /><Mascot color={authorColor} size={20} expression={(author.expression as any) || 'normal'} /></div>                
+                      <div className="flex items-end gap-1"><Avatar url={authorAvatar} name={authorName} color={authorColor} size={45} isOnline={isUserOnline((author as any).last_seen)} /><Mascot color={authorColor} size={20} expression={(author.expression as any) || 'normal'} /></div>
                       <div className="flex-1"><h4 className="text-white font-bold text-sm hover:text-purple-400 transition-colors">{authorName}</h4><p className="text-gray-500 text-xs">@{authorUsername}</p><div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400"><span className="flex items-center gap-1"><FaGuitar style={{ color: themeColor }} size={10} /> {authorInstrument}</span><span className="text-gray-700">•</span><span className="flex items-center gap-1"><FaMapMarkerAlt style={{ color: themeColor }} size={10} /> {authorLocation}</span></div></div>
                       <span className="text-gray-600 text-xs">{new Date(post.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
                     </div>
@@ -446,6 +481,7 @@ export default function VerPerfil() {
         </div>
       </main>
 
+      {showShare && <ShareModal target={{ kind: 'profile', id: profile.id, ownerId: profile.id, label: profile.display_name }} onClose={() => setShowShare(false)} />}
       <PostModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingPost(null); }} existingPost={editingPost} onPostSaved={() => { refreshPosts(); }} />
       {reportModalOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReportModalOpen(false)} /><div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-md w-full shadow-2xl"><div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 bg-red-900/30 rounded-full flex items-center justify-center"><FaFlag className="text-red-400" size={20} /></div><h3 className="text-xl font-bold text-white">Reportar Usuario</h3></div><p className="text-gray-400 text-sm mb-4">Tu reporte es anónimo. Selecciona un motivo:</p><select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-red-500 mb-4"><option value="">Selecciona un motivo...</option><option value="Spam o publicidad">Spam o publicidad</option><option value="Comportamiento abusivo o acoso">Comportamiento abusivo o acoso</option><option value="Perfil falso">Perfil falso</option><option value="Contenido inapropiado">Contenido inapropiado</option><option value="Otro motivo">Otro motivo</option></select><div className="flex gap-3"><button onClick={() => setReportModalOpen(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">Cancelar</button><button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">{isReporting ? <FaSpinner className="animate-spin" /> : <FaFlag />} {isReporting ? 'Enviando...' : 'Enviar Reporte'}</button></div></div></div>)}
       {showBlockModal && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowBlockModal(false)} /><div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl"><div className="flex justify-center mb-4"><div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center border border-red-700/50"><FaBan className="text-red-400" size={32} /></div></div><h3 className="text-xl font-bold text-white text-center mb-2">¿Bloquear a este usuario?</h3><p className="text-gray-400 text-sm text-center mb-6 leading-relaxed">No podrán ver tu perfil, ni tus publicaciones, ni enviarte mensajes. Puedes desbloquearlos más tarde desde tu panel de opciones.</p><div className="flex gap-3"><button onClick={() => setShowBlockModal(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium border border-[#3a3a3a]">Cancelar</button><button onClick={confirmBlockUser} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-900/30"><FaBan size={14} /> Sí, bloquear</button></div></div></div>)}

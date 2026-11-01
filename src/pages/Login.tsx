@@ -262,7 +262,13 @@ export default function Login() {
               >
                 {loading ? 'Procesando...' : isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
               </button>
+              {isRegistering && (
+                <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+                  Al crear tu cuenta aceptás los <a href="/legal#terminos" className="text-purple-300 underline">Términos</a> y la <a href="/legal#privacidad" className="text-purple-300 underline">Política de privacidad</a>.
+                </p>
+              )}
             </form>
+            <p className="text-center mt-4"><a href="/legal" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Términos y privacidad</a></p>
 
             <div className="text-center text-sm text-gray-400 pt-5 mt-5 sm:pt-6 sm:mt-6 border-t border-[#2a2a2a]">
               {isRegistering ? (

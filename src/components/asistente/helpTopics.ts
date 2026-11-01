@@ -6,7 +6,7 @@
 export interface BotAction {
   label: string
   to?: string
-  run?: 'suggestion' | 'song'
+  run?: 'suggestion' | 'song' | 'tour'
   genre?: string
   href?: string
 }
@@ -104,6 +104,68 @@ export const TOPICS: Record<string, Topic> = {
     answer: 'Tocá la pestaña RADIO arriba a la derecha para abrir el reproductor. Sigue sonando mientras navegás y recuerda tu última estación y volumen.',
     keywords: ['radio', 'cassette', 'estacion', 'volumen'],
   },
+  app: {
+    question: '¿Cómo la instalo como app?',
+    answer: 'En el menú "Opciones" tocá "Instalar app". En Android también podés usar el menú ⋮ de Chrome → "Instalar app"; en iPhone, Compartir → "Agregar a inicio". Así se abre en su propia ventana, sin pestañas del navegador. Desde "Opciones" también activás las notificaciones.',
+    keywords: ['instalar', 'app', 'aplicacion', 'pestana', 'notificacion', 'aviso', 'pantalla de inicio', 'icono'],
+  },
+  notificaciones: {
+    question: 'No me llegan las notificaciones',
+    answer: 'Primero activalas en "Opciones" → "Activar notificaciones". Si dice "bloqueadas", es porque el navegador las tiene desactivadas y así no te llegan avisos de mensajes ni likes: tocá el candado al lado de la dirección → Permisos → Notificaciones → Permitir, y recargá. Si instalaste la app: mantené apretado el ícono → Información de la app → Notificaciones. Ojo: llegan mientras la app está abierta o en segundo plano.',
+    keywords: ['notificacion', 'no me llegan', 'bloqueada', 'avisos', 'permiso', 'campana'],
+  },
+  donar: {
+    question: '¿Cómo puedo apoyar a SANAT?',
+    answer: 'SANAT es gratis y sin publicidad. Si querés ayudar a mantener los servidores, en el menú "Opciones" vas a encontrar "Apoyar a SANAT" cuando las donaciones estén habilitadas. Es totalmente voluntario. ¡También ayudás invitando a otros músicos!',
+    keywords: ['donar', 'donacion', 'apoyar', 'colaborar', 'ayudar', 'plata', 'aporte'],
+  },
+  privacidad: {
+    question: 'Privacidad y términos',
+    answer: 'En "Opciones" → "Términos y privacidad" está todo explicado: qué datos guardamos, qué es público y qué es privado, cómo pedir la baja de tu cuenta y las normas de la comunidad.',
+    keywords: ['privacidad', 'terminos', 'datos', 'condiciones', 'normas', 'borrar cuenta', 'baja'],
+    actions: [{ label: 'Ver términos y privacidad', to: '/legal' }],
+  },
+  recorrido: {
+    question: 'Mostrame cómo funciona la app',
+    answer: 'Te muestro las partes principales del Inicio, paso a paso.',
+    keywords: ['recorrido', 'tutorial', 'como funciona', 'como se usa', 'guia', 'explicame', 'soy nuevo'],
+    actions: [{ label: 'Ver el recorrido', run: 'tour' }],
+  },
+  coincidencias: {
+    question: '¿Cómo encuentro banda más rápido?',
+    answer: 'Al publicar, si elegís "Busco músicos para mi proyecto" y marcás qué instrumentos buscás, SANAT les avisa a los que tocan eso en tu zona. Y si publicás "Busco banda", les avisamos a los que ya buscan tu instrumento. Las coincidencias te aparecen arriba en el Inicio.',
+    keywords: ['coincidencia', 'te buscan', 'encontrar banda', 'armar banda', 'matching', 'aviso de busqueda'],
+    actions: [{ label: 'Ir al Inicio', to: '/home' }],
+  },
+  bandas: {
+    question: '¿Cómo creo o me uno a una banda?',
+    answer: 'En "Bandas" (menú Opciones) tocá "Crear banda": ponés nombre, logo, géneros y qué instrumentos buscan. Para sumarte a una, entrá a su perfil y tocá "Postularme"; la banda recibe tu postulación y un mensaje por chat. Los administradores de la banda aceptan o rechazan.',
+    keywords: ['banda', 'bandas', 'grupo', 'unirme', 'postular', 'integrantes', 'crear banda'],
+    actions: [{ label: 'Ver bandas', to: '/bandas' }],
+  },
+  agenda: {
+    question: '¿Dónde veo shows y jams?',
+    answer: 'En "Agenda" (menú Opciones o en el Inicio) están los próximos shows, jams y ensayos abiertos. Marcá "Voy" y el día anterior te llega un recordatorio a la bandeja. También podés publicar tus propias fechas (hasta 5 próximas).',
+    keywords: ['agenda', 'show', 'shows', 'jam', 'evento', 'fecha', 'recital', 'toque', 'recordatorio'],
+    actions: [{ label: 'Abrir agenda', to: '/agenda' }],
+  },
+  demos: {
+    question: '¿Dónde escucho a otros músicos?',
+    answer: 'En "Escuchar demos" (menú Opciones o en el Inicio, al lado de "Músicos cerca tuyo") suenan seguidos los audios de perfil de la comunidad. Podés filtrar por tu zona o por género.',
+    keywords: ['demos', 'escuchar musicos', 'audios', 'como suenan', 'reproductor'],
+    actions: [{ label: 'Escuchar demos', to: '/demos' }],
+  },
+  resenas: {
+    question: '¿Cómo funcionan las reseñas?',
+    answer: 'Si chatearon (los dos se escribieron), en el perfil de esa persona aparece "Dejar reseña". Elegís etiquetas como "Puntual" o "Buen músico" y un comentario opcional. Ayuda a que la comunidad sepa con quién tocar.',
+    keywords: ['resena', 'reseña', 'opinion', 'calificar', 'puntual', 'buen musico'],
+  },
+  plantillas: {
+    question: '¿Hay diseños de perfil listos?',
+    answer: 'Sí: en "Diseñar perfil" → pestaña "Diseños" hay plantillas Grunge 90s, Neón, Folklore y Minimal. Se arman con tus datos y después las editás como quieras.',
+    keywords: ['plantilla', 'diseno listo', 'tema', 'estilo de perfil'],
+    actions: [{ label: 'Diseñar perfil', to: '/editar-perfil/diseno' }],
+  },
   contacto: {
     question: 'No encuentro mi respuesta',
     answer: 'Mandanos tu duda o sugerencia y la vamos a leer. ¡Nos ayuda a mejorar SANAT!',
@@ -114,11 +176,11 @@ export const TOPICS: Record<string, Topic> = {
 
 // Botones agrupados por categoría (más fácil de recorrer que una lista larga)
 export const CATEGORIES: { label: string; topics: string[] }[] = [
-  { label: '🎵 Música', topics: ['__song', 'audio', 'radio'] },
-  { label: '📝 Publicar', topics: ['publicar', 'editarPost', 'likes'] },
-  { label: '👤 Mi perfil', topics: ['perfil', 'diseno', 'mascota'] },
-  { label: '💬 Gente', topics: ['mensajes', 'amigos', 'buscar', 'seguridad'] },
-  { label: '🔑 Cuenta', topics: ['login', 'password', 'ban', 'contacto'] },
+  { label: '🎵 Música', topics: ['__song', 'demos', 'audio', 'radio'] },
+  { label: '📝 Publicar', topics: ['publicar', 'coincidencias', 'editarPost', 'likes'] },
+  { label: '👤 Mi perfil', topics: ['perfil', 'diseno', 'plantillas', 'mascota', 'resenas'] },
+  { label: '💬 Gente', topics: ['bandas', 'agenda', 'mensajes', 'amigos', 'buscar', 'seguridad'] },
+  { label: '🔑 Cuenta', topics: ['recorrido', 'app', 'notificaciones', 'login', 'password', 'ban', 'privacidad', 'donar', 'contacto'] },
 ]
 
 // ---------------------------------------------------------------------------

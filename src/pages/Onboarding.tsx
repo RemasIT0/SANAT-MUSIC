@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
+import InstrumentsInput, { cleanInstruments, emptyInstrument } from '../components/InstrumentsInput'
+import { compressImage, imageExtension, MAX_INPUT_IMAGE_MB } from '../lib/imageCompress'
+import type { Instrument } from '../types'
 import { type MascotExpression } from '../components/MascotCostumes'
 import MascotPicker from '../components/MascotPicker'
 import Avatar from '../components/Avatar'
@@ -73,12 +76,12 @@ export default function Onboarding() {
     username: '',
     display_name: '',
     bio: '',
-    instrument: '',
-    level: 'Intermedio',
     genres: [] as string[],
     departamento: 'Capital',
     localidad: 'San Miguel de Tucumán'
   })
+
+  const [instruments, setInstruments] = useState<Instrument[]>([emptyInstrument()])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -105,8 +108,8 @@ export default function Onboarding() {
       setToast({ message: 'Solo se permiten archivos de imagen', type: 'error' })
       return
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setToast({ message: 'La imagen debe pesar menos de 2MB', type: 'error' })
+    if (file.size > MAX_INPUT_IMAGE_MB * 1024 * 1024) {
+      setToast({ message: `La imagen debe pesar menos de ${MAX_INPUT_IMAGE_MB} MB`, type: 'error' })
       return
     }
     setImageFile(file)
@@ -135,13 +138,14 @@ export default function Onboarding() {
       let finalAvatarUrl = null
 
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop()
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+        // Se achica a 512 px y se pasa a WebP: la foto pesa ~50-150 KB
+        const compressed = await compressImage(imageFile, 'avatar')
+        const fileName = `${user.id}-${Date.now()}.${imageExtension(compressed)}`
         const filePath = `${user.id}/${fileName}`
 
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, imageFile, { upsert: true })
+          .upload(filePath, compressed, { upsert: true, contentType: compressed.type })
 
         if (uploadError) {
           console.error("Error al subir imagen:", uploadError)
@@ -168,7 +172,7 @@ export default function Onboarding() {
           theme_color: selectedTheme,
           expression: selectedExpression,
           avatar_url: finalAvatarUrl,
-          instruments: [{ name: formData.instrument, level: formData.level }],
+          instruments: cleanInstruments(instruments),
           genres: formData.genres,
           departamento: formData.departamento,
           localidad: formData.localidad,
@@ -194,7 +198,7 @@ export default function Onboarding() {
   const isFormValid = 
     formData.username.trim().length > 0 &&
     formData.display_name.trim().length > 0 &&
-    formData.instrument.trim().length > 0 &&
+    cleanInstruments(instruments).length > 0 &&
     formData.genres.length > 0
 
   return (
@@ -344,29 +348,8 @@ export default function Onboarding() {
 
         <form onSubmit={handleSubmit} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div className="relative">
-              <FaGuitar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-              <input
-                name="instrument"
-                value={formData.instrument}
-                onChange={handleChange}
-                required
-                placeholder="Instrumento principal"
-                className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors placeholder:text-gray-600"
-              />
-            </div>
-            <div>
-              <select
-                name="level"
-                value={formData.level}
-                onChange={handleChange}
-                className="w-full p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors"
-              >
-                <option>Principiante</option>
-                <option>Intermedio</option>
-                <option>Avanzado</option>
-                <option>Profesional</option>
-              </select>
+            <div className="md:col-span-2 lg:col-span-3">
+              <InstrumentsInput value={instruments} onChange={setInstruments} />
             </div>
             <div className="relative">
               <FaMapMarkerAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />

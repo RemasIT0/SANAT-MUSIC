@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { 
-  FaUsers, FaNewspaper, FaTrash, FaArrowLeft, 
-  FaSpinner, FaSearch, FaRegEnvelope, FaFlag, FaBan, FaUnlock, 
+import {
+  FaUsers, FaNewspaper, FaTrash, FaArrowLeft,
+  FaSpinner, FaSearch, FaRegEnvelope, FaFlag, FaBan, FaUnlock,
   FaExclamationTriangle, FaCheckCircle, FaTv, FaPlus, FaToggleOn, FaToggleOff
 } from 'react-icons/fa'
 import { LuChartNetwork } from "react-icons/lu";
@@ -14,6 +14,12 @@ import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { markAdminAlertsSeen } from '../hooks/useAdminAlerts'
 import AdminBannerControl from '../components/AdminBannerControl'
+import AdminDonationControl from '../components/AdminDonationControl'
+import AdminBroadcast from '../components/AdminBroadcast'
+import AdminStatsCharts from '../components/AdminStatsCharts'
+import ModerationModal, { type ModerationTarget } from '../components/ModerationModal'
+import { MAX_WARNINGS } from '../lib/moderation'
+import { FaGavel, FaUserCircle } from 'react-icons/fa'
 import { logAdminAction } from '../lib/adminLog'
 
 export default function AdminPanel() {
@@ -21,23 +27,26 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ users: 0, posts: 0, suggestions: 0, reports: 0, banned: 0 })
-  
+
   const [usersList, setUsersList] = useState<any[]>([])
   const [postsList, setPostsList] = useState<any[]>([])
   const [bannedList, setBannedList] = useState<any[]>([])
   const [suggestionsList, setSuggestionsList] = useState<any[]>([])
   const [reportsList, setReportsList] = useState<any[]>([])
   const [adsList, setAdsList] = useState<any[]>([])
-  
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'posts' | 'banned' | 'suggestions' | 'reports' | 'ads'>('stats')
+
+  const [activeTab, setActiveTab] = useState<'stats' | 'charts' | 'users' | 'posts' | 'warnings' | 'banned' | 'suggestions' | 'reports' | 'ads'>('stats')
+  const [moderationTarget, setModerationTarget] = useState<ModerationTarget | null>(null)
+  // Advertencias agrupadas por usuario (null = la tabla todavía no existe)
+  const [warningsList, setWarningsList] = useState<any[] | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  
+
   const [banningUser, setBanningUser] = useState<any>(null)
   const [banReasonInput, setBanReasonInput] = useState('')
   const [unbanningUser, setUnbanningUser] = useState<any>(null)
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null)
-  
+
   // Estados para gestión de anuncios
   const [showAdModal, setShowAdModal] = useState(false)
   const [editingAd, setEditingAd] = useState<any>(null)
@@ -71,18 +80,40 @@ export default function AdminPanel() {
       const { count: suggestionCount } = await supabase.from('suggestions').select('*', { count: 'exact', head: true })
       const { count: reportCount } = await supabase.from('reports').select('*', { count: 'exact', head: true })
       const { count: bannedCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true)
-      
-      setStats({ 
-        users: userCount || 0, posts: postCount || 0, 
-        suggestions: suggestionCount || 0, reports: reportCount || 0, 
-        banned: bannedCount || 0 
+
+      setStats({
+        users: userCount || 0, posts: postCount || 0,
+        suggestions: suggestionCount || 0, reports: reportCount || 0,
+        banned: bannedCount || 0
       })
 
       const { data: usersData } = await supabase.from('profiles').select('id, username, display_name, is_banned').order('created_at', { ascending: false })
       setUsersList(usersData?.filter(u => !u.is_banned) || [])
 
       const { data: postsData } = await supabase.from('posts').select('id, user_id, content, created_at').order('created_at', { ascending: false })
-      setPostsList(postsData || [])
+      const postAuthorIds = [...new Set((postsData || []).map(p => p.user_id))]
+      const { data: postAuthors } = postAuthorIds.length
+        ? await supabase.from('profiles').select('id, display_name, username').in('id', postAuthorIds)
+        : { data: [] as any[] }
+      const authorsMap: Record<string, any> = {}
+      postAuthors?.forEach((a: any) => { authorsMap[a.id] = a })
+      setPostsList((postsData || []).map(p => ({ ...p, author: authorsMap[p.user_id] || null })))
+
+      const { data: warningsData, error: warningsError } = await supabase.from('user_warnings').select('id, user_id, reason, details, created_at').order('created_at', { ascending: false })
+      if (warningsError) {
+        setWarningsList(null)
+      } else {
+        const wIds = [...new Set((warningsData || []).map(w => w.user_id))]
+        const { data: wProfiles } = wIds.length
+          ? await supabase.from('profiles').select('id, display_name, username, is_banned').in('id', wIds)
+          : { data: [] as any[] }
+        const grouped: Record<string, any> = {}
+        ;(warningsData || []).forEach(w => {
+          if (!grouped[w.user_id]) grouped[w.user_id] = { userId: w.user_id, profile: wProfiles?.find((pr: any) => pr.id === w.user_id) || null, items: [] }
+          grouped[w.user_id].items.push(w)
+        })
+        setWarningsList(Object.values(grouped).sort((a: any, b: any) => b.items.length - a.items.length))
+      }
 
       const { data: bannedData } = await supabase.from('profiles').select('id, username, display_name, ban_reason').eq('is_banned', true).order('created_at', { ascending: false })
       setBannedList(bannedData || [])
@@ -127,6 +158,30 @@ export default function AdminPanel() {
     if (!data || data.length === 0) throw new Error(NO_PERMISSION)
   }
 
+  // Mensaje de error completo (Supabase suele traer detalle, pista y código)
+  const describeError = (error: any) => {
+    console.error('Error en panel admin:', error)
+    if (!error) return 'Error desconocido'
+    const parts = [error.message, error.details, error.hint, error.code && `código ${error.code}`].filter(Boolean)
+    return parts.length ? parts.join(' — ') : String(error)
+  }
+
+  const removeWarning = (warning: any, userName: string) => askConfirm(
+    '¿Quitar esta advertencia?', `${userName} va a tener una advertencia menos. No se le avisa.`, 'QUITAR',
+    async () => {
+      try {
+        const { data, error } = await supabase.from('user_warnings').delete().eq('id', warning.id).select('id')
+        if (error) throw error
+        ensureAffected(data)
+        setToast({ message: 'Advertencia quitada', type: 'success' })
+        logAdminAction('Advertencia quitada', `${userName} — ${warning.reason}`)
+        fetchData()
+      } catch (error: any) {
+        setToast({ message: 'Error: ' + describeError(error), type: 'error' })
+      }
+    }
+  )
+
   const askConfirm = (title: string, message: string, confirmLabel: string, run: () => Promise<void>) =>
     setConfirmAction({ title, message, confirmLabel, run })
 
@@ -150,7 +205,7 @@ export default function AdminPanel() {
       setBanReasonInput('')
       fetchData()
     } catch (error: any) {
-      setToast({ message: 'Error al banear: ' + error.message, type: 'error' })
+      setToast({ message: 'Error al banear: ' + describeError(error), type: 'error' })
     }
   }
 
@@ -165,7 +220,7 @@ export default function AdminPanel() {
       setUnbanningUser(null)
       fetchData()
     } catch (error: any) {
-      setToast({ message: 'Error al restablecer: ' + error.message, type: 'error' })
+      setToast({ message: 'Error al restablecer: ' + describeError(error), type: 'error' })
     }
   }
 
@@ -184,7 +239,7 @@ export default function AdminPanel() {
       logAdminAction('Publicación borrada', deletedPost ? `"${(deletedPost.content || '').slice(0, 80)}"` : `id ${deletingPostId}`)
       setDeletingPostId(null)
     } catch (error: any) {
-      setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+      setToast({ message: 'Error al eliminar: ' + describeError(error), type: 'error' })
     }
   }
 
@@ -201,7 +256,7 @@ export default function AdminPanel() {
         const report = reportsList.find(r => r.id === reportId)
         logAdminAction('Reporte archivado', report ? `${report.reported?.display_name || 'usuario'}: "${report.reason}"` : `id ${reportId}`)
       } catch (error: any) {
-        setToast({ message: 'Error al archivar: ' + error.message, type: 'error' })
+        setToast({ message: 'Error al archivar: ' + describeError(error), type: 'error' })
       }
     }
   )
@@ -219,7 +274,7 @@ export default function AdminPanel() {
         const suggestion = suggestionsList.find(s => s.id === suggestionId)
         logAdminAction('Sugerencia borrada', suggestion ? `de ${suggestion.profiles?.display_name || 'anónimo'}: "${(suggestion.content || '').slice(0, 80)}"` : `id ${suggestionId}`)
       } catch (error: any) {
-        setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+        setToast({ message: 'Error al eliminar: ' + describeError(error), type: 'error' })
       }
     }
   )
@@ -270,7 +325,7 @@ export default function AdminPanel() {
       fetchData()
     } catch (error: any) {
       console.error('Error al guardar anuncio:', error)
-      setToast({ message: 'Error al guardar: ' + (error.message || 'Desconocido'), type: 'error' })
+      setToast({ message: 'Error al guardar: ' + describeError(error), type: 'error' })
     } finally {
       setAdSaving(false)
     }
@@ -285,7 +340,7 @@ export default function AdminPanel() {
       setToast({ message: ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', type: 'success' })
       logAdminAction(ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', ad.title)
     } catch (error: any) {
-      setToast({ message: 'Error: ' + error.message, type: 'error' })
+      setToast({ message: 'Error: ' + describeError(error), type: 'error' })
     }
   }
 
@@ -300,7 +355,7 @@ export default function AdminPanel() {
         setToast({ message: 'Anuncio eliminado', type: 'success' })
         logAdminAction('Anuncio borrado', ad.title)
       } catch (error: any) {
-        setToast({ message: 'Error al eliminar: ' + error.message, type: 'error' })
+        setToast({ message: 'Error al eliminar: ' + describeError(error), type: 'error' })
       }
     }
   )
@@ -337,14 +392,28 @@ export default function AdminPanel() {
         )}
 
         <AdminBannerControl onResult={(message, type) => setToast({ message, type })} />
+        <AdminDonationControl onResult={(message, type) => setToast({ message, type })} />
+        <AdminBroadcast onResult={(message, type) => setToast({ message, type })} />
+
+        {/* Navegación rápida entre secciones */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          {([
+            ['stats', 'Mapa'], ['charts', 'Estadísticas'], ['users', 'Usuarios'], ['posts', 'Publicaciones'], ['warnings', 'Advertencias'],
+            ['banned', 'Baneados'], ['reports', 'Reportes'], ['suggestions', 'Sugerencias'], ['ads', 'Anuncios'],
+          ] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setActiveTab(id)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold border transition-colors ${activeTab === id ? 'bg-purple-700 border-purple-500 text-white' : 'bg-[#141414] border-[#2a2a2a] text-gray-300 hover:text-white'}`}>
+              {label}{id === 'warnings' && warningsList?.length ? ` (${warningsList.length})` : ''}
+            </button>
+          ))}
+        </div>
 
         <div className="bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-2xl p-6 min-h-[500px] shadow-2xl">
-          
+
           {activeTab === 'stats' && (
             <div className="space-y-8">
               <div className="relative w-full h-72 md:h-96 bg-[#0a0a0a] rounded-xl border border-purple-500/30 overflow-hidden shadow-[0_0_30px_rgba(168,85,247,0.1)]">
                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(168,85,247,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(168,85,247,0.5) 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-                
+
                 <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
                   <defs>
                     <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -359,7 +428,7 @@ export default function AdminPanel() {
                       </feMerge>
                     </filter>
                   </defs>
-                  
+
                   {/* Líneas de conexión */}
                   <line x1="400" y1="200" x2="180" y2="90" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="620" y2="90" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
@@ -367,28 +436,28 @@ export default function AdminPanel() {
                   <line x1="400" y1="200" x2="620" y2="310" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="400" y2="60" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
                   <line x1="400" y1="200" x2="400" y2="340" stroke="url(#lineGrad)" strokeWidth="2" filter="url(#glow)" opacity="0.7" />
-                  
+
                   {/* Nodo Central */}
                   <circle cx="400" cy="200" r="40" fill="#1a1a1a" stroke="#a855f7" strokeWidth="3" filter="url(#glow)" />
                   <text x="400" y="195" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="bold" fontFamily="monospace">CORE</text>
                   <text x="400" y="212" textAnchor="middle" fill="#a855f7" fontSize="10" fontFamily="monospace">{stats.users} NODOS</text>
-                  
+
                   {/* Nodos Externos */}
                   <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('users')}>
                     <circle cx="180" cy="90" r="28" fill="#1a1a1a" stroke="#3b82f6" strokeWidth="2" filter="url(#glow)" />
                     <text x="180" y="95" textAnchor="middle" fill="#3b82f6" fontSize="11" fontWeight="bold" fontFamily="monospace">USERS</text>
                   </g>
-                  
+
                   <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('posts')}>
                     <circle cx="620" cy="90" r="28" fill="#1a1a1a" stroke="#f59e0b" strokeWidth="2" filter="url(#glow)" />
                     <text x="620" y="95" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold" fontFamily="monospace">POSTS</text>
                   </g>
-                  
+
                   <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('banned')}>
                     <circle cx="180" cy="310" r="28" fill="#1a1a1a" stroke="#ef4444" strokeWidth="2" filter="url(#glow)" />
                     <text x="180" y="315" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="bold" fontFamily="monospace">BANS</text>
                   </g>
-                  
+
                   <g style={{ cursor: 'pointer' }} onClick={() => setActiveTab('reports')}>
                     <circle cx="620" cy="310" r="28" fill="#1a1a1a" stroke="#10b981" strokeWidth="2" filter="url(#glow)" />
                     <text x="620" y="315" textAnchor="middle" fill="#10b981" fontSize="11" fontWeight="bold" fontFamily="monospace">ALERTS</text>
@@ -435,12 +504,14 @@ export default function AdminPanel() {
 
           {activeTab !== 'stats' && (
             <>
-              <button 
-                onClick={() => setActiveTab('stats')} 
+              <button
+                onClick={() => setActiveTab('stats')}
                 className="mb-4 flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors font-mono text-sm border border-purple-500/30 hover:border-purple-500/60 px-4 py-2 rounded-lg bg-purple-900/10"
               >
                 <FaArrowLeft /> VOLVER_AL_NÚCLEO
               </button>
+
+              {activeTab === 'charts' && <AdminStatsCharts />}
 
               {activeTab === 'users' && (
                 <div>
@@ -454,6 +525,7 @@ export default function AdminPanel() {
                       <div key={u.id} className="flex items-center justify-between p-3 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a] hover:border-blue-500/30 transition-all group">
                         <div><p className="font-bold text-white group-hover:text-blue-400 transition-colors font-mono">{u.display_name}</p><p className="text-xs text-gray-500 font-mono">@{u.username}</p></div>
                         <div className="flex gap-2">
+                          <button onClick={() => setModerationTarget({ userId: u.id, userName: u.display_name })} className="text-amber-400 hover:text-amber-300 p-2 flex items-center gap-1 text-xs font-semibold hover:bg-amber-900/20 rounded-lg transition-all border border-transparent hover:border-amber-900/50 font-mono"><FaGavel /> ADVERTIR</button>
                           <button onClick={() => setBanningUser(u)} className="text-red-500 hover:text-red-400 p-2 flex items-center gap-1 text-xs font-semibold hover:bg-red-900/20 rounded-lg transition-all border border-transparent hover:border-red-900/50 font-mono"><FaBan /> BANEAR</button>
                         </div>
                       </div>
@@ -466,16 +538,63 @@ export default function AdminPanel() {
                 <div>
                   <h2 className="text-xl font-bold text-white mb-4 font-mono flex items-center gap-2"><FaNewspaper className="text-amber-400" /> REGISTRO_DE_POSTS</h2>
                   <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-                    {postsList.map(p => (
-                      <div key={p.id} className="p-4 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a] hover:border-amber-500/30 transition-all">
-                        <p className="text-gray-300 text-sm mb-3 line-clamp-2 font-mono">"{p.content}"</p>
-                        <div className="flex items-center justify-between border-t border-[#2a2a2a] pt-2">
-                          <span className="text-[10px] text-gray-600 font-mono">ID: {p.user_id.substring(0, 8)}... | {new Date(p.created_at).toLocaleDateString()}</span>
-                          <button onClick={() => requestDeletePost(p.id)} className="text-red-500 hover:text-red-400 text-xs flex items-center gap-1 hover:bg-red-900/20 px-3 py-1.5 rounded transition-all border border-transparent hover:border-red-900/50 font-mono"><FaTrash /> PURGAR</button>
+                    {postsList.length === 0 && <p className="text-center text-gray-500 py-8 font-mono">NO HAY PUBLICACIONES.</p>}
+                    {postsList.map(p => {
+                      const name = p.author?.display_name || 'Usuario eliminado'
+                      return (
+                        <div key={p.id} className="p-4 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a] hover:border-amber-500/30 transition-all">
+                          <button onClick={() => navigate(`/perfil/${p.user_id}`)} className="flex items-center gap-2 mb-2 text-left group">
+                            <FaUserCircle className="text-amber-400 flex-shrink-0" />
+                            <span className="text-white text-sm font-semibold group-hover:text-amber-300">{name}</span>
+                            {p.author?.username && <span className="text-gray-500 text-xs">@{p.author.username}</span>}
+                          </button>
+                          <p className="text-gray-300 text-sm mb-3 line-clamp-3 font-mono">"{p.content}"</p>
+                          <div className="flex items-center justify-between border-t border-[#2a2a2a] pt-2">
+                            <span className="text-[11px] text-gray-500 font-mono">{new Date(p.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <button onClick={() => setModerationTarget({ userId: p.user_id, userName: name, postId: p.id, postContent: p.content })} className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1.5 hover:bg-red-900/20 px-3 py-1.5 rounded transition-all border border-red-900/40 font-mono"><FaTrash size={11} /> ELIMINAR</button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'warnings' && (
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-1 font-mono flex items-center gap-2"><FaGavel className="text-amber-400" /> ADVERTENCIAS</h2>
+                  <p className="text-xs text-gray-400 mb-4">Al llegar a {MAX_WARNINGS} advertencias la cuenta se suspende automáticamente.</p>
+                  {warningsList === null ? (
+                    <p className="text-sm text-amber-200 bg-amber-900/20 border border-amber-700/40 rounded-lg p-3">Falta crear las tablas de advertencias: corré <b>CHAT_y_ADVERTENCIAS.sql</b> en Supabase.</p>
+                  ) : warningsList.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8 font-mono">NADIE TIENE ADVERTENCIAS.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                      {warningsList.map((group: any) => {
+                        const name = group.profile?.display_name || 'Usuario eliminado'
+                        const count = group.items.length
+                        return (
+                          <div key={group.userId} className={`p-4 bg-[#0f0f0f] rounded-lg border ${count >= MAX_WARNINGS ? 'border-red-700/60' : count === 2 ? 'border-amber-600/50' : 'border-[#2a2a2a]'}`}>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <button onClick={() => navigate(`/perfil/${group.userId}`)} className="text-left">
+                                <p className="text-white font-semibold text-sm">{name} {group.profile?.is_banned && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-red-900/50 text-red-200">BANEADO</span>}</p>
+                                {group.profile?.username && <p className="text-gray-500 text-xs">@{group.profile.username}</p>}
+                              </button>
+                              <span className={`text-sm font-bold font-mono ${count >= MAX_WARNINGS ? 'text-red-400' : count === 2 ? 'text-amber-300' : 'text-gray-200'}`}>{count}/{MAX_WARNINGS}</span>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {group.items.map((w: any) => (
+                                <li key={w.id} className="flex items-start gap-2 text-xs text-gray-300 border-l-2 border-amber-500/40 pl-2">
+                                  <span className="flex-1">{w.reason}{w.details ? ` — ${w.details}` : ''} <span className="text-gray-500">· {new Date(w.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span></span>
+                                  <button onClick={() => removeWarning(w, name)} className="text-gray-400 hover:text-red-400 flex-shrink-0" aria-label="Quitar advertencia"><FaTrash size={10} /></button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -545,7 +664,7 @@ export default function AdminPanel() {
                       <FaPlus /> NUEVO_ANUNCIO
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                     {adsList.length === 0 ? (
                       <div className="text-center py-12">
@@ -633,6 +752,17 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+      )}
+
+      {moderationTarget && (
+        <ModerationModal
+          target={moderationTarget}
+          onClose={() => setModerationTarget(null)}
+          onDone={(message, type) => {
+            setToast({ message, type })
+            if (type === 'success') { setModerationTarget(null); fetchData() }
+          }}
+        />
       )}
 
       {confirmAction && (

@@ -9,15 +9,22 @@ import { useOnlineStatus } from './hooks/useOnlineStatus' // ✅ NUEVO IMPORT
 import Notificaciones from './pages/Notificaciones'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
-import VerificarEmail from './pages/VerificarEmail' 
+import VerificarEmail from './pages/VerificarEmail'
 import Home from './pages/Inicio'
 import VerPerfil from './pages/VerPerfil'
 import EditarPerfil from './pages/EditarPerfil'
 import ChatRoom from './pages/ChatRoom'
 import Bandeja from './pages/Bandeja'
+import Guardados from './pages/Guardados'
+import Demos from './pages/Demos'
+import Bandas from './pages/Bandas'
+import Banda from './pages/Banda'
+import Agenda from './pages/Agenda'
+import AvisosAdmin, { ADMIN_THREAD_ID } from './pages/AvisosAdmin'
 import AdminPanel from './pages/AdminPanel'
 import RestablecerContrasena from './pages/RestablecerContrasena'
 import Baneado from './pages/Baneado'
+import Legal from './pages/Legal'
 import BottomNav from './components/BottomNav'
 import AnimatedBackground from './components/AnimatedBackground'
 import RetroRadio from './components/RetroRadio'
@@ -25,15 +32,16 @@ import Toast from './components/Toast'
 import MaintenanceScreen from './components/MaintenanceScreen'
 import AdminSecretGate from './components/AdminSecretGate'
 import TestBanner from './components/TestBanner'
+import DeviceNotifications from './components/DeviceNotifications'
 
-import ProfileEditor from './components/ProfileEditor'
+import FreeProfileEditor from './components/free/FreeProfileEditor'
 
 import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelope, FaPaperPlane, FaSpinner, } from 'react-icons/fa'
 import { FaRadio } from "react-icons/fa6";
 import { FaUser } from "react-icons/fa";
 import { FaMusic } from "react-icons/fa";
 
-const IS_MAINTENANCE_MODE = false 
+const IS_MAINTENANCE_MODE = false
 const ADMIN_EMAIL = 'remaslove281@gmail.com'
 
 function LoadingScreen() {
@@ -87,7 +95,7 @@ function LayoutWithNav() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="pb-32"><Outlet /></div>
       <BottomNav />
-      
+
       {showSuggestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeSuggestionModal} />
@@ -108,13 +116,13 @@ function LayoutWithNav() {
 {showHelpModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out] ">
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeHelpModal} />
-<div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">      
+<div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       <div className="mb-4 ">
         <h3 className="text-xl font-bold text-white flex items-center gap-2">
           <FaQuestionCircle className="text-blue-400" /> Centro de Ayuda
         </h3>
       </div>
-      
+
       <div className="space-y-4 mb-6 ">
         {/* Sección 1: Cuenta */}
         <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-4">
@@ -196,24 +204,24 @@ function RequireVerified() {
   if (!user) return <Navigate to="/login" replace />
   if (!emailConfirmed) return <Navigate to="/verificar-email" replace />
   if (!profile) return <Navigate to="/onboarding" replace />
-  
+
   if (IS_MAINTENANCE_MODE && user.email !== ADMIN_EMAIL) {
     return <MaintenanceScreen />
   }
 
   // La cuenta admin necesita responder la pregunta secreta antes de entrar
   if (user.email === ADMIN_EMAIL) {
-    return <AdminSecretGate><Outlet /></AdminSecretGate>
+    return <AdminSecretGate><DeviceNotifications /><Outlet /></AdminSecretGate>
   }
-  
-  return <Outlet />
+
+  return <><DeviceNotifications /><Outlet /></>
 }
 
 // Componente wrapper para usar useNavigate correctamente
 function ProfileEditorRoute() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  return <ProfileEditor onClose={() => navigate(`/perfil/${user?.id}`)} />
+  return <FreeProfileEditor onClose={() => navigate(`/perfil/${user?.id}`)} />
 }
 
 function App() {
@@ -221,17 +229,18 @@ function App() {
     <BrowserRouter>
       <AnimatedBackground />
       <TestBanner />
-      <BanRedirect /> 
+      <BanRedirect />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
-        <Route path="/baneado" element={<Baneado />} /> 
-        
+        <Route path="/baneado" element={<Baneado />} />
+        <Route path="/legal" element={<Legal />} />
+
         <Route element={<RequireUser />}>
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/verificar-email" element={<VerificarEmail />} />
         </Route>
-        
+
         <Route element={<RequireVerified />}>
           <Route element={<LayoutWithNav />}>
             <Route path="/" element={<Home />} />
@@ -241,8 +250,14 @@ function App() {
             <Route path="/editar-perfil" element={<EditarPerfil />} />
             <Route path="/editar-perfil/diseno" element={<ProfileEditorRoute />} />
             <Route path="/bandeja" element={<Bandeja />} />
+            <Route path="/guardados" element={<Guardados />} />
+            <Route path="/demos" element={<Demos />} />
+            <Route path="/bandas" element={<Bandas />} />
+            <Route path="/banda/:id" element={<Banda />} />
+            <Route path="/agenda" element={<Agenda />} />
             <Route path="/admin" element={<AdminPanel />} />
           </Route>
+          <Route path={`/chat/${ADMIN_THREAD_ID}`} element={<AvisosAdmin />} />
           <Route path="/chat/:userId" element={<ChatRoom />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>

@@ -4,7 +4,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { FaPlay, FaPause, FaMicrophone, FaTrash, FaSpinner, FaUpload } from 'react-icons/fa'
+import { useDialog } from './DialogProvider'
+import { FaPlay, FaPause, FaMicrophone, FaTrash, FaSpinner, FaUpload, FaStop } from 'react-icons/fa'
 
 export const AUDIO_MAX_SECONDS = 30
 export const AUDIO_MAX_BYTES = 1024 * 1024
@@ -82,14 +83,86 @@ export function ProfileAudioPlayer({ url, name, color = '#a855f7' }: { url: stri
   )
 }
 
+// Tipo de audio "limpio" que acepta el bucket (el celular a veces manda vacío o variantes raras)
+const MIME_BY_EXTENSION: Record<string, string> = {
+  mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac',
+  ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm',
+}
+const MIME_ALIASES: Record<string, string> = {
+  'audio/mp3': 'audio/mpeg', 'audio/x-m4a': 'audio/mp4', 'audio/m4a': 'audio/mp4', 'audio/x-aac': 'audio/aac',
+  'audio/opus': 'audio/ogg', 'video/webm': 'audio/webm', 'video/mp4': 'audio/mp4',
+}
+const normalizeAudioType = (file: Blob & { name?: string }) => {
+  const base = (file.type || '').split(';')[0].trim().toLowerCase()
+  if (base && AUDIO_TYPES.includes(base)) return base
+  if (base && MIME_ALIASES[base]) return MIME_ALIASES[base]
+  const ext = (file.name || '').split('.').pop()?.toLowerCase() || ''
+  return MIME_BY_EXTENSION[ext] || null
+}
+
+// Traduce los errores de Supabase a algo entendible
+const friendlyUploadError = (error: any) => {
+  const msg = String(error?.message || error || '')
+  if (/bucket not found/i.test(msg)) return 'Falta configurar el almacenamiento de audios en Supabase (AUDIO_perfil.sql).'
+  if (/mime|content type/i.test(msg)) return 'El servidor no acepta ese formato. Probá grabando el audio desde acá.'
+  if (/too large|maximum allowed size|exceeded/i.test(msg)) return 'El archivo es muy pesado (máximo 1 MB).'
+  if (/row-level security|policy|unauthorized|403/i.test(msg)) return 'No tenés permiso para subir ese archivo. Cerrá sesión, volvé a entrar y probá de nuevo.'
+  if (/audio_url/i.test(msg)) return 'Falta la columna audio_url en la base de datos (AUDIO_perfil.sql).'
+  return msg || 'Intentá de nuevo.'
+}
+
+// Formato de grabación que soporte este navegador (Chrome/Android: webm; iPhone: mp4)
+const pickRecorderType = () => {
+  if (typeof MediaRecorder === 'undefined') return null
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+  return candidates.find(t => MediaRecorder.isTypeSupported(t)) || ''
+}
+
 export function ProfileAudioUploader() {
   const { user, profile, refreshProfile } = useAuth()
+  const { confirm } = useDialog()
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
 
+  // Grabación
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<number | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [recorded, setRecorded] = useState<{ blob: Blob; url: string; type: string } | null>(null)
+  const canRecord = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && pickRecorderType() !== null
+
   const audioUrl = profile?.audio_url || null
   const path = `${user?.id}/perfil`
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearInterval(timerRef.current)
+    recorderRef.current?.stream.getTracks().forEach(t => t.stop())
+  }, [])
+
+  const upload = async (blob: Blob, contentType: string) => {
+    if (!user) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { error: uploadError } = await supabase.storage.from('audios').upload(path, blob, { upsert: true, contentType })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('audios').getPublicUrl(path)
+      // ?v= evita que el navegador muestre el audio viejo guardado en caché
+      const { error: updateError } = await supabase.from('profiles').update({ audio_url: `${data.publicUrl}?v=${Date.now()}` }).eq('id', user.id)
+      if (updateError) throw updateError
+      await refreshProfile()
+      setRecorded(null)
+      setMessage({ text: '¡Audio subido! Ya se escucha en tu perfil.', type: 'success' })
+    } catch (error: any) {
+      console.error('Error al subir audio:', error)
+      setMessage({ text: 'No se pudo subir: ' + friendlyUploadError(error), type: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -97,39 +170,63 @@ export function ProfileAudioUploader() {
     if (!file || !user) return
     setMessage(null)
 
-    if (!AUDIO_TYPES.includes(file.type)) {
-      setMessage({ text: 'Formato no permitido. Usá MP3, M4A, OGG o WEBM.', type: 'error' }); return
+    const contentType = normalizeAudioType(file)
+    if (!contentType) {
+      setMessage({ text: 'Formato no permitido. Usá MP3, M4A, AAC, OGG u OPUS, o grabá el audio desde acá.', type: 'error' }); return
     }
     if (file.size > AUDIO_MAX_BYTES) {
-      setMessage({ text: `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. El máximo es 1 MB.`, type: 'error' }); return
+      setMessage({ text: `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es 1 MB. Recortalo o grabalo desde acá (queda mucho más liviano).`, type: 'error' }); return
     }
-
-    setBusy(true)
     try {
-      const seconds = await getAudioDuration(file)
-      if (seconds > AUDIO_MAX_SECONDS + 0.5) {
-        setMessage({ text: `El audio dura ${Math.round(seconds)} s. El máximo es ${AUDIO_MAX_SECONDS} s: recortalo y volvé a subirlo.`, type: 'error' }); return
+      const duration = await getAudioDuration(file)
+      if (isFinite(duration) && duration > AUDIO_MAX_SECONDS + 0.5) {
+        setMessage({ text: `El audio dura ${Math.round(duration)} s y el máximo es ${AUDIO_MAX_SECONDS} s. Recortalo y volvé a subirlo.`, type: 'error' }); return
       }
+    } catch {
+      // Algunos formatos no informan la duración: el límite de 1 MB igual protege
+    }
+    upload(file, contentType)
+  }
 
-      const { error: uploadError } = await supabase.storage.from('audios').upload(path, file, { upsert: true, contentType: file.type })
-      if (uploadError) throw uploadError
+  const stopRecording = () => {
+    if (timerRef.current) { window.clearInterval(timerRef.current); timerRef.current = null }
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    setRecording(false)
+  }
 
-      const { data } = supabase.storage.from('audios').getPublicUrl(path)
-      // ?v= evita que el navegador muestre el audio viejo guardado en caché
-      const { error: updateError } = await supabase.from('profiles').update({ audio_url: `${data.publicUrl}?v=${Date.now()}` }).eq('id', user.id)
-      if (updateError) throw updateError
-
-      await refreshProfile()
-      setMessage({ text: '¡Audio subido!', type: 'success' })
+  const startRecording = async () => {
+    setMessage(null)
+    setRecorded(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = pickRecorderType() || undefined
+      const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 })
+      chunksRef.current = []
+      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunksRef.current.push(ev.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const type = (recorder.mimeType || mimeType || 'audio/webm').split(';')[0]
+        const blob = new Blob(chunksRef.current, { type })
+        setRecorded({ blob, url: URL.createObjectURL(blob), type: MIME_ALIASES[type] || type })
+      }
+      recorderRef.current = recorder
+      recorder.start()
+      setSeconds(0)
+      setRecording(true)
+      timerRef.current = window.setInterval(() => {
+        setSeconds(prev => {
+          if (prev + 1 >= AUDIO_MAX_SECONDS) stopRecording()
+          return prev + 1
+        })
+      }, 1000)
     } catch (error: any) {
-      setMessage({ text: 'Error al subir: ' + (error.message || 'intentá de nuevo'), type: 'error' })
-    } finally {
-      setBusy(false)
+      const denied = /denied|permission|notallowed/i.test(String(error?.name || error?.message))
+      setMessage({ text: denied ? 'Necesitás permitir el micrófono para grabar.' : 'No se pudo acceder al micrófono.', type: 'error' })
     }
   }
 
   const handleDelete = async () => {
-    if (!user || !confirm('¿Eliminar tu audio?')) return
+    if (!user || !(await confirm({ title: '¿Eliminar tu audio?', message: 'Se borra de tu perfil. Podés subir otro cuando quieras.', confirmLabel: 'Eliminar', danger: true }))) return
     setBusy(true)
     setMessage(null)
     try {
@@ -139,30 +236,56 @@ export function ProfileAudioUploader() {
       await refreshProfile()
       setMessage({ text: 'Audio eliminado', type: 'success' })
     } catch (error: any) {
-      setMessage({ text: 'Error al eliminar: ' + error.message, type: 'error' })
+      setMessage({ text: 'Error al eliminar: ' + friendlyUploadError(error), type: 'error' })
     } finally {
       setBusy(false)
     }
   }
 
+  const btn = 'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50'
+
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full mt-4">
       <h2 className="text-white text-lg mb-1 flex items-center gap-2"><FaMicrophone className="text-purple-400" size={16} /> Tu audio</h2>
-      <p className="text-gray-400 text-sm mb-4">Mostrá cómo sonás: un solo audio de hasta {AUDIO_MAX_SECONDS} segundos y 1 MB (MP3, M4A, OGG o WEBM). Subir uno nuevo reemplaza al anterior.</p>
+      <p className="text-gray-400 text-sm mb-4">Mostrá cómo sonás: un solo audio de hasta {AUDIO_MAX_SECONDS} segundos. Grabalo acá mismo o subí un archivo (MP3, M4A, OGG, hasta 1 MB). Uno nuevo reemplaza al anterior.</p>
 
-      {audioUrl && <div className="mb-4"><ProfileAudioPlayer url={audioUrl} name={profile?.display_name || 'vos'} color={profile?.theme_color || '#a855f7'} /></div>}
+      {audioUrl && !recorded && <div className="mb-4"><ProfileAudioPlayer url={audioUrl} name={profile?.display_name || 'vos'} color={profile?.theme_color || '#a855f7'} /></div>}
 
-      <input ref={fileRef} type="file" accept={AUDIO_TYPES.join(',')} onChange={handleFile} className="hidden" />
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex items-center gap-2 px-4 py-2.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors">
-          {busy ? <FaSpinner className="animate-spin" /> : <FaUpload size={13} />} {audioUrl ? 'Reemplazar audio' : 'Subir audio'}
-        </button>
-        {audioUrl && (
-          <button type="button" onClick={handleDelete} disabled={busy} className="flex items-center gap-2 px-4 py-2.5 bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 disabled:opacity-50 text-red-400 text-sm font-semibold rounded-lg transition-colors">
-            <FaTrash size={12} /> Eliminar
+      {recording && (
+        <div className="mb-4 flex items-center gap-3 p-3 rounded-xl bg-red-950/30 border border-red-800/50">
+          <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-sm text-red-200 font-mono flex-1">Grabando… {seconds}s / {AUDIO_MAX_SECONDS}s</span>
+          <button type="button" onClick={stopRecording} className={`${btn} bg-red-600 hover:bg-red-500 text-white`}><FaStop size={11} /> Detener</button>
+        </div>
+      )}
+
+      {recorded && (
+        <div className="mb-4 space-y-2">
+          <p className="text-sm text-gray-300">Escuchá tu grabación antes de subirla:</p>
+          <ProfileAudioPlayer url={recorded.url} name="tu grabación" color={profile?.theme_color || '#a855f7'} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => upload(recorded.blob, recorded.type)} disabled={busy} className={`${btn} bg-purple-700 hover:bg-purple-600 text-white`}>{busy ? <FaSpinner className="animate-spin" /> : <FaUpload size={12} />} Subir esta grabación</button>
+            <button type="button" onClick={() => setRecorded(null)} disabled={busy} className={`${btn} bg-[#2a2a2a] hover:bg-[#333] text-gray-100`}>Descartar</button>
+          </div>
+        </div>
+      )}
+
+      <input ref={fileRef} type="file" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.webm" onChange={handleFile} className="hidden" />
+      {!recording && !recorded && (
+        <div className="flex flex-wrap gap-2">
+          {canRecord && (
+            <button type="button" onClick={startRecording} disabled={busy} className={`${btn} bg-red-700 hover:bg-red-600 text-white`}><FaMicrophone size={13} /> Grabar audio</button>
+          )}
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className={`${btn} bg-purple-700 hover:bg-purple-600 text-white`}>
+            {busy ? <FaSpinner className="animate-spin" /> : <FaUpload size={13} />} {audioUrl ? 'Reemplazar con archivo' : 'Subir archivo'}
           </button>
-        )}
-      </div>
+          {audioUrl && (
+            <button type="button" onClick={handleDelete} disabled={busy} className={`${btn} bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 text-red-400`}>
+              <FaTrash size={12} /> Eliminar
+            </button>
+          )}
+        </div>
+      )}
       {message && <p className={`text-sm mt-3 ${message.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>{message.text}</p>}
     </div>
   )

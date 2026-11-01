@@ -12,6 +12,7 @@ import {
 } from './asistente/helpTopics'
 import { ADMIN_QUERIES, matchAdminQuery } from './asistente/adminQueries'
 import { ADMIN_EMAIL } from '../hooks/useAdminAlerts'
+import { TOUR_RESTART_EVENT } from './HomeTour'
 
 interface ChatEntry {
   from: 'bot' | 'user'
@@ -160,6 +161,7 @@ export default function AsistenteBot({ open, onClose }: { open: boolean; onClose
     if (action.href) { window.open(action.href, '_blank', 'noopener,noreferrer'); return }
     if (action.run === 'song') { askSong(action.genre); return }
     onClose()
+    if (action.run === 'tour') { navigate('/home'); setTimeout(() => window.dispatchEvent(new Event(TOUR_RESTART_EVENT)), 400); return }
     if (action.to) navigate(action.to)
     if (action.run === 'suggestion') openSuggestionModal()
   }

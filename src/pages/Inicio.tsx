@@ -3,10 +3,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { 
-  FaMapMarkerAlt, FaMusic, FaFilter, FaSpinner, FaGuitar, 
-  FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash, 
-  FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, 
+import {
+  FaMapMarkerAlt, FaMusic, FaFilter, FaSpinner, FaGuitar,
+  FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash,
+  FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, FaChevronDown, FaChevronUp,
   FaRegEnvelope, FaTimes, FaPaperPlane, FaQuestionCircle, FaEnvelopeOpenText,
   FaFlag, FaHeart, FaFire, FaUser
 } from 'react-icons/fa'
@@ -23,6 +23,17 @@ import Avatar from '../components/Avatar'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
 import WelcomeModal from '../components/WelcomeModal'
 import RetroTV from '../components/RetroTV'
+import MatchAlerts from '../components/MatchAlerts'
+import NearbyMusicians from '../components/NearbyMusicians'
+import UpcomingEvents from '../components/UpcomingEvents'
+import ShareModal, { type ShareTarget } from '../components/ShareModal'
+import HomeTour from '../components/HomeTour'
+import { useSavedPosts } from '../hooks/useSavedPosts'
+import { FaBookmark, FaRegBookmark } from 'react-icons/fa'
+import { PostSkeleton } from '../components/Skeleton'
+import { FaShareAlt } from 'react-icons/fa'
+import DonationModal from '../components/DonationModal'
+import { useAppSettings } from '../hooks/useAppSettings'
 
 const tucumanLocations: Record<string, string[]> = {
   "Burruyacú": ["Burruyacú", "El Chañar", "El Naranjo y El Sunchal", "El Puestito", "El Timbó", "Gobernador Garmendia", "Gobernador Piedrabuena", "La Ramada y La Cruz", "Padre Monti", "Siete de Abril", "Villa Benjamín Araoz"],
@@ -53,20 +64,21 @@ const GENEROS_FIJOS = [
   { name: 'Jazz', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' },
   { name: 'Electrónica', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' },
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' },
-  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },       
-  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }    
+  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },
+  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }
 ]
 
 const INTENCIONES_FILTRO = ['Todas', 'Busco banda', 'Busco músicos para mi proyecto', 'Ofrezco mis servicios (session musician)', 'Solo quiero conocer gente']
-const POSTS_PER_PAGE = 10 
+const POSTS_PER_PAGE = 10
 
 interface PostWithAuthor {
-  id: string; user_id: string; content: string; created_at: string; updated_at: string; 
-  intention: string; genres: string[]; display_name: string; username: string; 
+  id: string; user_id: string; content: string; created_at: string; updated_at: string;
+  intention: string; genres: string[]; display_name: string; username: string;
   avatar_color: string; avatar_url: string | null; expression: string;
   instruments: { name: string; level: string }[]; departamento: string; localidad: string;
-  last_seen?: string; 
-  likes_count?: number;      
+  last_seen?: string;
+  likes_count?: number;
+  looking_for?: string[];
   is_liked_by_me?: boolean;
 }
 
@@ -83,16 +95,17 @@ const renderContentWithLinks = (text: string) => {
 }
 
 export default function Home() {
-  const { user, showSuggestionModal, showHelpModal, closeSuggestionModal, closeHelpModal } = useAuth()
+  const { user, profile: myProfile, closeSuggestionModal } = useAuth()
+  const myTheme = myProfile?.theme_color || '#a855f7'
   const navigate = useNavigate()
   const hiddenIds = useHiddenUsers()
   const [hasOwnPost, setHasOwnPost] = useState(false)
-  
+
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  
+
   // ✅ NUEVO: Lista de todos los usuarios para el directorio
   const [allUsers, setAllUsers] = useState<any[]>([])
   const [loadingAllUsers, setLoadingAllUsers] = useState(false)
@@ -104,7 +117,12 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  
+  const [myPostExpanded, setMyPostExpanded] = useState(false)
+  const [showDonation, setShowDonation] = useState(false)
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
+  const { savedIds, toggleSave, available: canSave } = useSavedPosts()
+  const { settings: appSettings } = useAppSettings()
+
   const [filterDepartamento, setFilterDepartamento] = useState('Todos')
   const [filterLocalidad, setFilterLocalidad] = useState('Todas')
   const [filterGenre, setFilterGenre] = useState('')
@@ -118,7 +136,7 @@ export default function Home() {
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'user', id: string, userId: string } | null>(null)
   const [reportReason, setReportReason] = useState('')
-  const [isReporting, setIsReporting] = useState(false) 
+  const [isReporting, setIsReporting] = useState(false)
 
   const [filterSort, setFilterSort] = useState<'recientes' | 'populares'>('recientes')
 
@@ -144,7 +162,7 @@ export default function Home() {
 
   const handleToggleLike = async (postId: string, postOwnerId?: string) => {
     if (!user) return;
-    
+
     setPosts(prevPosts => prevPosts.map(p => {
       if (p.id === postId) {
         const isLiked = p.is_liked_by_me;
@@ -172,18 +190,18 @@ export default function Home() {
         await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
         if (postOwnerId && postOwnerId !== user.id) {
           try {
-            await supabase.from('notifications').insert({ 
-              user_id: postOwnerId, 
-              actor_id: user.id, 
-              post_id: postId, 
-              type: 'like' 
+            await supabase.from('notifications').insert({
+              user_id: postOwnerId,
+              actor_id: user.id,
+              post_id: postId,
+              type: 'like'
             });
           } catch(e) {}
         }
       }
     } catch (error) {
       console.error("Error al actualizar like:", error);
-      fetchPosts(false); 
+      fetchPosts(false);
     }
   }
 
@@ -318,7 +336,7 @@ export default function Home() {
             .select('id, username, display_name, avatar_url, avatar_color, instruments, last_seen')
             .order('display_name', { ascending: true })
             .limit(100) // Límite razonable para no sobrecargar
-          
+
           if (!error && data) {
             // Filtrar al usuario actual y los ocultos
             const filtered = data.filter(p => p.id !== user?.id && !hiddenIds.includes(p.id))
@@ -335,7 +353,7 @@ export default function Home() {
   }, [isSearchOpen])
 
   const handleDepartamentoChange = (dep: string) => { setFilterDepartamento(dep); setFilterLocalidad('Todas'); }
-  
+
   const filteredPosts = posts.filter(p => {
     return (filterDepartamento === 'Todos' || p.departamento === filterDepartamento) &&
            (filterLocalidad === 'Todas' || p.localidad === filterLocalidad) &&
@@ -350,7 +368,7 @@ export default function Home() {
         return (b.likes_count || 0) - (a.likes_count || 0);
       }
       return 0;
-    });  
+    });
 
   const myLikes = myPost?.likes_count || 0
   const hasNewLikes = myLikes > seenLikes
@@ -360,15 +378,15 @@ export default function Home() {
     if (myPost && myLikes < seenLikes) markLikesSeen(myLikes)
   }, [myLikes])
 
-  const openCreateModal = () => { 
+  const openCreateModal = () => {
     if (hasOwnPost) {
       setToast({ message: 'Ya tenés una publicación activa. Editá o eliminá la existente.', type: 'info' })
       return
     }
     setIsEditing(false)
-    setIsModalOpen(true) 
+    setIsModalOpen(true)
   }
-  
+
   const openEditModal = () => { setIsEditing(true); setIsModalOpen(true) }
 
   const handleDeletePost = async () => {
@@ -387,17 +405,17 @@ export default function Home() {
 
   const handleUserSearch = (query: string) => {
     setSearchQuery(query);
-    
+
     if (query.length < 2) {
       // Si hay poco texto, mostrar todos los usuarios
       setSearchResults([])
       return;
     }
-    
+
     // Filtrar la lista ya cargada (más rápido que consultar la BD)
     const queryLower = query.toLowerCase().trim();
-    const filtered = allUsers.filter(p => 
-      p.display_name?.toLowerCase().includes(queryLower) || 
+    const filtered = allUsers.filter(p =>
+      p.display_name?.toLowerCase().includes(queryLower) ||
       p.username?.toLowerCase().includes(queryLower)
     );
     setSearchResults(filtered);
@@ -448,9 +466,9 @@ export default function Home() {
 
   // Función para renderizar cada usuario en la lista (reutilizable)
   const renderUserItem = (profile: any) => (
-    <div 
-      key={profile.id} 
-      onClick={() => { navigate(`/perfil/${profile.id}`); setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} 
+    <div
+      key={profile.id}
+      onClick={() => { navigate(`/perfil/${profile.id}`); setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }}
       className="flex items-center gap-3 p-3 hover:bg-[#2a2a2a] rounded-xl cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#3a3a3a]"
     >
       <div className="relative">
@@ -474,15 +492,16 @@ export default function Home() {
       <AnimatedBackground />
       <WelcomeModal />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
+
       <main className="max-w-6xl mx-auto px-4 pt-10 pb-6 space-y-6">
-        
+
        <div className="space-y-4 w-full">
-          
+
           {/* Fila 1: Barra de búsqueda  */}
-          <button 
+          <button
+            data-tour="buscar"
             onClick={() => setIsSearchOpen(true)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start md:gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
           >
             <FaSearch className="text-purple-500 group-hover:scale-110 transition-transform flex-shrink-0" size={18} />
             <span className="text-sm font-medium truncate">Buscar músicos por @usuario o nombre...</span>
@@ -492,58 +511,59 @@ export default function Home() {
           <div className="flex justify-center">
             <RetroTV />
           </div>
-          
+
+          <MatchAlerts />
+          <NearbyMusicians />
+          <UpcomingEvents />
+
         </div>
 
+        <div data-tour="publicacion">
         {loading ? (
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 text-center">
-            <FaSpinner className="animate-spin text-3xl text-purple-600 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Cargando tu publicación...</p>
-          </div>
+          <PostSkeleton />
         ) : myPost ? (
-          <div className="bg-gradient-to-br from-purple-900/10 to-[#1a1a1a] border-2 border-purple-600/40 rounded-2xl p-5 md:p-6 shadow-lg shadow-purple-900/10">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5"><span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span> Mi publicación</span>
-              <span className="text-gray-600 text-xs">{new Date(myPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-            </div>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="flex items-end gap-1">
-                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={50} isOnline={isUserOnline(myPost.last_seen)} />
-                <Mascot color={myPost.avatar_color || '#333'} size={24} expression={(myPost.expression as any) || 'normal'} />
-              </div>         
-              <div className="flex-1">
-                <h4 className="text-white font-bold text-base">{myPost.display_name}</h4>
-                <p className="text-gray-500 text-xs">@{myPost.username}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400">
-                  <span className="flex items-center gap-1"><FaGuitar className="text-purple-500" size={10} /> {myPost.instruments?.[0]?.name || 'Músico'}</span>
-                  <span className="text-gray-700">•</span>
-                  <span className="flex items-center gap-1"><FaMapMarkerAlt className="text-purple-500" size={10} /> {myPost.localidad}</span>
+          // Mi publicación: tarjeta compacta con el color del perfil
+          <div className="bg-[#1a1a1a] border rounded-2xl overflow-hidden" style={{ borderColor: myTheme + '70' }}>
+            <div className="h-1" style={{ backgroundColor: myTheme }} />
+            <div className="p-3 md:p-4">
+              <div className="flex items-start gap-3">
+                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={40} isOnline={isUserOnline(myPost.last_seen)} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: myTheme }} /> Mi publicación
+                    <span className="font-normal normal-case tracking-normal text-gray-500">· {new Date(myPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
+                  </p>
+                  <p className={`text-gray-200 text-sm leading-relaxed break-words mt-1 ${myPostExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{renderContentWithLinks(myPost.content)}</p>
                 </div>
               </div>
-            </div>
-            <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-words mb-4 pl-[62px] md:pl-[62px]">{renderContentWithLinks(myPost.content)}</p>            
-            <div className="flex flex-wrap gap-2 mb-4 pl-[62px] md:pl-[62px]">
-              {myPost.intention && (<span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1"><FaBullseye size={8} /> {myPost.intention}</span>)}
-              {myPost.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-purple-600/20 pl-[62px] md:pl-[62px]">
-              <button 
-                onClick={() => handleViewLikers(myPost.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border relative ${
-                  myPost.is_liked_by_me ? 'bg-red-900/20 text-red-500 border-red-800/50' : 'bg-[#0f0f0f] text-gray-400 border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'
-                }`}
-              >
-                <FaHeart size={14} className={myPost.is_liked_by_me ? 'animate-pulse' : ''} />
-                <span className="text-xs font-bold">{myPost.likes_count || 0} Ver likes</span>
-                
-                {hasNewLikes && (
-                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
-                )}
-              </button>
 
-              <button onClick={openEditModal} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all"><FaEdit size={12} className="text-purple-400" /> Editar</button>
-              <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-2 px-4 py-2 bg-red-900/20 border border-red-800/50 hover:bg-red-900/40 rounded-lg text-sm text-red-400 hover:text-red-300 transition-all"><FaTrash size={12} /> Eliminar</button>
+              {myPostExpanded && (
+                <div className="flex flex-wrap gap-2 mt-3 animate-[fadeIn_0.2s_ease-out]">
+                  {myPost.intention && (<span className="px-2.5 py-1 text-[10px] font-bold rounded-full flex items-center gap-1 border" style={{ backgroundColor: myTheme + '22', borderColor: myTheme + '66', color: '#e5e7eb' }}><FaBullseye size={8} /> {myPost.intention}</span>)}
+                  {myPost.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => handleViewLikers(myPost.id)}
+                  className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-red-400 hover:border-red-900/50 transition-all"
+                >
+                  <FaHeart size={12} className="text-red-500" />
+                  <span className="text-xs font-bold">{myPost.likes_count || 0}</span>
+                  <span className="text-xs hidden sm:inline">likes</span>
+                  {hasNewLikes && (
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                  )}
+                </button>
+                <button onClick={() => setMyPostExpanded(!myPostExpanded)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-white text-xs transition-all">
+                  {myPostExpanded ? <><FaChevronUp size={10} /> Ver menos</> : <><FaChevronDown size={10} /> Ver más</>}
+                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button onClick={openEditModal} className="p-2 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-white transition-all" title="Editar publicación" aria-label="Editar publicación" style={{ borderColor: myTheme + '55' }}><FaEdit size={13} /></button>
+                  <button onClick={() => setShowDeleteModal(true)} className="p-2 rounded-lg border bg-red-900/20 border-red-800/50 text-red-400 hover:bg-red-900/40 transition-all" title="Eliminar publicación" aria-label="Eliminar publicación"><FaTrash size={12} /></button>
+                </div>
+              </div>
             </div>
           </div>
         ) : hasOwnPost ? (
@@ -567,7 +587,9 @@ export default function Home() {
           </div>
         )}
 
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl overflow-hidden">
+        </div>
+
+        <div data-tour="filtros" className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl overflow-hidden">
           <button onClick={() => setShowFilters(!showFilters)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#222]">
             <div className="flex items-center gap-2">
               <FaFilter className="text-purple-500" size={14} />
@@ -628,7 +650,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2"><FaMusic className="text-purple-500" /> Feed de la comunidad <span className="text-sm text-gray-500 font-normal">({otherPosts.length})</span></h3>
           </div>
-          {loading ? (<div className="flex justify-center py-12"><FaSpinner className="animate-spin text-3xl text-purple-600" /></div>) : otherPosts.length === 0 ? (
+          {loading ? (<div className="grid grid-cols-1 md:grid-cols-2 gap-4"><PostSkeleton /><PostSkeleton /><PostSkeleton /><PostSkeleton /></div>) : otherPosts.length === 0 ? (
             <div className="text-center py-16 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl"><FaSearch className="text-gray-600 text-4xl mx-auto mb-3" /><p className="text-gray-400">No hay publicaciones con estos filtros.</p></div>
           ) : (
             <>
@@ -639,7 +661,7 @@ export default function Home() {
                       <div className="flex items-end gap-1">
                         <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={45} isOnline={isUserOnline(post.last_seen)} />
                         <Mascot color={post.avatar_color || '#333'} size={20} expression={(post.expression as any) || 'normal'} />
-                      </div>                
+                      </div>
                       <div className="flex-1">
                         <h4 className="text-white font-bold text-sm hover:text-purple-400 transition-colors">{post.display_name}</h4>
                         <p className="text-gray-500 text-xs">@{post.username}</p>
@@ -654,9 +676,10 @@ export default function Home() {
                     <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-words mb-3 flex-1">{renderContentWithLinks(post.content)}</p>
                     <div className="flex flex-wrap gap-1.5 pt-3 border-t border-[#2a2a2a] mb-3">
                       {post.intention && (<span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1"><FaBullseye size={8} /> {post.intention}</span>)}
+                      {(post.looking_for?.length || 0) > 0 && (<span className="px-2.5 py-1 bg-amber-900/30 border border-amber-600/50 text-amber-200 text-[10px] font-bold rounded-full flex items-center gap-1"><FaGuitar size={8} /> Busca: {post.looking_for!.join(', ')}</span>)}
                       {post.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
                     </div>
-                    
+
                     <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a]">
                       <button onClick={() => handleToggleLike(post.id, post.user_id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${post.is_liked_by_me ? 'bg-red-900/20 text-red-500 border border-red-800/50' : 'bg-[#0f0f0f] text-gray-400 border border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'}`}>
                         <FaHeart size={14} className={post.is_liked_by_me ? 'animate-pulse' : ''} />
@@ -666,6 +689,14 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <button onClick={() => navigate(`/chat/${post.user_id}?post=${post.id}`)} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all">
                           <FaEnvelope size={12} className="text-purple-400" /> <span className="hidden sm:inline">Enviar mensaje</span>
+                        </button>
+                        {canSave && (
+                          <button onClick={async () => { const result = await toggleSave(post.id); if (result !== null) setToast({ message: result ? 'Guardada en "Guardados"' : 'Quitada de guardados', type: 'success' }) }} className={`flex items-center gap-1 px-3 py-2 text-xs transition-colors ${savedIds.has(post.id) ? 'text-amber-300' : 'text-gray-400 hover:text-amber-300'}`} title={savedIds.has(post.id) ? 'Quitar de guardados' : 'Guardar'} aria-label={savedIds.has(post.id) ? 'Quitar de guardados' : 'Guardar publicación'}>
+                            {savedIds.has(post.id) ? <FaBookmark size={12} /> : <FaRegBookmark size={12} />}
+                          </button>
+                        )}
+                        <button onClick={() => setShareTarget({ kind: 'post', id: post.id, ownerId: post.user_id, label: post.content.slice(0, 60) })} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-400 hover:text-green-400 transition-colors" title="Compartir" aria-label="Compartir publicación">
+                          <FaShareAlt size={12} />
                         </button>
                         <button onClick={() => handleOpenReport('post', post.id, post.user_id)} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors">
                           <FaFlag size={12} />
@@ -684,7 +715,15 @@ export default function Home() {
             </div>
           )}
           {!loading && !hasMore && posts.length > 0 && (
-            <p className="text-center text-xs text-gray-600 py-8">No hay más publicaciones</p>
+            <div className="py-8 space-y-4">
+              <p className="text-center text-xs text-gray-500">No hay más publicaciones</p>
+              {appSettings?.donation_enabled && (
+                <button onClick={() => setShowDonation(true)} className="mx-auto flex items-center gap-3 px-4 py-3 rounded-xl bg-[#1a1a1a] border border-pink-900/50 hover:border-pink-600/60 text-left transition-colors max-w-md">
+                  <FaHeart className="text-pink-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-300">¿Te sirve SANAT? <span className="text-pink-300 font-semibold">Ayudanos a mantenerlo</span></span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </main>
@@ -692,15 +731,15 @@ export default function Home() {
       {/* ✅ CAJÓN DESLIZANTE DE BÚSQUEDA CON DIRECTORIO DE USUARIOS */}
       {isSearchOpen && (
         <>
-          <div 
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-[fadeIn_0.3s_ease-out]" 
-            onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} 
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-[fadeIn_0.3s_ease-out]"
+            onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }}
           />
           <div className="fixed top-[var(--banner-h,0px)] bottom-0 left-0 w-full max-w-sm bg-[#1a1a1a] border-r border-[#2a2a2a] z-50 shadow-2xl transform transition-transform duration-300 ease-out animate-[slideInLeft_0.3s_ease-out] flex flex-col">
             <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between bg-[#1a1a1a]">
               <h3 className="text-white font-bold flex items-center gap-2">
-                <FaUser className="text-purple-500" /> 
-                {searchQuery.length >= 2 ? 'Resultados' : 'Directorio de Músicos'}
+                <FaUser className="text-purple-500" />
+                {searchQuery.length >= 2 ? 'Resultados' : 'Directorio'}
               </h3>
               <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
                 <FaTimes size={18} />
@@ -710,16 +749,16 @@ export default function Home() {
             <div className="p-4 border-b border-[#2a2a2a]">
               <div className="relative group">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors" size={14} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   autoFocus
-                  placeholder="Filtrar músicos por nombre o @usuario..." 
-                  value={searchQuery} 
-                  onChange={(e) => handleUserSearch(e.target.value)} 
-                  className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder:text-gray-600 text-sm" 
+                  placeholder="Filtrar músicos por nombre o @usuario..."
+                  value={searchQuery}
+                  onChange={(e) => handleUserSearch(e.target.value)}
+                  className="w-full p-3 pl-10 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder:text-gray-600 text-sm"
                 />
                 {searchQuery && (
-                  <button 
+                  <button
                     onClick={() => { setSearchQuery(''); setSearchResults([]); }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
                   >
@@ -729,14 +768,14 @@ export default function Home() {
               </div>
               {/* Contador de usuarios */}
               <p className="text-[10px] text-gray-500 mt-2 text-center">
-                {searchQuery.length >= 2 
+                {searchQuery.length >= 2
                   ? `${searchResults.length} músico${searchResults.length !== 1 ? 's' : ''} encontrado${searchResults.length !== 1 ? 's' : ''}`
                   : `${allUsers.length} músico${allUsers.length !== 1 ? 's' : ''} en la comunidad`
                 }
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-28 space-y-2">
               {loadingAllUsers ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <FaSpinner className="animate-spin text-purple-600 text-2xl" />
@@ -792,8 +831,8 @@ export default function Home() {
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {likersList.map((liker: any) => (
-                  <div 
-                    key={liker.id} 
+                  <div
+                    key={liker.id}
                     onClick={() => { setShowLikersModal(false); navigate(`/perfil/${liker.id}`); }}
                     className="flex items-center gap-3 p-2 hover:bg-[#2a2a2a] rounded-lg cursor-pointer transition-colors"
                   >
@@ -856,6 +895,9 @@ export default function Home() {
           </div>
         </div>
       )}
+      {shareTarget && <ShareModal target={shareTarget} onClose={() => setShareTarget(null)} />}
+      <HomeTour />
+      {showDonation && appSettings && <DonationModal settings={appSettings} onClose={() => setShowDonation(false)} />}
       <PostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} existingPost={isEditing ? myPost : null} onPostSaved={() => { setHasOwnPost(true); fetchMyPost() }} />
     </div>
   )

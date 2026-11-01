@@ -1,6 +1,7 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { unsubscribePush } from '../lib/pwa'
 import { type User } from '@supabase/supabase-js'
 import { type Profile } from '../types'
 
@@ -24,9 +25,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const isProfileComplete = (data: any) => {
   if (!data) return false
   const tieneNombre = !!data.username && !!data.display_name
-  const tieneDatosOnboarding = 
-    !!data.departamento || 
-    !!data.localidad || 
+  const tieneDatosOnboarding =
+    !!data.departamento ||
+    !!data.localidad ||
     (Array.isArray(data.instruments) && data.instruments.length > 0) ||
     (Array.isArray(data.genres) && data.genres.length > 0)
   return tieneNombre && tieneDatosOnboarding
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [emailConfirmed, setEmailConfirmed] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
-  
+
   const [showSuggestionModal, setShowSuggestionModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
 
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    await unsubscribePush()
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
@@ -169,10 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      loading, 
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
       emailConfirmed,
       showSuggestionModal,
       showHelpModal,
@@ -180,8 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeSuggestionModal,
       openHelpModal,
       closeHelpModal,
-      signOut, 
-      refreshProfile 
+      signOut,
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>
