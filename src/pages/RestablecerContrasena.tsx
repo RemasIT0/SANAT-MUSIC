@@ -1,5 +1,5 @@
 // src/pages/RestablecerContrasena.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import Toast from '../components/Toast'
@@ -10,6 +10,8 @@ export default function RestablecerContrasena() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const submittingRef = useRef(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
@@ -32,6 +34,7 @@ export default function RestablecerContrasena() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submittingRef.current || done) return
     if (newPassword !== confirmPassword) {
       setToast({ message: 'Las contraseñas no coinciden', type: 'error' })
       return
@@ -41,16 +44,18 @@ export default function RestablecerContrasena() {
       return
     }
 
+    submittingRef.current = true
     setLoading(true)
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
-      
+      setDone(true)
       setToast({ message: '¡Contraseña actualizada con éxito!', type: 'success' })
       setTimeout(() => navigate('/login'), 3000)
     } catch (error: any) {
       setToast({ message: error.message || 'Error al actualizar la contraseña', type: 'error' })
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
@@ -83,7 +88,7 @@ export default function RestablecerContrasena() {
           <h1 className="text-2xl font-bold text-white mb-2">Nueva Contraseña</h1>
           <p className="text-gray-400 text-sm">Ingresa tu nueva contraseña para tu cuenta.</p>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* NUEVA CONTRASEÑA */}
           <div className="relative w-full">
@@ -116,13 +121,13 @@ export default function RestablecerContrasena() {
               {showConfirm ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
             </button>
           </div>
-          
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || done}
             className="relative w-full py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden mt-2 flex items-center justify-center gap-2"
           >
-            {loading ? <><FaSpinner className="animate-spin" /> Guardando...</> : <><FaLock /> Actualizar Contraseña</>}
+            {done ? <><FaLock /> ¡Listo! Volviendo al inicio...</> : loading ? <><FaSpinner className="animate-spin" /> Guardando...</> : <><FaLock /> Actualizar Contraseña</>}
           </button>
         </form>
       </div>

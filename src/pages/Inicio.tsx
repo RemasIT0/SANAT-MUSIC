@@ -21,7 +21,6 @@ import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import Avatar from '../components/Avatar'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
-import WelcomeModal from '../components/WelcomeModal'
 import RetroTV from '../components/RetroTV'
 import MatchAlerts from '../components/MatchAlerts'
 import NearbyMusicians from '../components/NearbyMusicians'
@@ -490,7 +489,6 @@ export default function Home() {
   return (
     <div className="min-h-screen relative text-gray-200 font-sans pb-24">
       <AnimatedBackground />
-      <WelcomeModal />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <main className="max-w-6xl mx-auto px-4 pt-10 pb-6 space-y-6">
@@ -868,7 +866,7 @@ export default function Home() {
             </select>
             <div className="flex gap-3">
               <button onClick={() => setReportModalOpen(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">Cancelar</button>
-              <button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">
+              <button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-[#2a2a2a] disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">
                 {isReporting ? <FaSpinner className="animate-spin" /> : <FaFlag />} {isReporting ? 'Enviando...' : 'Enviar Reporte'}
               </button>
             </div>

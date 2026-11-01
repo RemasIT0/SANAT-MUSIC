@@ -8,7 +8,11 @@ import { useAuth } from '../context/AuthContext'
 import { useHiddenUsers } from '../hooks/useHiddenUsers'
 import { isUserOnline } from '../hooks/useOnlineStatus'
 import Avatar from './Avatar'
-import { FaMapMarkerAlt, FaGuitar, FaComment, FaHeadphones } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaGuitar, FaComment, FaHeadphones, FaChevronDown, FaChevronUp } from 'react-icons/fa'
+
+// Se recuerda en este dispositivo si la persona prefiere tenerla oculta
+const HIDDEN_KEY = 'sanat-nearby-hidden'
+const readHidden = () => { try { return localStorage.getItem(HIDDEN_KEY) === '1' } catch { return false } }
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 
@@ -17,6 +21,13 @@ export default function NearbyMusicians() {
   const navigate = useNavigate()
   const hiddenIds = useHiddenUsers()
   const [people, setPeople] = useState<any[]>([])
+  const [collapsed, setCollapsed] = useState(readHidden)
+
+  const toggleCollapsed = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    try { localStorage.setItem(HIDDEN_KEY, next ? '1' : '0') } catch { /* sin almacenamiento: solo por esta vez */ }
+  }
 
   useEffect(() => {
     if (!user || !profile?.departamento) return
@@ -46,9 +57,14 @@ export default function NearbyMusicians() {
     <section aria-labelledby="nearby-title">
       <div className="flex items-center justify-between mb-2">
         <h3 id="nearby-title" className="text-sm font-semibold text-white flex items-center gap-2"><FaMapMarkerAlt className="text-purple-400" /> Músicos cerca tuyo</h3>
-        <button onClick={() => navigate('/demos')} className="text-xs text-purple-300 hover:text-white flex items-center gap-1.5"><FaHeadphones size={11} /> Escuchar demos</button>
+        <div className="flex items-center gap-1">
+          {!collapsed && <button onClick={() => navigate('/demos')} className="text-xs text-purple-300 hover:text-white flex items-center gap-1.5 px-2 py-1"><FaHeadphones size={11} /> Escuchar demos</button>}
+          <button onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls="nearby-list" className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#1a1a1a]/80 border border-[#2a2a2a]">
+            {collapsed ? <><FaChevronDown size={10} /> Mostrar ({visible.length})</> : <><FaChevronUp size={10} /> Ocultar</>}
+          </button>
+        </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1 snap-x snap-mandatory">
+      {!collapsed && <div id="nearby-list" className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1 snap-x snap-mandatory">
         {visible.map(p => (
           <div key={p.id} className="snap-start flex-shrink-0 w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-3 flex flex-col items-center text-center">
             <button onClick={() => navigate(`/perfil/${p.id}`)} className="flex flex-col items-center w-full">
@@ -63,7 +79,7 @@ export default function NearbyMusicians() {
             <button onClick={() => navigate(`/chat/${p.id}`)} className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-[#2a2a2a] hover:bg-purple-700 text-white text-xs transition-colors"><FaComment size={10} /> Escribir</button>
           </div>
         ))}
-      </div>
+      </div>}
     </section>
   )
 }

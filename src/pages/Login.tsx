@@ -13,20 +13,26 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
   const [loading, setLoading] = useState(false)
+  // Cuenta creada: el botón queda bloqueado hasta que cambia la pantalla
+  const [registered, setRegistered] = useState(false)
+  // Freno inmediato contra dos toques seguidos (el estado tarda un instante en actualizarse)
+  const submittingRef = useRef(false)
+  const [resetSentAt, setResetSentAt] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [blockedByMaintenance, setBlockedByMaintenance] = useState(false)
-  
+
   const [showHelp, setShowHelp] = useState(false)
-  
+
   const navigate = useNavigate()
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submittingRef.current || registered) return
 
-    const IS_MAINTENANCE_MODE = false 
+    const IS_MAINTENANCE_MODE = false
     const ADMIN_EMAIL = 'remaslove281@gmail.com'
 
     if (IS_MAINTENANCE_MODE && email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
@@ -34,6 +40,7 @@ export default function Login() {
       return
     }
 
+    submittingRef.current = true
     setLoading(true)
 
     try {
@@ -61,22 +68,23 @@ export default function Login() {
             }
           }
         })
-        
+
         if (error) throw error
 
+        setRegistered(true)
         setToast({ message: '¡Cuenta creada! Revisa tu email para confirmar.', type: 'success' })
         setTimeout(() => navigate('/verificar-email'), 4000)
-        
+
       } else {
         // --- INICIO DE SESIÓN ---
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
-        
+
         if (error) {
           let mensaje = 'Error al iniciar sesión. Intentá de nuevo.'
-          
+
           if (error.message.includes('rate limit')) {
             mensaje = 'Demasiados intentos. Esperá unos minutos e intentá de nuevo, o usá otro dispositivo.'
           } else if (error.message.includes('Invalid login credentials')) {
@@ -84,12 +92,12 @@ export default function Login() {
           } else if (error.message.includes('Email not confirmed')) {
             mensaje = 'Tu email no está confirmado. Revisá tu bandeja de entrada (y la carpeta de spam).'
           }
-          
+
           setToast({ message: mensaje, type: 'error' })
           setLoading(false) // ✅ Detiene el spinner de carga
           return // ✅ Detiene la ejecución para NO navegar al home si hay error
         }
-        
+
         // Si no hay error, recién aquí navegamos al home
         navigate('/home', { replace: true })
       }
@@ -101,25 +109,35 @@ export default function Login() {
         setToast({ message: error.message || 'Error inesperado', type: 'error' })
       }
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
 
   const handleForgotPassword = async () => {
+    if (submittingRef.current) return
     if (!email) {
       setToast({ message: 'Ingresa tu email primero para recuperar la contraseña', type: 'info' })
       return
     }
+    // Un link por minuto: evita mandar varios mails por tocar dos veces
+    if (Date.now() - resetSentAt < 60000) {
+      setToast({ message: 'Ya te mandamos el link. Revisá tu email (y spam) o esperá un minuto para pedir otro.', type: 'info' })
+      return
+    }
+    submittingRef.current = true
     setLoading(true)
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/restablecer-contrasena`
       })
       if (error) throw error
+      setResetSentAt(Date.now())
       setToast({ message: 'Te enviamos un link a tu email para restablecer la contraseña', type: 'success' })
     } catch (error: any) {
       setToast({ message: error.message || 'Error al enviar el link', type: 'error' })
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
@@ -157,9 +175,9 @@ export default function Login() {
           </div>
 
           <div className="relative z-10 w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl animate-[slideIn_0.8s_ease-out]">
-            
+
             {/* ✅ BOTÓN DE AYUDA EN LA ESQUINA SUPERIOR DERECHA */}
-            <button 
+            <button
               onClick={() => setShowHelp(true)}
               className="absolute top-4 right-4 text-gray-500 hover:text-purple-400 transition-colors p-2"
               title="Centro de Ayuda"
@@ -173,7 +191,7 @@ export default function Login() {
                 {isRegistering ? 'Creá tu cuenta para encontrar músicos.' : 'Iniciá sesión para continuar.'}
               </p>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative w-full">
                 <input
@@ -239,10 +257,10 @@ export default function Login() {
                   </div>
                 </div>
               )}
-              
+
               {!isRegistering && (
                 <div className="text-right">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleForgotPassword}
                     disabled={loading}
@@ -252,15 +270,15 @@ export default function Login() {
                   </button>
                 </div>
               )}
-              
+
               <button
                 ref={buttonRef}
                 type="submit"
-                disabled={loading}
+                disabled={loading || registered}
                 onClick={handleRipple}
                 className="relative w-full py-3.5 sm:py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-600 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden mt-2 text-base sm:text-sm"
               >
-                {loading ? 'Procesando...' : isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
+                {registered ? '¡Cuenta creada! Revisá tu email' : loading ? 'Procesando...' : isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
               </button>
               {isRegistering && (
                 <p className="text-[11px] text-gray-400 text-center leading-relaxed">
@@ -274,8 +292,8 @@ export default function Login() {
               {isRegistering ? (
                 <p>
                   ¿Ya tenés cuenta?{' '}
-                  <button 
-                    onClick={() => setIsRegistering(false)} 
+                  <button
+                    onClick={() => setIsRegistering(false)}
                     className="text-purple-400 hover:text-purple-300 font-medium transition-colors bg-transparent"
                   >
                     Inicia sesión
@@ -284,8 +302,8 @@ export default function Login() {
               ) : (
                 <p>
                   ¿No tenés cuenta?{' '}
-                  <button 
-                    onClick={() => setIsRegistering(true)} 
+                  <button
+                    onClick={() => setIsRegistering(true)}
                     className="text-purple-400 hover:text-purple-300 font-medium transition-colors bg-transparent"
                   >
                     Registrate
@@ -336,8 +354,8 @@ export default function Login() {
                     <FaEnvelope /> remaslove281@gmail.com
                   </a>
                 </div>
-                <button 
-                  onClick={() => setShowHelp(false)} 
+                <button
+                  onClick={() => setShowHelp(false)}
                   className="w-full py-3 bg-[#2a2a2a] hover:bg-[#333] text-white font-semibold rounded-lg transition-all"
                 >
                   Entendido
