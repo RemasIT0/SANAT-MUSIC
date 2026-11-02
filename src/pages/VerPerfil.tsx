@@ -327,20 +327,27 @@ export default function VerPerfil() {
       <main className="w-full max-w-none px-2 md:px-4 pt-2 space-y-4">
         {freeLayout ? (
           <div className="space-y-3">
-            {/* Acciones arriba: con un diseño largo, abajo nadie las ve */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {isMyProfile ? (<>
+            {/* Arriba: edición (perfil propio) o reportar (perfil ajeno) */}
+            {isMyProfile ? (
+              <div className="flex flex-wrap gap-2 justify-center">
                 <button onClick={() => navigate('/editar-perfil')} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border text-sm font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={13} /> Editar datos</button>
                 <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center gap-2 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg hover:opacity-90"><FaPalette size={13} /> Diseñar perfil</button>
                 <button onClick={resetToDefault} className="flex items-center gap-2 py-2.5 px-4 bg-red-900/20 border border-red-700/50 text-red-400 text-sm font-semibold rounded-lg hover:bg-red-900/40"><FaUndo size={13} /> Perfil por defecto</button>
-              </>) : (<>
+              </div>
+            ) : (
+              <div className="flex justify-end">
+                <button onClick={handleOpenReport} className="flex items-center gap-2 py-2 px-3 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-xs rounded-lg hover:text-red-400" aria-label="Reportar usuario"><FaFlag size={12} /> Reportar</button>
+              </div>
+            )}
+            <FreeProfileView layout={freeLayout} profile={profile} friendsCount={profileStats.friends} />
+            {/* Abajo: mensaje, amistad y bloqueo */}
+            {!isMyProfile && (
+              <div className="flex flex-wrap gap-2 justify-center">
                 <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center gap-2 py-2.5 px-4 text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: themeColor }}><FaEnvelope size={13} /> Mensaje</button>
                 <button onClick={handleToggleFriend} className={`flex items-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-300'}`}>{isFriend ? <FaUserMinus size={13} /> : <FaUserPlus size={13} />} {isFriend ? 'Quitar' : 'Agregar'}</button>
                 <button onClick={() => setShowBlockModal(true)} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-sm rounded-lg hover:text-white" aria-label="Bloquear usuario"><FaBan size={13} /> Bloquear</button>
-                <button onClick={handleOpenReport} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-sm rounded-lg hover:text-red-400" aria-label="Reportar usuario"><FaFlag size={13} /> Reportar</button>
-              </>)}
-            </div>
-            <FreeProfileView layout={freeLayout} profile={profile} friendsCount={profileStats.friends} />
+              </div>
+            )}
           </div>
         ) : customLayout ? (
           <div className="w-full rounded-none md:rounded-2xl p-4 md:p-6 transition-colors duration-300 relative" style={getBackgroundStyle(customLayout.backgroundType, customLayout.backgroundValue)}>

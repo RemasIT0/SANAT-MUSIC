@@ -12,7 +12,7 @@ export type MascotExpression =
   | 'conejo' | 'dj' | 'astronauta' | 'rapero'
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
   | 'timido' | 'cerdito' | 'pollito'
-  | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio'
+  | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -43,6 +43,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'esqueleto', label: 'Esqueleto' },
   { id: 'fantasma', label: 'Fantasma' },
   { id: 'unicornio', label: 'Unicornio/evil' },
+  { id: 'siniestro', label: 'Siniestro' },
 ]
 
 interface CostumeCtx {
@@ -910,5 +911,40 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         <path d="M24 46 L28 56 L31 48 Z M56 46 L52 56 L49 48 Z" fill="#fff" stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
       </svg>
     ),
+  },
+
+  siniestro: {
+    // Capucha harapienta
+    back: () => (
+      <Layer top={-22} left={-20} w={140} h={140}>
+        <path d="M70 0 Q128 4 132 64 L136 132 L122 120 L114 136 L102 118 L92 132 L86 70 Q70 58 54 70 L48 132 L38 118 L26 136 L18 120 L4 132 L8 64 Q12 4 70 0 Z" fill="#141414" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M24 70 L20 118 M116 70 L120 118" stroke="#2f2f2f" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: ({ eye }) => (
+      <>
+        {/* Borde de la capucha sobre la frente */}
+        <Layer top={-12} left={-8} w={116} h={34} className="z-20">
+          <path d="M2 34 Q58 -12 114 34 L104 30 Q58 4 12 30 Z" fill="#141414" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        </Layer>
+        {/* Máscara de porcelana rajada con sonrisa cosida */}
+        <Layer top={14} left={10} w={80} h={82} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M8 6 Q40 -4 72 6 Q80 40 70 64 Q40 86 10 64 Q0 40 8 6 Z" fill="#f1ede4" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          {/* Rajaduras */}
+          <path d="M62 8 L54 22 L60 30 L52 40" fill="none" stroke="#6b6b6b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M14 52 L22 46 L20 38" fill="none" stroke="#6b6b6b" strokeWidth="1.5" strokeLinecap="round" />
+          {/* Ojos huecos con un punto de luz que sigue al mouse */}
+          <ellipse cx="26" cy="28" rx="9" ry="11" fill="#050505" />
+          <ellipse cx="54" cy="28" rx="9" ry="11" fill="#050505" />
+          <circle cx={26 + eye.x * 0.7} cy={28 + eye.y * 0.7} r="1.8" fill="#e5e7eb" />
+          <circle cx={54 + eye.x * 0.7} cy={28 + eye.y * 0.7} r="1.8" fill="#e5e7eb" />
+          {/* Sonrisa cosida */}
+          <path d="M14 54 Q40 70 66 54" fill="none" stroke="#7f1d1d" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M20 53 L18 61 M28 58 L27 66 M36 61 L36 69 M44 61 L45 69 M52 58 L54 66 M60 53 L63 61" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+        </Layer>
+      </>
+    ),
+    // La cara la tapa la máscara
+    face: () => null,
   },
 }
