@@ -177,6 +177,20 @@ export default function AdminPanel() {
     return parts.length ? parts.join(' — ') : String(error)
   }
 
+  // Anuncios: la función no existe todavía (falta correr ANUNCIOS_funciones_admin.sql)
+  const isMissingFunction = (error: any) => !!error && (error.code === 'PGRST202' || /Could not find the function/i.test(error.message || ''))
+  // Motivo claro según lo que devuelve Supabase
+  const adErrorText = (error: any) => {
+    const msg = error?.message || ''
+    if (/ADMIN_NO_VERIFICADO/.test(msg)) {
+      window.dispatchEvent(new Event(ADMIN_RECHECK_EVENT))
+      return 'tu verificación de admin venció. Respondé la pregunta secreta y probá de nuevo.'
+    }
+    if (/SOLO_ADMIN/.test(msg)) return 'esta cuenta no es la del admin.'
+    if (/ANUNCIO_NO_EXISTE/.test(msg)) return 'ese anuncio ya no existe. Recargá la lista.'
+    return describeError(error)
+  }
+
   const removeWarning = (warning: any, userName: string) => askConfirm(
     '¿Quitar esta advertencia?', `${userName} va a tener una advertencia menos. No se le avisa.`, 'QUITAR',
     async () => {
@@ -313,6 +327,24 @@ export default function AdminPanel() {
     }
     setAdSaving(true)
     try {
+      // Primero con la función del admin (da el motivo exacto si algo falla)
+      const rpc = await supabase.rpc('admin_save_ad', {
+        p_id: editingAd ? String(editingAd.id) : '',
+        p_title: adForm.title.trim(),
+        p_message: adForm.message.trim(),
+        p_image_url: adForm.image_url.trim(),
+        p_is_active: adForm.is_active,
+      })
+      if (!isMissingFunction(rpc.error)) {
+        if (rpc.error) throw rpc.error
+        setToast({ message: editingAd ? 'Anuncio actualizado' : 'Anuncio creado y transmitido', type: 'success' })
+        logAdminAction(editingAd ? 'Anuncio editado' : 'Anuncio creado', adForm.title.trim())
+        setShowAdModal(false)
+        fetchData()
+        return
+      }
+
+      // Si todavía no se corrió el SQL de las funciones: método anterior
       const payload: any = {
         title: adForm.title.trim(),
         is_active: adForm.is_active
@@ -341,7 +373,7 @@ export default function AdminPanel() {
       fetchData()
     } catch (error: any) {
       console.error('Error al guardar anuncio:', error)
-      setToast({ message: 'Error al guardar: ' + describeError(error), type: 'error' })
+      setToast({ message: 'Error al guardar: ' + adErrorText(error), type: 'error' })
     } finally {
       setAdSaving(false)
     }
@@ -349,14 +381,17 @@ export default function AdminPanel() {
 
   const toggleAdActive = async (ad: any) => {
     try {
-      const { data, error } = await supabase.from('ads').update({ is_active: !ad.is_active }).eq('id', ad.id).select('id')
-      if (error) throw error
-      ensureAffected(data)
+      const rpc = await supabase.rpc('admin_toggle_ad', { p_id: String(ad.id), p_is_active: !ad.is_active })
+      if (isMissingFunction(rpc.error)) {
+        const { data, error } = await supabase.from('ads').update({ is_active: !ad.is_active }).eq('id', ad.id).select('id')
+        if (error) throw error
+        ensureAffected(data)
+      } else if (rpc.error) throw rpc.error
       setAdsList(prev => prev.map(a => a.id === ad.id ? { ...a, is_active: !ad.is_active } : a))
       setToast({ message: ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', type: 'success' })
       logAdminAction(ad.is_active ? 'Anuncio desactivado' : 'Anuncio activado', ad.title)
     } catch (error: any) {
-      setToast({ message: 'Error: ' + describeError(error), type: 'error' })
+      setToast({ message: 'Error: ' + adErrorText(error), type: 'error' })
     }
   }
 
@@ -364,14 +399,17 @@ export default function AdminPanel() {
     '¿Eliminar este anuncio?', `"${ad.title}" se borra de la tele para siempre.`, 'ELIMINAR',
     async () => {
       try {
-        const { data, error } = await supabase.from('ads').delete().eq('id', ad.id).select('id')
-        if (error) throw error
-        ensureAffected(data)
+        const rpc = await supabase.rpc('admin_delete_ad', { p_id: String(ad.id) })
+        if (isMissingFunction(rpc.error)) {
+          const { data, error } = await supabase.from('ads').delete().eq('id', ad.id).select('id')
+          if (error) throw error
+          ensureAffected(data)
+        } else if (rpc.error) throw rpc.error
         setAdsList(prev => prev.filter(a => a.id !== ad.id))
         setToast({ message: 'Anuncio eliminado', type: 'success' })
         logAdminAction('Anuncio borrado', ad.title)
       } catch (error: any) {
-        setToast({ message: 'Error al eliminar: ' + describeError(error), type: 'error' })
+        setToast({ message: 'Error al eliminar: ' + adErrorText(error), type: 'error' })
       }
     }
   )
@@ -726,7 +764,7 @@ export default function AdminPanel() {
       </main>
 
       {banningUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBanningUser(null)} />
           <div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-red-900/20">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-mono"><FaBan className="text-red-400" /> PROTOCOLO_DE_BANEO: {banningUser.display_name}</h3>
@@ -740,7 +778,7 @@ export default function AdminPanel() {
       )}
 
       {unbanningUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setUnbanningUser(null)} />
           <div className="relative bg-[#1a1a1a] border border-green-900/40 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-green-900/20">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-mono"><FaUnlock className="text-green-400" /> RESTAURAR_NODO: {unbanningUser.display_name}</h3>
@@ -753,7 +791,7 @@ export default function AdminPanel() {
       )}
 
       {deletingPostId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDeletingPostId(null)} />
           <div className="relative bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl shadow-red-900/20">
             <div className="flex justify-center mb-4">
@@ -784,7 +822,7 @@ export default function AdminPanel() {
       )}
 
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !confirmBusy && setConfirmAction(null)} />
           <div className="relative bg-[#1a1a1a] border border-red-900/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-2 font-mono">{confirmAction.title}</h3>
@@ -800,7 +838,7 @@ export default function AdminPanel() {
       )}
 
       {showAdModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAdModal(false)} />
           <div className="relative bg-[#1a1a1a] border border-pink-900/40 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl shadow-pink-900/20">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-mono">

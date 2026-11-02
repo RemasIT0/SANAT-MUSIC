@@ -113,7 +113,7 @@ export default function AdminEvents({ onToast }: { onToast: (message: string, ty
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="admin-event-title">
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="admin-event-title">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setEditing(null)} />
           <div className="relative bg-[#1a1a1a] border border-amber-900/40 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl space-y-3">
             <button onClick={() => setEditing(null)} className="absolute top-3 right-3 p-2 text-gray-400 hover:text-white" aria-label="Cerrar"><FaTimes /></button>
