@@ -16,6 +16,12 @@ export const MODERATION_REASONS = [
   'Otro motivo',
 ]
 
+// Freno de seguridad: el admin nunca se modera a sí mismo (ni por error)
+async function assertNotSelf(userId: string) {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user.id === userId) throw new Error('No podés advertir ni banear tu propia cuenta')
+}
+
 export async function sendSystemNotice(userId: string, title: string, body: string) {
   const { error } = await supabase.from('system_notices').insert({ user_id: userId, title, body })
   if (error) throw error
@@ -44,6 +50,7 @@ export interface ModerationResult {
 
 // Registra la advertencia, avisa al usuario y suspende la cuenta al llegar a 3
 export async function applyModeration(input: ModerationInput): Promise<ModerationResult> {
+  await assertNotSelf(input.userId)
   const { userId, userName, reason, details, warn, notify, postContent } = input
   const fullReason = details.trim() ? `${reason}: ${details.trim()}` : reason
   let warnings: number | null = null

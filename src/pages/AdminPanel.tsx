@@ -17,10 +17,12 @@ import AdminBannerControl from '../components/AdminBannerControl'
 import AdminDonationControl from '../components/AdminDonationControl'
 import AdminBroadcast from '../components/AdminBroadcast'
 import AdminStatsCharts from '../components/AdminStatsCharts'
+import AdminEvents from '../components/AdminEvents'
 import ModerationModal, { type ModerationTarget } from '../components/ModerationModal'
 import { MAX_WARNINGS } from '../lib/moderation'
-import { FaGavel, FaUserCircle } from 'react-icons/fa'
+import { FaGavel, FaUserCircle, FaEdit } from 'react-icons/fa'
 import { logAdminAction } from '../lib/adminLog'
+import { ADMIN_RECHECK_EVENT } from '../components/AdminSecretGate'
 
 export default function AdminPanel() {
   const { user } = useAuth()
@@ -35,7 +37,7 @@ export default function AdminPanel() {
   const [reportsList, setReportsList] = useState<any[]>([])
   const [adsList, setAdsList] = useState<any[]>([])
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'charts' | 'users' | 'posts' | 'warnings' | 'banned' | 'suggestions' | 'reports' | 'ads'>('stats')
+  const [activeTab, setActiveTab] = useState<'stats' | 'charts' | 'users' | 'posts' | 'warnings' | 'banned' | 'suggestions' | 'reports' | 'ads' | 'events'>('stats')
   const [moderationTarget, setModerationTarget] = useState<ModerationTarget | null>(null)
   // Advertencias agrupadas por usuario (null = la tabla todavía no existe)
   const [warningsList, setWarningsList] = useState<any[] | null>(null)
@@ -88,7 +90,8 @@ export default function AdminPanel() {
       })
 
       const { data: usersData } = await supabase.from('profiles').select('id, username, display_name, is_banned').order('created_at', { ascending: false })
-      setUsersList(usersData?.filter(u => !u.is_banned) || [])
+      // La cuenta propia no aparece: el admin no puede banearse ni advertirse a sí mismo
+      setUsersList(usersData?.filter(u => !u.is_banned && u.id !== user?.id) || [])
 
       const { data: postsData } = await supabase.from('posts').select('id, user_id, content, created_at').order('created_at', { ascending: false })
       const postAuthorIds = [...new Set((postsData || []).map(p => p.user_id))]
@@ -153,15 +156,23 @@ export default function AdminPanel() {
 
   // Supabase no devuelve error cuando las políticas bloquean un update/delete:
   // simplemente afecta 0 filas. Por eso pedimos las filas afectadas y lo verificamos.
-  const NO_PERMISSION = 'No se aplicó: sin permiso de admin. Recargá la página y respondé la pregunta secreta.'
+  const NO_PERMISSION = 'Supabase no dejó aplicar el cambio. Si te vuelve a pedir la pregunta secreta, respondela y probá de nuevo; si no, corré el SQL ARREGLAR_anuncios.'
   const ensureAffected = (data: any[] | null) => {
-    if (!data || data.length === 0) throw new Error(NO_PERMISSION)
+    if (!data || data.length === 0) {
+      // Puede ser que venció la pregunta secreta: la pantalla de la pregunta lo revisa
+      window.dispatchEvent(new Event(ADMIN_RECHECK_EVENT))
+      throw new Error(NO_PERMISSION)
+    }
   }
 
   // Mensaje de error completo (Supabase suele traer detalle, pista y código)
   const describeError = (error: any) => {
     console.error('Error en panel admin:', error)
     if (!error) return 'Error desconocido'
+    if (error.code === '42501') {
+      window.dispatchEvent(new Event(ADMIN_RECHECK_EVENT))
+      return 'Supabase rechazó el permiso (código 42501). Corré el SQL ARREGLAR_anuncios o respondé de nuevo la pregunta secreta.'
+    }
     const parts = [error.message, error.details, error.hint, error.code && `código ${error.code}`].filter(Boolean)
     return parts.length ? parts.join(' — ') : String(error)
   }
@@ -195,6 +206,11 @@ export default function AdminPanel() {
 
   const handleBanUser = async () => {
     if (!banningUser || !banReasonInput.trim()) return
+    if (banningUser.id === user?.id) {
+      setToast({ message: 'No podés banear tu propia cuenta', type: 'error' })
+      setBanningUser(null)
+      return
+    }
     try {
       const { data, error } = await supabase.from('profiles').update({ is_banned: true, ban_reason: banReasonInput.trim() }).eq('id', banningUser.id).select('id')
       if (error) throw error
@@ -399,7 +415,7 @@ export default function AdminPanel() {
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {([
             ['stats', 'Mapa'], ['charts', 'Estadísticas'], ['users', 'Usuarios'], ['posts', 'Publicaciones'], ['warnings', 'Advertencias'],
-            ['banned', 'Baneados'], ['reports', 'Reportes'], ['suggestions', 'Sugerencias'], ['ads', 'Anuncios'],
+            ['banned', 'Baneados'], ['reports', 'Reportes'], ['suggestions', 'Sugerencias'], ['ads', 'Anuncios'], ['events', 'Eventos'],
           ] as const).map(([id, label]) => (
             <button key={id} onClick={() => setActiveTab(id)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold border transition-colors ${activeTab === id ? 'bg-purple-700 border-purple-500 text-white' : 'bg-[#141414] border-[#2a2a2a] text-gray-300 hover:text-white'}`}>
               {label}{id === 'warnings' && warningsList?.length ? ` (${warningsList.length})` : ''}
@@ -407,7 +423,7 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        <div className="bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-2xl p-6 min-h-[500px] shadow-2xl">
+        <div className="bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-2xl p-3 sm:p-6 min-h-[500px] shadow-2xl">
 
           {activeTab === 'stats' && (
             <div className="space-y-8">
@@ -656,30 +672,32 @@ export default function AdminPanel() {
                 </div>
               )}
 
+              {activeTab === 'events' && <AdminEvents onToast={(message, type) => setToast({ message, type })} />}
+
               {activeTab === 'ads' && (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white font-mono flex items-center gap-2"><FaTv className="text-pink-400" /> GESTIÓN_DE_TRANSMISIONES</h2>
-                    <button onClick={() => openAdModal()} className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-mono text-sm font-semibold shadow-[0_0_15px_rgba(236,72,153,0.4)] transition-all">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h2 className="text-lg sm:text-xl font-bold text-white font-mono flex items-center gap-2 min-w-0"><FaTv className="text-pink-400 flex-shrink-0" /> <span className="truncate">ANUNCIOS DE LA TELE</span></h2>
+                    <button onClick={() => openAdModal()} className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-mono text-sm font-semibold shadow-[0_0_15px_rgba(236,72,153,0.4)] transition-all">
                       <FaPlus /> NUEVO_ANUNCIO
                     </button>
                   </div>
 
-                  <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                  <div className="space-y-3">
                     {adsList.length === 0 ? (
                       <div className="text-center py-12">
                         <FaTv className="text-gray-600 text-4xl mx-auto mb-3" />
                         <p className="text-gray-500 font-mono">SIN TRANSMISIONES ACTIVAS. CREA LA PRIMERA.</p>
                       </div>
                     ) : adsList.map(ad => (
-                      <div key={ad.id} className={`p-4 rounded-xl border transition-all ${ad.is_active ? 'bg-pink-950/10 border-pink-500/30' : 'bg-[#0f0f0f] border-[#2a2a2a] opacity-60'}`}>
+                      <div key={ad.id} className={`p-3 sm:p-4 rounded-xl border transition-all ${ad.is_active ? 'bg-pink-950/10 border-pink-500/30' : 'bg-[#0f0f0f] border-[#2a2a2a] opacity-60'}`}>
                         <div className="flex items-start gap-3">
                           {ad.image_url && (
-                            <img src={ad.image_url} alt={ad.title} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] flex-shrink-0" />
+                            <img src={ad.image_url} alt={ad.title} className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-[#2a2a2a] flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-bold text-white font-mono truncate">{ad.title}</h3>
+                              <h3 className="font-bold text-white font-mono break-words min-w-0">{ad.title}</h3>
                               <span className={`px-2 py-0.5 text-[10px] font-bold rounded font-mono ${ad.is_active ? 'bg-green-900/30 text-green-400 border border-green-500/30' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
                                 {ad.is_active ? 'EN_AIRE' : 'OFFLINE'}
                               </span>
@@ -688,13 +706,13 @@ export default function AdminPanel() {
                             <p className="text-[10px] text-gray-600 font-mono">Creado: {new Date(ad.created_at).toLocaleString('es-AR')}</p>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#2a2a2a]">
-                          <button onClick={() => toggleAdActive(ad)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-xs font-semibold transition-all ${ad.is_active ? 'text-amber-400 hover:bg-amber-900/20 border border-amber-500/30' : 'text-green-400 hover:bg-green-900/20 border border-green-500/30'}`}>
-                            {ad.is_active ? <><FaToggleOff size={16} /> DESACTIVAR</> : <><FaToggleOn size={16} /> ACTIVAR</>}
+                        <div className="grid grid-cols-3 sm:flex sm:items-center sm:justify-between gap-2 mt-3 pt-3 border-t border-[#2a2a2a]">
+                          <button onClick={() => toggleAdActive(ad)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-mono text-xs font-semibold transition-all ${ad.is_active ? 'text-amber-400 hover:bg-amber-900/20 border border-amber-500/30' : 'text-green-400 hover:bg-green-900/20 border border-green-500/30'}`}>
+                            {ad.is_active ? <><FaToggleOff size={16} /> APAGAR</> : <><FaToggleOn size={16} /> ACTIVAR</>}
                           </button>
-                          <div className="flex gap-2">
-                            <button onClick={() => openAdModal(ad)} className="text-blue-400 hover:text-blue-300 p-2 hover:bg-blue-900/20 rounded-lg transition-all border border-transparent hover:border-blue-900/50 font-mono text-xs">EDITAR</button>
-                            <button onClick={() => handleDeleteAd(ad)} className="text-red-500 hover:text-red-400 p-2 hover:bg-red-900/20 rounded-lg transition-all border border-transparent hover:border-red-900/50 font-mono text-xs"><FaTrash /> ELIMINAR</button>
+                          <div className="contents sm:flex sm:gap-2">
+                            <button onClick={() => openAdModal(ad)} className="flex items-center justify-center gap-1.5 text-blue-300 hover:text-blue-200 px-3 py-2 bg-blue-950/20 hover:bg-blue-900/30 rounded-lg transition-all border border-blue-900/50 font-mono text-xs"><FaEdit size={11} /> EDITAR</button>
+                            <button onClick={() => handleDeleteAd(ad)} className="flex items-center justify-center gap-1.5 text-red-400 hover:text-red-300 px-3 py-2 bg-red-950/20 hover:bg-red-900/30 rounded-lg transition-all border border-red-900/50 font-mono text-xs"><FaTrash size={11} /> BORRAR</button>
                           </div>
                         </div>
                       </div>
@@ -715,7 +733,7 @@ export default function AdminPanel() {
             <textarea value={banReasonInput} onChange={(e) => setBanReasonInput(e.target.value)} placeholder="Ingrese motivo del baneo..." className="w-full h-24 p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-red-500 mb-4 resize-none placeholder:text-gray-600 font-mono text-sm" />
             <div className="flex gap-3">
               <button onClick={() => setBanningUser(null)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-mono text-sm font-medium">CANCELAR</button>
-              <button onClick={handleBanUser} disabled={!banReasonInput.trim()} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-all font-mono text-sm font-medium shadow-[0_0_15px_rgba(220,38,38,0.4)]">EJECUTAR</button>
+              <button onClick={handleBanUser} disabled={!banReasonInput.trim()} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-[#2a2a2a] disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all font-mono text-sm font-medium shadow-[0_0_15px_rgba(220,38,38,0.4)]">EJECUTAR</button>
             </div>
           </div>
         </div>
@@ -782,9 +800,9 @@ export default function AdminPanel() {
       )}
 
       {showAdModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-[scaleIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAdModal(false)} />
-          <div className="relative bg-[#1a1a1a] border border-pink-900/40 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-pink-900/20">
+          <div className="relative bg-[#1a1a1a] border border-pink-900/40 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl shadow-pink-900/20">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-mono">
               <FaTv className="text-pink-400" /> {editingAd ? 'EDITAR_TRANSMISIÓN' : 'NUEVA_TRANSMISIÓN'}
             </h3>
@@ -804,7 +822,7 @@ export default function AdminPanel() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-[#0f0f0f] rounded-lg border border-[#2a2a2a]">
                 <input type="checkbox" checked={adForm.is_active} onChange={(e) => setAdForm({...adForm, is_active: e.target.checked})} className="w-4 h-4 accent-pink-500" />
-                <label className="text-sm text-gray-300 font-mono">Transmitir inmediatamente</label>
+                <label className="text-sm text-gray-300 font-mono">Mostrar en la tele ya</label>
               </div>
             </div>
             <div className="flex gap-3 mt-4">

@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDialog } from './DialogProvider'
 import Avatar from './Avatar'
 import type { IconType } from 'react-icons'
-import { FaClock, FaGuitar, FaSmile, FaCheckDouble, FaLightbulb, FaStar, FaPen, FaTimes, FaSpinner, FaTrash } from 'react-icons/fa'
+import { FaClock, FaGuitar, FaSmile, FaCheckDouble, FaLightbulb, FaStar, FaPen, FaTimes, FaSpinner, FaTrash, FaReply } from 'react-icons/fa'
 
 export const REVIEW_TAGS: Record<string, { label: string; icon: IconType; color: string }> = {
   puntual: { label: 'Puntual', icon: FaClock, color: '#22d3ee' },
@@ -19,7 +19,7 @@ export const REVIEW_TAGS: Record<string, { label: string; icon: IconType; color:
   profesional: { label: 'Profesional', icon: FaStar, color: '#ec4899' },
 }
 
-interface Review { id: string; reviewer_id: string; tags: string[]; comment: string; created_at: string; reviewer?: any }
+interface Review { id: string; reviewer_id: string; tags: string[]; comment: string; created_at: string; reply?: string | null; replied_at?: string | null; reviewer?: any }
 
 export default function ProfileReviews({ profileId, profileName, themeColor }: { profileId: string; profileName: string; themeColor: string }) {
   const { user } = useAuth()
@@ -33,12 +33,23 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
   const [comment, setComment] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Respuesta del dueño del perfil
+  const [replyingId, setReplyingId] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [replySaving, setReplySaving] = useState(false)
+  const [replyError, setReplyError] = useState('')
+  const [repliesEnabled, setRepliesEnabled] = useState(true)
 
   const isMine = user?.id === profileId
   const myReview = reviews.find(r => r.reviewer_id === user?.id)
 
   const load = async () => {
-    const { data, error } = await supabase.from('user_reviews').select('id, reviewer_id, tags, comment, created_at').eq('reviewed_id', profileId).order('created_at', { ascending: false })
+    let { data, error }: { data: any[] | null; error: any } = await supabase.from('user_reviews').select('id, reviewer_id, tags, comment, created_at, reply, replied_at').eq('reviewed_id', profileId).order('created_at', { ascending: false })
+    // Si todavía no se corrió el SQL de respuestas, se cargan sin ellas
+    if (error && /reply/.test(error.message)) {
+      setRepliesEnabled(false)
+      ;({ data, error } = await supabase.from('user_reviews').select('id, reviewer_id, tags, comment, created_at').eq('reviewed_id', profileId).order('created_at', { ascending: false }))
+    }
     if (error) { setAvailable(false); return }
     const ids = [...new Set((data || []).map(r => r.reviewer_id))]
     const { data: reviewers } = ids.length ? await supabase.from('profiles').select('id, display_name, avatar_url, avatar_color').in('id', ids) : { data: [] as any[] }
@@ -78,6 +89,28 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
     load()
   }
 
+  const startReply = (r: Review) => {
+    setReplyingId(r.id)
+    setReplyText(r.reply || '')
+    setReplyError('')
+  }
+
+  const saveReply = async (r: Review, text: string) => {
+    if (replySaving) return
+    setReplySaving(true)
+    setReplyError('')
+    const { error } = await supabase.rpc('reply_to_review', { p_review: r.id, p_reply: text })
+    setReplySaving(false)
+    if (error) { setReplyError(/reply_to_review/.test(error.message) ? 'Falta activar las respuestas en Supabase (SQL de la etapa 4).' : 'No se pudo guardar la respuesta.'); return }
+    setReplyingId(null)
+    load()
+  }
+
+  const deleteReply = async (r: Review) => {
+    if (!(await confirm({ title: '¿Borrar tu respuesta?', confirmLabel: 'Borrar', danger: true }))) return
+    saveReply(r, '')
+  }
+
   if (!available) return null
 
   // Cantidad de veces que se eligió cada etiqueta
@@ -85,7 +118,7 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
     .map(key => ({ key, count: reviews.filter(r => r.tags.includes(key)).length }))
     .filter(t => t.count > 0)
     .sort((a, b) => b.count - a.count)
-  const withComments = reviews.filter(r => r.comment).slice(0, 5)
+  const withComments = reviews.filter(r => r.comment || r.reply).slice(0, isMine ? 20 : 5)
 
   if (!reviews.length && (isMine || !canReview)) return null
 
@@ -121,9 +154,43 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
                   <button onClick={() => navigate(`/perfil/${r.reviewer_id}`)} className="flex-shrink-0" aria-label={r.reviewer?.display_name}>
                     <Avatar url={r.reviewer?.avatar_url || null} name={r.reviewer?.display_name || '?'} color={r.reviewer?.avatar_color || '#333'} size={30} />
                   </button>
-                  <div className="min-w-0 flex-1 bg-[#0f0f0f] rounded-xl px-3 py-2">
-                    <p className="text-xs text-gray-400">{r.reviewer?.display_name || 'Usuario'} · {new Date(r.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</p>
-                    <p className="text-sm text-gray-100 break-words">{r.comment}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="bg-[#0f0f0f] rounded-xl px-3 py-2">
+                      <p className="text-xs text-gray-400">{r.reviewer?.display_name || 'Usuario'} · {new Date(r.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</p>
+                      {r.comment && <p className="text-sm text-gray-100 break-words">{r.comment}</p>}
+                    </div>
+
+                    {/* Respuesta del dueño del perfil */}
+                    {r.reply && replyingId !== r.id && (
+                      <div className="mt-1.5 ml-3 pl-3 border-l-2 rounded-r-xl bg-[#0f0f0f]/60 py-1.5 pr-3" style={{ borderColor: themeColor }}>
+                        <p className="text-[11px] text-gray-400 flex items-center gap-1"><FaReply size={9} /> Respuesta de {profileName}</p>
+                        <p className="text-sm text-gray-100 break-words">{r.reply}</p>
+                        {isMine && (
+                          <div className="flex gap-3 mt-1">
+                            <button onClick={() => startReply(r)} className="text-[11px] text-gray-400 hover:text-white">Editar</button>
+                            <button onClick={() => deleteReply(r)} className="text-[11px] text-gray-400 hover:text-red-300">Borrar</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {isMine && repliesEnabled && !r.reply && r.comment && replyingId !== r.id && (
+                      <button onClick={() => startReply(r)} className="mt-1 ml-3 text-xs text-gray-400 hover:text-white flex items-center gap-1.5"><FaReply size={10} /> Responder</button>
+                    )}
+                    {replyingId === r.id && (
+                      <div className="mt-1.5 ml-3">
+                        <textarea value={replyText} onChange={e => setReplyText(e.target.value.slice(0, 300))} rows={2} autoFocus placeholder={`Respondele a ${r.reviewer?.display_name || 'esta persona'}...`} className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl text-sm text-white resize-none focus:outline-none focus:border-purple-500 placeholder:text-gray-500" />
+                        {replyError && <p className="text-xs text-red-400 mt-1">{replyError}</p>}
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <span className="text-[11px] text-gray-500">{replyText.length}/300</span>
+                          <div className="flex gap-2">
+                            <button onClick={() => setReplyingId(null)} className="px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:bg-[#2a2a2a]">Cancelar</button>
+                            <button onClick={() => saveReply(r, replyText)} disabled={replySaving || !replyText.trim()} className="px-3 py-1.5 rounded-lg text-xs text-white font-semibold disabled:opacity-40 flex items-center gap-1.5" style={{ backgroundColor: themeColor }}>
+                              {replySaving && <FaSpinner className="animate-spin" size={10} />} Responder
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </li>
               ))}

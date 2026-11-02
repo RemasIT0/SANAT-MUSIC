@@ -22,14 +22,14 @@ export default function UpcomingEvents() {
     <section className="bg-[#1a1a1a]/90 border border-[#2a2a2a] rounded-2xl p-3">
       <div className="flex items-center justify-between mb-2 px-1">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2"><FaCalendarAlt className="text-purple-400" size={13} /> Próximos eventos</h2>
-        <button onClick={() => navigate('/agenda')} className="text-xs text-purple-300 hover:text-purple-200 flex items-center gap-1">Ver agenda <FaChevronRight size={9} /></button>
+        <button onClick={() => navigate('/home?seccion=eventos')} className="text-xs text-purple-300 hover:text-purple-200 flex items-center gap-1">Ver agenda <FaChevronRight size={9} /></button>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
         {events.map(ev => {
           const type = EVENT_TYPES[ev.event_type] || EVENT_TYPES.otro
           const date = new Date(ev.starts_at)
           return (
-            <button key={ev.id} onClick={() => navigate(`/agenda?evento=${ev.id}`)} className="snap-start flex-shrink-0 w-44 text-left p-2.5 rounded-xl bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-500/60 transition-colors">
+            <button key={ev.id} onClick={() => navigate(`/home?seccion=eventos&evento=${ev.id}`)} className="snap-start flex-shrink-0 w-44 text-left p-2.5 rounded-xl bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-500/60 transition-colors">
               <p className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1" style={{ color: type.color }}>
                 <type.icon size={9} /> {date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} · {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
               </p>

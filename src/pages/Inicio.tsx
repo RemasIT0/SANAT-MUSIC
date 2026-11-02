@@ -2,13 +2,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   FaMapMarkerAlt, FaMusic, FaFilter, FaSpinner, FaGuitar,
   FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash,
   FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, FaChevronDown, FaChevronUp,
   FaRegEnvelope, FaTimes, FaPaperPlane, FaQuestionCircle, FaEnvelopeOpenText,
-  FaFlag, FaHeart, FaFire, FaUser
+  FaFlag, FaHeart, FaFire, FaUser, FaUsers, FaCalendarAlt, FaNewspaper
 } from 'react-icons/fa'
 
 import { IoIosTime } from "react-icons/io"
@@ -25,6 +25,8 @@ import RetroTV from '../components/RetroTV'
 import MatchAlerts from '../components/MatchAlerts'
 import NearbyMusicians from '../components/NearbyMusicians'
 import UpcomingEvents from '../components/UpcomingEvents'
+import Agenda from './Agenda'
+import Bandas from './Bandas'
 import ShareModal, { type ShareTarget } from '../components/ShareModal'
 import HomeTour from '../components/HomeTour'
 import { useSavedPosts } from '../hooks/useSavedPosts'
@@ -97,6 +99,11 @@ export default function Home() {
   const { user, profile: myProfile, closeSuggestionModal } = useAuth()
   const myTheme = myProfile?.theme_color || '#a855f7'
   const navigate = useNavigate()
+  // Pestañas del Inicio: publicaciones, eventos y bandas (queda en la dirección: ?seccion=)
+  const [homeParams, setHomeParams] = useSearchParams()
+  const section = homeParams.get('seccion') === 'eventos' ? 'eventos' : homeParams.get('seccion') === 'bandas' ? 'bandas' : 'publicaciones'
+  const changeSection = (next: 'publicaciones' | 'eventos' | 'bandas') =>
+    setHomeParams(next === 'publicaciones' ? {} : { seccion: next }, { replace: true })
   const hiddenIds = useHiddenUsers()
   const [hasOwnPost, setHasOwnPost] = useState(false)
 
@@ -301,7 +308,8 @@ export default function Home() {
 
       const combined = await enrichPosts(postsData || []);
       offsetRef.current = start + (postsData?.length || 0);
-      if (isLoadMore) setPosts(prev => [...prev, ...combined]); else setPosts(combined);
+      // Si una publicación se editó mientras bajabas, cambia de lugar: no la repetimos
+      if (isLoadMore) setPosts(prev => [...prev, ...combined.filter(p => !prev.some(x => x.id === p.id))]); else setPosts(combined);
       setHasMore((postsData?.length || 0) === POSTS_PER_PAGE);
     } catch (error) {
       console.error('Error al cargar feed:', error);
@@ -323,7 +331,8 @@ export default function Home() {
     }, { rootMargin: '300px' });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loading, posts.length])
+    // "section": al volver a la pestaña Publicaciones el marcador del final es un elemento nuevo
+  }, [hasMore, loading, posts.length, section])
 
   useEffect(() => {
     if (isSearchOpen && allUsers.length === 0) {
@@ -512,9 +521,23 @@ export default function Home() {
 
           <MatchAlerts />
           <NearbyMusicians />
-          <UpcomingEvents />
 
         </div>
+
+        {/* Secciones del Inicio */}
+        <div role="tablist" aria-label="Secciones" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#141414] border border-[#2a2a2a]">
+          {([['publicaciones', 'Publicaciones', FaNewspaper], ['eventos', 'Eventos', FaCalendarAlt], ['bandas', 'Bandas', FaUsers]] as const).map(([id, label, Icon]) => (
+            <button key={id} role="tab" aria-selected={section === id} onClick={() => changeSection(id)} className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${section === id ? 'bg-purple-700 text-white' : 'text-gray-300 hover:text-white hover:bg-[#1f1f1f]'}`}>
+              <Icon size={13} /> {label}
+            </button>
+          ))}
+        </div>
+
+        {section === 'eventos' && <Agenda embedded />}
+        {section === 'bandas' && <Bandas embedded />}
+
+        {section === 'publicaciones' && (<>
+        <UpcomingEvents />
 
         <div data-tour="publicacion">
         {loading ? (
@@ -724,6 +747,7 @@ export default function Home() {
             </div>
           )}
         </div>
+        </>)}
       </main>
 
       {/* ✅ CAJÓN DESLIZANTE DE BÚSQUEDA CON DIRECTORIO DE USUARIOS */}

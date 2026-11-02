@@ -1,7 +1,7 @@
 // src/pages/Banda.tsx
 // Perfil de una banda: integrantes, demos, próximas fechas y postulaciones.
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useDialog } from '../components/DialogProvider'
@@ -10,6 +10,7 @@ import AnimatedBackground from '../components/AnimatedBackground'
 import Avatar from '../components/Avatar'
 import Toast from '../components/Toast'
 import BandFormModal from '../components/BandFormModal'
+import BandInviteModal from '../components/BandInviteModal'
 import { ProfileAudioPlayer } from '../components/ProfileAudio'
 import { ProfileSkeleton } from '../components/Skeleton'
 import { BandLogo, type BandRow } from './Bandas'
@@ -22,7 +23,7 @@ import {
 interface Member {
   user_id: string
   role: 'admin' | 'member'
-  status: 'active' | 'pending'
+  status: 'active' | 'pending' | 'invited'
   instrument: string
   message: string
   created_at: string
@@ -45,6 +46,8 @@ export default function Banda() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
+  const [params, setParams] = useSearchParams()
 
   const load = async () => {
     if (!id) return
@@ -66,6 +69,14 @@ export default function Banda() {
 
   useEffect(() => { setLoading(true); load() }, [id])
 
+  // Recién creada (?invitar=1): abrir directo la ventana para invitar integrantes
+  useEffect(() => {
+    if (loading || params.get('invitar') !== '1') return
+    const mine = members.find(m => m.user_id === user?.id)
+    if (mine?.role === 'admin' && mine.status === 'active') setShowInvite(true)
+    setParams({}, { replace: true })
+  }, [loading])
+
   if (loading) return <div className="min-h-screen relative pb-24"><AnimatedBackground /><main className="max-w-3xl mx-auto px-4 pt-10"><ProfileSkeleton /></main></div>
   if (notFound || !band) return (
     <div className="min-h-screen relative pb-24 flex items-center justify-center text-center px-4">
@@ -76,6 +87,7 @@ export default function Banda() {
 
   const active = members.filter(m => m.status === 'active')
   const pending = members.filter(m => m.status === 'pending')
+  const invitedList = members.filter(m => m.status === 'invited')
   const me = members.find(m => m.user_id === user?.id)
   const amAdmin = me?.role === 'admin' && me.status === 'active'
   const isSiteAdmin = user?.email === ADMIN_EMAIL
@@ -105,9 +117,27 @@ export default function Banda() {
     load()
   }
 
-  const removeMember = async (m: Member, kind: 'reject' | 'remove' | 'leave') => {
+  // La persona invitada acepta (pasa a integrante) o rechaza (se borra la invitación)
+  const answerInvite = async (acceptIt: boolean) => {
+    if (!user || !me || busy) return
+    setBusy(true)
+    const { data, error } = acceptIt
+      ? await supabase.from('band_members').update({ status: 'active' }).eq('band_id', band.id).eq('user_id', user.id).select('user_id')
+      : await supabase.from('band_members').delete().eq('band_id', band.id).eq('user_id', user.id).select('user_id')
+    setBusy(false)
+    // 0 filas: la invitación ya no existe (la cancelaron o se borró la banda)
+    if (error || !data?.length) { setToast({ message: 'Esta invitación ya no existe: la cancelaron o la banda se borró.', type: 'info' }); load(); return }
+    if (acceptIt) {
+      await supabase.from('messages').insert({ sender_id: user.id, receiver_id: band.created_by, content: `¡Acepté la invitación! Ya soy parte de ${band.name}.` })
+      setToast({ message: `¡Ya sos parte de ${band.name}!`, type: 'success' })
+    }
+    load()
+  }
+
+  const removeMember = async (m: Member, kind: 'reject' | 'remove' | 'leave' | 'uninvite') => {
     const name = m.profile?.display_name || 'esta persona'
     const texts = {
+      uninvite: { title: `¿Cancelar la invitación a ${name}?`, label: 'Cancelar invitación' },
       reject: { title: `¿Rechazar a ${name}?`, label: 'Rechazar' },
       remove: { title: `¿Sacar a ${name} de la banda?`, label: 'Sacar' },
       leave: { title: `¿Salir de ${band.name}?`, label: 'Salir' },
@@ -171,6 +201,15 @@ export default function Banda() {
           )}
 
           <div className="flex flex-wrap gap-2 mt-4">
+            {me?.status === 'invited' && (
+              <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-purple-900/25 border border-purple-500/50">
+                <p className="text-sm text-white flex-1">Te invitaron a sumarte a esta banda{me.instrument ? ` como ${me.instrument}` : ''}.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => answerInvite(true)} disabled={busy} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-semibold disabled:opacity-50"><FaCheck size={11} /> Aceptar</button>
+                  <button onClick={() => answerInvite(false)} disabled={busy} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2a2a2a] hover:bg-[#333] text-white text-sm disabled:opacity-50"><FaTimes size={11} /> Rechazar</button>
+                </div>
+              </div>
+            )}
             {!me && (
               <button onClick={() => { setInstrument(band.looking_for[0] || ''); setMessage(''); setShowApply(true) }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold">
                 <FaUserPlus size={12} /> {band.looking_for.length ? 'Postularme' : 'Quiero unirme'}
@@ -180,11 +219,32 @@ export default function Banda() {
             {user?.id !== band.created_by && (
               <button onClick={() => navigate(`/chat/${band.created_by}`)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-white text-sm"><FaComment size={12} /> Escribir a la banda</button>
             )}
+            {amAdmin && <button onClick={() => setShowInvite(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold"><FaUserPlus size={12} /> Invitar integrantes</button>}
             {amAdmin && <button onClick={() => setShowEdit(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-white text-sm"><FaPen size={11} /> Editar</button>}
-            {me && <button onClick={() => removeMember(me, 'leave')} className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-300 hover:text-red-300 text-sm"><FaSignOutAlt size={12} /> {me.status === 'pending' ? 'Cancelar postulación' : 'Salir'}</button>}
+            {me && me.status !== 'invited' && <button onClick={() => removeMember(me, 'leave')} className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-300 hover:text-red-300 text-sm"><FaSignOutAlt size={12} /> {me.status === 'pending' ? 'Cancelar postulación' : 'Salir'}</button>}
             {(amAdmin || isSiteAdmin) && <button onClick={deleteBand} className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-300 hover:text-red-300 text-sm ml-auto"><FaTrash size={11} /> Borrar banda</button>}
           </div>
         </section>
+
+        {amAdmin && invitedList.length > 0 && (
+          <section className={card}>
+            <h2 className="text-white font-semibold mb-3">Invitaciones enviadas <span className="text-gray-400 font-normal text-sm">({invitedList.length})</span></h2>
+            <ul className="space-y-2">
+              {invitedList.map(m => (
+                <li key={m.user_id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0f0f0f]">
+                  <button onClick={() => navigate(`/perfil/${m.user_id}`)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+                    <Avatar url={m.profile?.avatar_url || null} name={m.profile?.display_name || '?'} color={m.profile?.avatar_color || '#333'} size={34} />
+                    <div className="min-w-0">
+                      <p className="text-sm text-white truncate">{m.profile?.display_name || 'Usuario'}</p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1"><FaHourglassHalf size={9} /> Esperando respuesta{m.instrument ? ` · ${m.instrument}` : ''}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => removeMember(m, 'uninvite')} className="text-xs text-gray-400 hover:text-red-300 px-2 py-1">Cancelar</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {amAdmin && pending.length > 0 && (
           <section className={`${card} border-amber-600/40`}>
@@ -272,6 +332,7 @@ export default function Banda() {
         </section>
       </main>
 
+      {showInvite && <BandInviteModal band={band} memberIds={members.map(m => m.user_id)} onClose={() => setShowInvite(false)} onInvited={load} />}
       {showEdit && <BandFormModal band={band} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load() }} />}
 
       {showApply && (

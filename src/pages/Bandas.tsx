@@ -1,6 +1,7 @@
 // src/pages/Bandas.tsx
 // Listado de bandas: buscar, filtrar las que buscan integrantes y crear una nueva.
 import { useState, useEffect } from 'react'
+import Toast from '../components/Toast'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -31,7 +32,7 @@ export function BandLogo({ band, size = 56 }: { band: Pick<BandRow, 'name' | 'lo
   )
 }
 
-export default function Bandas() {
+export default function Bandas({ embedded = false }: { embedded?: boolean }) {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [bands, setBands] = useState<BandRow[]>([])
@@ -40,7 +41,18 @@ export default function Bandas() {
   const [missing, setMissing] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todas' | 'buscan' | 'zona' | 'mias'>('todas')
+  const [invites, setInvites] = useState<string[]>([])
   const [showCreate, setShowCreate] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  // Se pueden crear varias bandas, con un tope para evitar spam (lo controla también la base)
+  const MAX_BANDS = 5
+  const openCreate = () => {
+    if (bands.filter(b => b.created_by === user?.id).length >= MAX_BANDS) {
+      setToast({ message: `Ya creaste ${MAX_BANDS} bandas, que es el máximo por perfil.`, type: 'info' })
+      return
+    }
+    setShowCreate(true)
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -52,6 +64,7 @@ export default function Bandas() {
       const members = membersRes.data || []
       setBands((bandsRes.data || []).map(b => ({ ...b, members: members.filter(m => m.band_id === b.id && m.status === 'active').length })))
       setMyBandIds(new Set(members.filter(m => m.user_id === user?.id && m.status === 'active').map(m => m.band_id)))
+      setInvites(members.filter(m => m.user_id === user?.id && m.status === 'invited').map(m => m.band_id))
       setLoading(false)
     }
     load()
@@ -69,12 +82,14 @@ export default function Bandas() {
   const filters = [['todas', 'Todas'], ['buscan', 'Buscan integrantes'], ['zona', 'Mi zona'], ['mias', 'Mis bandas']] as const
 
   return (
-    <div className="min-h-screen relative text-gray-200 pb-24">
-      <AnimatedBackground />
-      <main className="max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4">
+    // "embedded": dentro de una pestaña del Inicio (sin fondo ni márgenes propios)
+    <div className={embedded ? 'text-gray-200' : 'min-h-screen relative text-gray-200 pb-24'}>
+      {!embedded && <AnimatedBackground />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <main className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl text-white flex items-center gap-3"><FaUsers className="text-purple-400" /> Bandas</h1>
-          <button onClick={() => setShowCreate(true)} disabled={missing} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
+          <h1 className={`${embedded ? 'text-xl' : 'text-2xl'} text-white flex items-center gap-3`}><FaUsers className="text-purple-400" /> Bandas</h1>
+          <button onClick={openCreate} disabled={missing || loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
             <FaPlus size={11} /> Crear banda
           </button>
         </div>
@@ -88,6 +103,18 @@ export default function Bandas() {
             <button key={id} onClick={() => setFilter(id)} className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-colors ${filter === id ? 'bg-purple-700 border-purple-500 text-white' : 'bg-[#141414] border-[#2a2a2a] text-gray-300 hover:text-white'}`}>{label}</button>
           ))}
         </div>
+
+        {invites.length > 0 && (
+          <div className="p-3 rounded-2xl bg-purple-900/25 border border-purple-500/50">
+            <p className="text-sm text-white font-semibold mb-2">Te invitaron a {invites.length === 1 ? 'una banda' : `${invites.length} bandas`}</p>
+            <div className="flex flex-wrap gap-2">
+              {invites.map(id => {
+                const band = bands.find(b => b.id === id)
+                return band ? <button key={id} onClick={() => navigate(`/banda/${id}`)} className="px-3 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold">Ver {band.name}</button> : null
+              })}
+            </div>
+          </div>
+        )}
 
         {missing && <p className="text-sm text-amber-200 bg-amber-900/20 border border-amber-700/40 rounded-lg p-3">Falta activar las bandas: corré el SQL de la etapa 3 en Supabase.</p>}
 
@@ -119,7 +146,7 @@ export default function Bandas() {
           </div>
         )}
       </main>
-      {showCreate && <BandFormModal onClose={() => setShowCreate(false)} onSaved={id => navigate(`/banda/${id}`)} />}
+      {showCreate && <BandFormModal onClose={() => setShowCreate(false)} onSaved={id => navigate(`/banda/${id}?invitar=1`)} />}
     </div>
   )
 }

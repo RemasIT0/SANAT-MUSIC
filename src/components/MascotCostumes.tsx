@@ -12,6 +12,7 @@ export type MascotExpression =
   | 'conejo' | 'dj' | 'astronauta' | 'rapero'
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
   | 'timido' | 'cerdito' | 'pollito'
+  | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -21,12 +22,16 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'rockero', label: 'Rockero' },
   { id: 'melenudo', label: 'Melenudo' },
   { id: 'blackmetal', label: 'Black metal' },
+  { id: 'gotico', label: 'Gótico' },
+  { id: 'emo', label: 'Emo' },
+  { id: 'grunge', label: 'Grunge' },
   { id: 'punk', label: 'Punk' },
   { id: 'gaucho', label: 'Gaucho' },
   { id: 'rapero', label: 'Rapero' },
   { id: 'turro', label: 'Turro' },
   { id: 'dj', label: 'DJ' },
   { id: 'otaku', label: 'Otaku' },
+  { id: 'nerd', label: 'Nerd' },
   { id: 'timido', label: 'Tímido' },
   { id: 'cerdito', label: 'Cerdito' },
   { id: 'pollito', label: 'Pollito' },
@@ -37,6 +42,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'zombie', label: 'Zombie' },
   { id: 'esqueleto', label: 'Esqueleto' },
   { id: 'fantasma', label: 'Fantasma' },
+  { id: 'unicornio', label: 'Unicornio/evil' },
 ]
 
 interface CostumeCtx {
@@ -720,6 +726,188 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         {/* Piquito */}
         <path d="M24 28 L32 23 L40 28 L32 34 Z" fill="#fb923c" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
         <path d="M24 28 L40 28" stroke={INK} strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+
+  emo: {
+    // Pelo negro detrás
+    back: () => (
+      <Layer top={-12} left={-14} w={128} h={92}>
+        <path d="M14 32 Q20 0 64 0 Q108 0 114 32 L120 74 L106 66 L102 42 L28 42 L24 82 L10 76 Z" fill="#0a0a0a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+      </Layer>
+    ),
+    // Flequillo de costado que tapa un ojo, con mecha fucsia
+    front: () => (
+      <Layer top={-10} left={-6} w={104} h={72} className="z-20">
+        <path d="M8 16 Q50 -4 96 12 L92 24 Q70 30 60 58 L50 68 Q32 58 14 66 L6 42 Z" fill="#0a0a0a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M30 8 Q58 14 66 40" fill="none" stroke="#ec4899" strokeWidth="5" strokeLinecap="round" />
+        <path d="M20 30 Q30 44 26 60" fill="none" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" />
+      </Layer>
+    ),
+    face: ({ eye }) => (
+      <svg width="84" height="70" viewBox="0 0 84 70" className="mt-2">
+        {/* Ojo visible con delineado y lágrima */}
+        <rect x="47" y="12" width="26" height="22" rx="3" fill="#fff" stroke={INK} strokeWidth="3" />
+        <rect x={55 + eye.x} y={18 + eye.y} width="10" height="10" rx="2" fill={INK} />
+        <path d="M73 14 L82 8" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+        <path d="M60 38 Q58 44 60 46 Q62 44 60 38 Z" fill="#93c5fd" stroke={INK} strokeWidth="1.2" />
+        {/* Boca triste con piercing */}
+        <path d="M30 58 Q42 50 54 58" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        <circle cx="47" cy="61" r="3" fill="none" stroke="#d1d5db" strokeWidth="2.2" />
+      </svg>
+    ),
+  },
+
+  gotico: {
+    // Pelo largo y lacio
+    back: () => (
+      <Layer top={-12} left={-34} w={168} h={118}>
+        <path d="M26 34 Q30 0 84 0 Q138 0 142 34 L152 112 L128 108 L124 58 L44 58 L40 108 L16 112 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M24 62 L20 104 M144 62 L148 104" stroke="#3f3f46" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Flequillo recto */}
+        <Layer top={-6} left={-4} w={108} h={30} className="z-20">
+          <path d="M2 24 L2 10 Q54 -8 106 10 L106 24 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        </Layer>
+        {/* Gargantilla con cruz */}
+        <Layer top={88} left={22} w={56} h={30} className="z-20">
+          <rect x="2" y="2" width="52" height="7" rx="3" fill="#111" stroke={INK} strokeWidth="2" />
+          <rect x="25" y="9" width="6" height="18" fill="#d1d5db" stroke={INK} strokeWidth="1.5" />
+          <rect x="20" y="13" width="16" height="5" fill="#d1d5db" stroke={INK} strokeWidth="1.5" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <svg width="80" height="60" viewBox="0 0 80 60" className="mt-6">
+        {/* Sombra violeta y ojos */}
+        {[18, 62].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="16" rx="14" ry="11" fill="#581c87" />
+            <rect x={cx - 10} y="9" width="20" height="15" rx="3" fill="#fff" stroke={INK} strokeWidth="2.5" />
+            <rect x={cx - 4 + eye.x * 0.8} y={13 + eye.y * 0.6} width="8" height="8" rx="1.5" fill={INK} />
+            <path d={`M${cx - 12} 8 L${cx + 12} 6`} stroke={INK} strokeWidth="3" strokeLinecap="round" />
+          </g>
+        ))}
+        {/* Lunar y labios negros */}
+        <circle cx="58" cy="40" r="1.8" fill={INK} />
+        <path d="M30 44 Q40 40 50 44 Q40 52 30 44 Z" fill="#111" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+
+  grunge: {
+    // Pelo largo y desprolijo
+    back: () => (
+      <Layer top={-6} left={-28} w={156} h={120}>
+        <path d="M26 26 Q40 0 78 2 Q118 0 130 26 L142 98 L130 92 L128 112 L116 96 L110 50 L46 50 L40 96 L28 112 L26 92 L14 98 Z" fill="#a16207" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M22 50 L18 92 M134 50 L138 92 M32 60 L30 100 M124 60 L126 100" stroke="#ca8a04" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Gorro de lana */}
+        <Layer top={-30} left={-6} w={112} h={46} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M8 34 Q8 2 56 2 Q104 2 104 34 Z" fill="#365314" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <rect x="4" y="30" width="104" height="12" rx="3" fill="#4d7c0f" stroke={INK} strokeWidth="3" />
+          <path d="M20 31 L20 41 M32 31 L32 41 M44 31 L44 41 M56 31 L56 41 M68 31 L68 41 M80 31 L80 41 M92 31 L92 41" stroke="#365314" strokeWidth="2" />
+        </Layer>
+        {/* Mechones que caen sobre la cara */}
+        <Layer top={10} left={-4} w={108} h={30} className="z-20">
+          <path d="M4 0 L12 26 L18 4 Z M90 4 L96 28 L104 0 Z" fill="#a16207" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <>
+        <div className="mt-5"><SquareEyes eye={eye} lids /></div>
+        {/* Barba de varios días y boca apática */}
+        <svg width="60" height="30" viewBox="0 0 60 30" className="mt-2">
+          <line x1="18" y1="10" x2="42" y2="10" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+          {[[10, 18], [16, 22], [24, 20], [32, 23], [40, 20], [46, 22], [52, 17], [20, 27], [30, 28], [40, 27]].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="1.3" fill={INK} opacity="0.6" />
+          ))}
+        </svg>
+      </>
+    ),
+  },
+
+  nerd: {
+    // Remolino de pelo
+    back: () => (
+      <Layer top={-18} left={20} w={60} h={24}>
+        <path d="M4 24 Q8 4 30 6 Q52 4 56 24 Z" fill="#422006" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M30 6 Q34 -4 42 2" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      </Layer>
+    ),
+    // Moño
+    front: () => (
+      <Layer top={90} left={30} w={40} h={20} className="z-20">
+        <path d="M20 10 L2 2 L2 18 Z M20 10 L38 2 L38 18 Z" fill="#dc2626" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <rect x="15" y="5" width="10" height="10" rx="2" fill="#b91c1c" stroke={INK} strokeWidth="2.5" />
+      </Layer>
+    ),
+    face: ({ eye }) => (
+      <svg width="88" height="72" viewBox="0 0 88 72" className="mt-1">
+        {/* Anteojos grandes con cinta */}
+        {[24, 64].map(cx => (
+          <g key={cx}>
+            <circle cx={cx} cy="24" r="17" fill="#e0f2fe" stroke={INK} strokeWidth="4" />
+            <circle cx={cx + eye.x} cy={24 + eye.y} r="6" fill={INK} />
+            <circle cx={cx - 2 + eye.x} cy={22 + eye.y} r="2" fill="#fff" />
+          </g>
+        ))}
+        <rect x="38" y="18" width="12" height="9" rx="2" fill="#fef3c7" stroke={INK} strokeWidth="2" />
+        <path d="M40 20 L48 25 M48 20 L40 25" stroke={INK} strokeWidth="1.2" />
+        {/* Pecas */}
+        {[[12, 48], [18, 50], [70, 48], [76, 50]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.6" fill="#92400e" />)}
+        {/* Sonrisa con dientes de conejo */}
+        <path d="M28 52 Q44 66 60 52" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        <rect x="38" y="57" width="6" height="8" fill="#fff" stroke={INK} strokeWidth="1.8" />
+        <rect x="44" y="57" width="6" height="8" fill="#fff" stroke={INK} strokeWidth="1.8" />
+      </svg>
+    ),
+  },
+
+  unicornio: {
+    // Crin oscura con fuego violeta y rojo
+    back: () => (
+      <Layer top={-16} left={-22} w={70} h={120}>
+        <path d="M44 16 Q20 8 10 30 Q2 46 12 56 Q0 70 10 84 Q2 98 14 112 Q22 96 30 100 Q26 84 34 78 Q28 62 38 56 Q34 40 48 34 Z" fill="#4c0519" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M36 24 Q20 30 18 46 M30 60 Q18 70 20 86" fill="none" stroke="#a21caf" strokeWidth="4" strokeLinecap="round" />
+        <path d="M40 30 Q28 40 28 52" fill="none" stroke="#dc2626" strokeWidth="3" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Cuerno en espiral, oscuro y con la punta encendida */}
+        <Layer top={-50} left={39} w={22} h={56} className="z-20" style={{ filter: 'drop-shadow(0 0 6px #ef4444)' }}>
+          <path d="M11 2 Q13 30 20 54 L2 54 Q9 30 11 2 Z" fill="#2e1065" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M4 46 Q11 40 18 47 M5 36 Q11 31 16 37 M7 26 Q11 22 14 27 M8 16 Q11 13 13 17" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="11" cy="4" r="2.5" fill="#fecaca" />
+        </Layer>
+        {/* Orejas puntiagudas */}
+        <Layer top={-16} left={4} w={92} h={22} className="z-10">
+          <path d="M4 22 L10 2 L24 20 Z M88 22 L82 2 L68 20 Z" fill="#4c0519" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <svg width="80" height="64" viewBox="0 0 80 64" className="mt-3">
+        {/* Cejas malvadas y ojos rojos con pupila de reptil */}
+        <path d="M6 6 L32 14 M74 6 L48 14" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+        {[20, 60].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="24" rx="11" ry="9" fill="#ef4444" stroke={INK} strokeWidth="3" style={{ filter: 'drop-shadow(0 0 4px #ef4444)' }} />
+            <ellipse cx={cx + eye.x * 0.7} cy={24 + eye.y * 0.5} rx="2.2" ry="7" fill={INK} />
+          </g>
+        ))}
+        {/* Sonrisa con colmillos */}
+        <path d="M14 42 Q40 62 66 42 Q40 52 14 42 Z" fill={INK} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M24 46 L28 56 L31 48 Z M56 46 L52 56 L49 48 Z" fill="#fff" stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
       </svg>
     ),
   },

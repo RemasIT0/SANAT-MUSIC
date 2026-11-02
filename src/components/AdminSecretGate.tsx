@@ -9,6 +9,9 @@ import { FaUserShield, FaSpinner, FaSignOutAlt, FaLock } from 'react-icons/fa'
 
 type GateStatus = 'checking' | 'locked' | 'unlocked'
 
+// El panel lo dispara cuando Supabase rechaza una acción: si el desbloqueo venció, se vuelve a pedir
+export const ADMIN_RECHECK_EVENT = 'sanat-admin-recheck'
+
 export default function AdminSecretGate({ children }: { children: ReactNode }) {
   const { signOut } = useAuth()
   const navigate = useNavigate()
@@ -38,18 +41,21 @@ export default function AdminSecretGate({ children }: { children: ReactNode }) {
     init()
   }, [])
 
-  // El desbloqueo dura 12 h: revisar cada 5 min y volver a pedir la pregunta si venció
+  // El desbloqueo dura 12 h: revisar cada 5 min (y cuando el panel avisa) y volver a pedir la pregunta si venció
   useEffect(() => {
     if (status !== 'unlocked') return
-    const interval = setInterval(async () => {
+    const recheck = async () => {
       if (!(await checkUnlocked())) {
         const { data } = await supabase.rpc('get_admin_question')
         setQuestion(data ?? null)
         setAnswer('')
         setStatus('locked')
       }
-    }, 5 * 60 * 1000)
-    return () => clearInterval(interval)
+    }
+    const interval = setInterval(recheck, 5 * 60 * 1000)
+    window.addEventListener(ADMIN_RECHECK_EVENT, recheck)
+    window.addEventListener('focus', recheck)
+    return () => { clearInterval(interval); window.removeEventListener(ADMIN_RECHECK_EVENT, recheck); window.removeEventListener('focus', recheck) }
   }, [status])
 
   const handleSubmit = async (e: React.FormEvent) => {

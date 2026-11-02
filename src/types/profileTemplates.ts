@@ -97,6 +97,135 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
     },
   },
   {
+    key: 'punk',
+    name: 'Punk fanzine',
+    description: 'Recortes, rosa chicle sobre negro y amarillo de advertencia.',
+    preview: 'linear-gradient(160deg, #111111, #2b0a1e)',
+    build: (hasAudio) => {
+      const zine: Partial<FreeElementStyle> = { bg: '#fdf6e3', color: '#111111', borderColor: '#111111', borderWidth: 4, radius: 0, shadow: true, font: 'mono' }
+      const pink: Partial<FreeElementStyle> = { ...zine, bg: '#ff3ea5', color: '#111111' }
+      const elements = [
+        make('name', 50, 50, 620, 130, { bg: '#facc15', color: '#111111', borderColor: '#111111', borderWidth: 5, radius: 0, font: 'impact', fontSize: 66, align: 'center', shadow: true }, { rotation: -3 }),
+        make('photo', 700, 40, 250, 250, { radius: 0, borderWidth: 6, borderColor: '#facc15', shadow: true }, { rotation: 5 }),
+        make('text', 80, 210, 420, 70, { ...pink, font: 'impact', fontSize: 30, align: 'center' }, { rotation: 2, content: 'HAZLO TÚ MISMO' }),
+        make('sticker', 540, 200, 120, 120, { color: '#ff3ea5' }, { content: 'rayo', rotation: -15 }),
+        make('bio', 60, 330, 540, 230, zine, { rotation: -1 }),
+        make('instruments', 640, 340, 310, 160, pink, { rotation: 3 }),
+        make('genres', 640, 540, 310, 120, zine, { rotation: -2 }),
+        make('location', 60, 600, 380, 70, { ...zine, bg: '#facc15' }, { rotation: 1 }),
+        make('sticker', 470, 600, 120, 120, { color: '#fdf6e3' }, { content: 'calavera', rotation: 10 }),
+        make('friends', 640, 700, 300, 70, zine, { rotation: 2 }),
+        make('mascot', 60, 710, 150, 170, { color: '#ff3ea5' }),
+      ]
+      if (hasAudio) elements.push(make('audio', 240, 760, 360, 100, pink))
+      return { height: 960, background: { type: 'gradient', color: '#111111', color2: '#2b0a1e', image: '' }, elements }
+    },
+  },
+  {
+    key: 'jazz',
+    name: 'Jazz club',
+    description: 'Azul noche, dorado y letras elegantes de club de humo.',
+    preview: 'linear-gradient(160deg, #0b1d3a, #05070d)',
+    build: (hasAudio) => {
+      const box: Partial<FreeElementStyle> = { bg: '#0d1b33', color: '#f3e7c4', borderColor: '#c9a227', borderWidth: 2, radius: 10, font: 'serif' }
+      const elements = [
+        make('name', 100, 60, 800, 120, { bg: 'transparent', borderWidth: 0, font: 'cursive', fontSize: 70, color: '#e6c35c', align: 'center' }),
+        make('sticker', 130, 190, 90, 90, { color: '#c9a227' }, { content: 'saxo', rotation: -10 }),
+        make('photo', 380, 190, 240, 240, { borderWidth: 4, borderColor: '#c9a227', shadow: true }),
+        make('sticker', 780, 190, 90, 90, { color: '#c9a227' }, { content: 'nota', rotation: 10 }),
+        make('location', 330, 450, 340, 60, { ...box, align: 'center' }),
+        make('bio', 80, 540, 520, 220, box),
+        make('instruments', 630, 540, 290, 140, box),
+        make('genres', 630, 700, 290, 110, box),
+        make('friends', 80, 790, 300, 70, box),
+        make('mascot', 420, 780, 140, 160),
+      ]
+      if (hasAudio) elements.push(make('audio', 590, 840, 330, 100, box))
+      return { height: 1000, background: { type: 'gradient', color: '#0b1d3a', color2: '#05070d', image: '' }, elements }
+    },
+  },
+  {
+    key: 'metal',
+    name: 'Metal',
+    description: 'Negro, acero y fuego. Letras pesadas y bordes filosos.',
+    preview: 'linear-gradient(160deg, #3a3f47, #050505)',
+    build: (hasAudio) => {
+      const steel: Partial<FreeElementStyle> = { bg: '#0d0d0f', color: '#d4d7dd', borderColor: '#8a9099', borderWidth: 3, radius: 0, shadow: true, font: 'impact' }
+      const fire: Partial<FreeElementStyle> = { ...steel, borderColor: '#e2541b', color: '#f3d2c1' }
+      const elements = [
+        make('name', 40, 40, 920, 150, { bg: 'transparent', borderWidth: 0, font: 'nirvana', fontSize: 86, color: '#e7e9ee', align: 'center' }),
+        make('sticker', 60, 200, 120, 120, { color: '#e2541b' }, { content: 'fuego', rotation: -12 }),
+        make('photo', 360, 190, 280, 280, { radius: 0, borderWidth: 6, borderColor: '#8a9099', shadow: true }),
+        make('sticker', 820, 200, 120, 120, { color: '#d4d7dd' }, { content: 'calavera', rotation: 12 }),
+        make('text', 300, 490, 400, 70, { ...fire, bg: '#1a0a05', fontSize: 30, align: 'center' }, { content: 'MÁS FUERTE \\m/' }),
+        make('bio', 60, 590, 540, 220, steel),
+        make('instruments', 630, 590, 310, 150, fire),
+        make('genres', 630, 760, 310, 120, steel),
+        make('location', 60, 830, 360, 70, steel),
+        make('sticker', 470, 830, 100, 100, { color: '#e2541b' }, { content: 'rayo', rotation: -8 }),
+        make('friends', 630, 900, 310, 70, steel),
+        make('mascot', 60, 920, 140, 160),
+      ]
+      if (hasAudio) elements.push(make('audio', 230, 960, 370, 100, fire))
+      return { height: 1100, background: { type: 'gradient', color: '#3a3f47', color2: '#050505', image: '' }, elements }
+    },
+  },
+  {
+    key: 'terror',
+    name: 'Terror',
+    description: 'Rojo sangre, oscuridad total y cosas que se mueven en la noche.',
+    preview: 'linear-gradient(160deg, #3b0000, #000000)',
+    build: (hasAudio) => {
+      const crypt: Partial<FreeElementStyle> = { bg: '#0a0000', color: '#d9c6c6', borderColor: '#7a0000', borderWidth: 2, radius: 4, shadow: true, font: 'serif' }
+      const elements = [
+        make('name', 60, 50, 880, 140, { bg: 'transparent', borderWidth: 0, font: 'nirvana', fontSize: 80, color: '#b30000', align: 'center' }, { rotation: -1 }),
+        make('sticker', 40, 30, 110, 110, { color: '#6b6b6b' }, { content: 'murcielago', rotation: -18 }),
+        make('sticker', 860, 40, 100, 100, { color: '#e8e2c8' }, { content: 'luna' }),
+        make('photo', 370, 200, 260, 260, { borderWidth: 5, borderColor: '#7a0000', radius: 130, shadow: true }),
+        make('sticker', 120, 260, 130, 130, { color: '#d9c6c6' }, { content: 'fantasma', rotation: 8 }),
+        make('sticker', 760, 280, 120, 120, { color: '#b30000' }, { content: 'calavera', rotation: -10 }),
+        make('text', 250, 480, 500, 70, { ...crypt, bg: 'transparent', borderWidth: 0, color: '#b30000', fontSize: 28, align: 'center', shadow: false }, { content: 'NO MIRES ATRÁS...', rotation: 1 }),
+        make('bio', 60, 580, 540, 230, crypt, { rotation: -1 }),
+        make('instruments', 630, 580, 310, 150, crypt, { rotation: 1 }),
+        make('genres', 630, 750, 310, 120, crypt),
+        make('location', 60, 840, 380, 70, crypt),
+        make('friends', 630, 900, 310, 70, crypt),
+        make('mascot', 470, 830, 140, 160, { color: '#7a0000' }),
+      ]
+      if (hasAudio) elements.push(make('audio', 60, 940, 380, 100, crypt))
+      return { height: 1080, background: { type: 'gradient', color: '#3b0000', color2: '#000000', image: '' }, elements }
+    },
+  },
+  {
+    key: 'videojuego',
+    name: 'Videojuego',
+    description: 'Pantalla de arcade: pixeles, verde fósforo y "PRESS START".',
+    preview: 'linear-gradient(160deg, #13002b, #001a14)',
+    build: (hasAudio) => {
+      const hud: Partial<FreeElementStyle> = { bg: '#05010f', color: '#39ff88', borderColor: '#39ff88', borderWidth: 4, radius: 0, font: 'mono' }
+      const pink: Partial<FreeElementStyle> = { ...hud, color: '#ff4fd8', borderColor: '#ff4fd8' }
+      const yellow: Partial<FreeElementStyle> = { ...hud, color: '#ffe14d', borderColor: '#ffe14d' }
+      const elements = [
+        make('text', 60, 40, 300, 60, { ...yellow, fontSize: 22, align: 'left', borderWidth: 0, bg: 'transparent' }, { content: '1UP  000990' }),
+        make('text', 640, 40, 300, 60, { ...yellow, fontSize: 22, align: 'right', borderWidth: 0, bg: 'transparent' }, { content: 'HI-SCORE 99999' }),
+        make('name', 60, 110, 880, 120, { ...hud, bg: 'transparent', borderWidth: 0, fontSize: 64, align: 'center' }),
+        make('photo', 380, 250, 240, 240, { radius: 0, borderWidth: 6, borderColor: '#ff4fd8' }),
+        make('sticker', 160, 290, 110, 110, { color: '#ffe14d' }, { content: 'estrella' }),
+        make('sticker', 730, 290, 110, 110, { color: '#39ff88' }, { content: 'gema' }),
+        make('text', 330, 510, 340, 60, { ...pink, fontSize: 24, align: 'center' }, { content: 'PRESS START' }),
+        make('bio', 60, 600, 540, 220, hud),
+        make('instruments', 630, 600, 310, 150, pink),
+        make('genres', 630, 770, 310, 120, yellow),
+        make('location', 60, 850, 360, 70, pink),
+        make('friends', 630, 910, 310, 70, hud),
+        make('sticker', 450, 850, 110, 110, { color: '#ff4fd8' }, { content: 'cohete', rotation: -20 }),
+        make('mascot', 60, 940, 140, 160, { color: '#39ff88' }),
+      ]
+      if (hasAudio) elements.push(make('audio', 230, 990, 370, 100, hud))
+      return { height: 1120, background: { type: 'gradient', color: '#13002b', color2: '#001a14', image: '' }, elements }
+    },
+  },
+  {
     key: 'minimal',
     name: 'Minimal',
     description: 'Blanco, limpio y ordenado. Que hable tu música.',

@@ -583,7 +583,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
           <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 max-w-sm w-full">
             <FaDesktop className="text-purple-400 mb-3" size={28} />
             <h3 className="text-white text-lg mb-2">Diseño en vista de computadora</h3>
-            <p className="text-sm text-gray-300 mb-4">Tu perfil se diseña como una página de computadora, igual que en MySpace, y así lo van a ver todos. En el celular se ve más chico: usá los botones de zoom para acercarte. Para diseñar más cómodo, te recomendamos una compu.</p>
+            <p className="text-sm text-gray-300 mb-4">Tu perfil se diseña como una página de computadora, y así lo van a ver todos. En el celular se ve más chico: usá los botones de zoom para acercarte. Para diseñar más cómodo, te recomendamos una compu.</p>
             <button onClick={() => { setShowWarning(false); try { sessionStorage.setItem(WARNING_KEY, '1') } catch {} }} className="w-full py-2.5 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-semibold text-sm">Entendido</button>
           </div>
         </div>

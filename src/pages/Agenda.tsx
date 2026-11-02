@@ -47,7 +47,7 @@ const toLocalInput = (iso: string) => {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
-export default function Agenda() {
+export default function Agenda({ embedded = false }: { embedded?: boolean }) {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
   const { confirm } = useDialog()
@@ -63,6 +63,7 @@ export default function Agenda() {
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const highlightRef = useRef<HTMLDivElement>(null)
+  const savingRef = useRef(false)
   const highlight = params.get('evento')
 
   const load = async () => {
@@ -104,7 +105,11 @@ export default function Agenda() {
   useEffect(() => {
     if (params.get('nuevo') === '1' && !loading && !missing) {
       openNew(params.get('banda'))
-      setParams({}, { replace: true })
+      // Solo se limpian estos parámetros (en el Inicio también está "seccion")
+      const next = new URLSearchParams(params)
+      next.delete('nuevo')
+      next.delete('banda')
+      setParams(next, { replace: true })
     }
   }, [loading])
 
@@ -112,7 +117,14 @@ export default function Agenda() {
     if (highlight && !loading) highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [highlight, loading])
 
+  const MAX_EVENTS = 3
   const openNew = (bandId?: string | null) => {
+    // Hasta 3 eventos próximos por perfil
+    const mine = events.filter(e => e.created_by === user?.id && new Date(e.starts_at).getTime() > Date.now()).length
+    if (mine >= MAX_EVENTS) {
+      setToast({ message: `Ya tenés ${MAX_EVENTS} eventos próximos publicados. Cuando pase alguno (o lo borres) podés publicar otro.`, type: 'info' })
+      return
+    }
     const tomorrow = new Date(Date.now() + 86400000)
     tomorrow.setHours(21, 0, 0, 0)
     setFormError('')
@@ -120,11 +132,12 @@ export default function Agenda() {
   }
 
   const save = async () => {
-    if (!user || !editing) return
+    if (!user || !editing || savingRef.current) return
     const title = (editing.title || '').trim()
     const place = (editing.place || '').trim()
     if (title.length < 3 || place.length < 2) { setFormError('Completá el título y el lugar.'); return }
     if (new Date(editing.starts_at!).getTime() < Date.now()) { setFormError('La fecha tiene que ser futura.'); return }
+    savingRef.current = true
     setSaving(true)
     setFormError('')
     const payload = {
@@ -134,8 +147,9 @@ export default function Agenda() {
     const { error } = editing.id
       ? await supabase.from('events').update(payload).eq('id', editing.id).select('id').single()
       : await supabase.from('events').insert({ ...payload, created_by: user.id }).select('id').single()
+    savingRef.current = false
     setSaving(false)
-    if (error) { setFormError(/hasta 5 eventos/.test(error.message) ? 'Podés tener hasta 5 eventos próximos publicados.' : 'No se pudo guardar el evento.'); return }
+    if (error) { setFormError(/hasta \d eventos/.test(error.message) ? 'Podés tener hasta 3 eventos próximos publicados.' : 'No se pudo guardar el evento.'); return }
     setEditing(null)
     setToast({ message: editing.id ? 'Evento actualizado' : 'Evento publicado en la agenda', type: 'success' })
     load()
@@ -180,13 +194,14 @@ export default function Agenda() {
   const filters = [['todos', 'Todos'], ['zona', 'Mi zona'], ['voy', 'Mis planes']] as const
 
   return (
-    <div className="min-h-screen relative text-gray-200 pb-24">
-      <AnimatedBackground />
+    // "embedded": dentro de una pestaña del Inicio (sin fondo ni márgenes propios)
+    <div className={embedded ? 'text-gray-200' : 'min-h-screen relative text-gray-200 pb-24'}>
+      {!embedded && <AnimatedBackground />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <main className="max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4">
+      <main className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl text-white flex items-center gap-3"><FaCalendarAlt className="text-purple-400" /> Agenda</h1>
-          <button onClick={() => openNew()} disabled={missing} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
+          <h1 className={`${embedded ? 'text-xl' : 'text-2xl'} text-white flex items-center gap-3`}><FaCalendarAlt className="text-purple-400" /> Agenda</h1>
+          <button onClick={() => openNew()} disabled={missing || loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
             <FaPlus size={11} /> Publicar evento
           </button>
         </div>

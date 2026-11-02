@@ -45,7 +45,7 @@ export const TOPICS: Record<string, Topic> = {
   },
   mascota: {
     question: '¿Cómo cambio mi mascota?',
-    answer: 'En "Editar datos" elegí el color y el estilo de tu mascota: hay punk, gaucho, rapero, astronauta, otaku, zombie y muchos más. Tocá "Ver más diseños" para verlos todos.',
+    answer: 'En "Editar datos" elegí el color y el estilo de tu mascota: hay punk, gaucho, rapero, emo, gótico, grunge, nerd, otaku, zombie, un Unicornio/evil y muchos más. Tocá "Ver más diseños" para verlos todos.',
     keywords: ['mascota', 'personaje', 'muneco', 'estilo', 'cuadrado'],
     actions: [{ label: 'Editar datos', to: '/editar-perfil' }],
   },
@@ -139,15 +139,15 @@ export const TOPICS: Record<string, Topic> = {
   },
   bandas: {
     question: '¿Cómo creo o me uno a una banda?',
-    answer: 'En "Bandas" (menú Opciones) tocá "Crear banda": ponés nombre, logo, géneros y qué instrumentos buscan. Para sumarte a una, entrá a su perfil y tocá "Postularme"; la banda recibe tu postulación y un mensaje por chat. Los administradores de la banda aceptan o rechazan.',
+    answer: 'En el Inicio, pestaña "Bandas", tocá "Crear banda": ponés nombre, logo, géneros y qué instrumentos buscan. Al crearla podés invitar integrantes buscando su perfil; les llega la invitación y la aceptan desde la banda. Para sumarte a una, entrá a su perfil y tocá "Postularme"; la banda recibe tu postulación y un mensaje por chat. Los administradores de la banda aceptan o rechazan.',
     keywords: ['banda', 'bandas', 'grupo', 'unirme', 'postular', 'integrantes', 'crear banda'],
-    actions: [{ label: 'Ver bandas', to: '/bandas' }],
+    actions: [{ label: 'Ver bandas', to: '/home?seccion=bandas' }],
   },
   agenda: {
     question: '¿Dónde veo shows y jams?',
-    answer: 'En "Agenda" (menú Opciones o en el Inicio) están los próximos shows, jams y ensayos abiertos. Marcá "Voy" y el día anterior te llega un recordatorio a la bandeja. También podés publicar tus propias fechas (hasta 5 próximas).',
+    answer: 'En el Inicio, pestaña "Eventos", están los próximos shows, jams y ensayos abiertos. Marcá "Voy" y el día anterior te llega un recordatorio en Mensajes → Administración (y como notificación si las tenés activadas). También podés publicar tus propias fechas (hasta 3 próximas).',
     keywords: ['agenda', 'show', 'shows', 'jam', 'evento', 'fecha', 'recital', 'toque', 'recordatorio'],
-    actions: [{ label: 'Abrir agenda', to: '/agenda' }],
+    actions: [{ label: 'Abrir agenda', to: '/home?seccion=eventos' }],
   },
   demos: {
     question: '¿Dónde escucho a otros músicos?',
@@ -162,7 +162,7 @@ export const TOPICS: Record<string, Topic> = {
   },
   plantillas: {
     question: '¿Hay diseños de perfil listos?',
-    answer: 'Sí: en "Diseñar perfil" → pestaña "Diseños" hay plantillas Grunge 90s, Neón, Folklore y Minimal. Se arman con tus datos y después las editás como quieras.',
+    answer: 'Sí: en "Diseñar perfil" → pestaña "Diseños" hay plantillas Grunge 90s, Neón, Folklore, Punk fanzine, Jazz club, Metal, Terror, Videojuego y Minimal. Se arman con tus datos y después las editás como quieras.',
     keywords: ['plantilla', 'diseno listo', 'tema', 'estilo de perfil'],
     actions: [{ label: 'Diseñar perfil', to: '/editar-perfil/diseno' }],
   },

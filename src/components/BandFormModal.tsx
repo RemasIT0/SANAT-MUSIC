@@ -29,6 +29,7 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const savingRef = useRef(false)
 
   const toggle = (key: 'genres' | 'looking_for', value: string) =>
     setForm(prev => ({ ...prev, [key]: prev[key].includes(value) ? prev[key].filter(v => v !== value) : [...prev[key], value] }))
@@ -53,7 +54,8 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
   }
 
   const save = async () => {
-    if (!user || form.name.trim().length < 2) return
+    if (!user || form.name.trim().length < 2 || savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     setError('')
     const payload = {
@@ -63,9 +65,10 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
     const { data, error } = band?.id
       ? await supabase.from('bands').update(payload).eq('id', band.id).select('id').single()
       : await supabase.from('bands').insert({ ...payload, created_by: user.id }).select('id').single()
+    savingRef.current = false
     setSaving(false)
     if (error) {
-      setError(/hasta 3 bandas/.test(error.message) ? 'Podés crear hasta 3 bandas.' : /bands/.test(error.message) && /exist/.test(error.message) ? 'Falta activar las bandas en Supabase (SQL de la etapa 3).' : 'No se pudo guardar: ' + error.message)
+      setError(/hasta \d bandas|1 sola banda/.test(error.message) ? 'Llegaste al máximo de 5 bandas creadas.' : /esperá/i.test(error.message) ? error.message : /bands/.test(error.message) && /exist/.test(error.message) ? 'Falta activar las bandas en Supabase (SQL de la etapa 3).' : 'No se pudo guardar: ' + error.message)
       return
     }
     onSaved(data.id)

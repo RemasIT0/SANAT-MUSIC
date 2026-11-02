@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import {
   FaHome, FaEnvelope, FaSignOutAlt, FaBars,
-  FaRegEnvelope, FaQuestionCircle, FaUserShield, FaRobot, FaBell, FaBellSlash, FaMobileAlt, FaTimes, FaAndroid, FaApple, FaCheckCircle, FaHandHoldingHeart, FaFileContract, FaBookmark, FaHeadphones, FaUsers, FaCalendarAlt
+  FaRegEnvelope, FaQuestionCircle, FaUserShield, FaRobot, FaBell, FaBellSlash, FaMobileAlt, FaTimes, FaAndroid, FaApple, FaCheckCircle, FaHandHoldingHeart, FaFileContract, FaBookmark, FaHeadphones
 } from 'react-icons/fa'
 import Mascot from './Mascot'
 import AsistenteBot from './AsistenteBot'
@@ -107,14 +107,6 @@ export default function BottomNav() {
                 )}
               </button>
             )}
-            <button onClick={() => { setShowMenu(false); navigate('/bandas'); }} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
-              <FaUsers className="text-purple-300" />
-              <span className="text-sm text-gray-300">Bandas</span>
-            </button>
-            <button onClick={() => { setShowMenu(false); navigate('/agenda'); }} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
-              <FaCalendarAlt className="text-amber-300" />
-              <span className="text-sm text-gray-300">Agenda de shows y jams</span>
-            </button>
             <button onClick={() => { setShowMenu(false); navigate('/demos'); }} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
               <FaHeadphones className="text-cyan-300" />
               <span className="text-sm text-gray-300">Escuchar demos</span>
