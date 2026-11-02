@@ -28,7 +28,7 @@ import {
   FaImage, FaEdit, FaTrash, FaExclamationTriangle, FaBullseye,
   FaUserShield, FaExternalLinkAlt, FaFlag, FaBan, FaUserPlus,
   FaUserMinus, FaHeart, FaPalette, FaLink, FaChartBar, FaUndo,
-  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaMicrophone, FaUserFriends
+  FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaMicrophone, FaUserFriends, FaChevronDown, FaChevronUp
 } from 'react-icons/fa'
 
 
@@ -66,6 +66,9 @@ const renderContentWithLinks = (text: string) => {
 
 export default function VerPerfil() {
   const { id } = useParams()
+  // Perfil diseñado: al entrar se ve solo el diseño; lo demás con "Ver más"
+  const [showMore, setShowMore] = useState(false)
+  useEffect(() => { setShowMore(false) }, [id])
   const navigate = useNavigate()
   const { user } = useAuth()
   const hiddenIds = useHiddenUsers()
@@ -327,25 +330,30 @@ export default function VerPerfil() {
       <main className="w-full max-w-none px-2 md:px-4 pt-2 space-y-4">
         {freeLayout ? (
           <div className="space-y-3">
-            {/* Arriba: edición (perfil propio) o reportar (perfil ajeno) */}
-            {isMyProfile ? (
-              <div className="flex flex-wrap gap-2 justify-center">
-                <button onClick={() => navigate('/editar-perfil')} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border text-sm font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={13} /> Editar datos</button>
-                <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center gap-2 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg hover:opacity-90"><FaPalette size={13} /> Diseñar perfil</button>
-                <button onClick={resetToDefault} className="flex items-center gap-2 py-2.5 px-4 bg-red-900/20 border border-red-700/50 text-red-400 text-sm font-semibold rounded-lg hover:bg-red-900/40"><FaUndo size={13} /> Perfil por defecto</button>
-              </div>
-            ) : (
+            {/* Perfil diseñado = carta de presentación: arriba solo "Reportar" */}
+            {!isMyProfile && (
               <div className="flex justify-end">
                 <button onClick={handleOpenReport} className="flex items-center gap-2 py-2 px-3 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-xs rounded-lg hover:text-red-400" aria-label="Reportar usuario"><FaFlag size={12} /> Reportar</button>
               </div>
             )}
             <FreeProfileView layout={freeLayout} profile={profile} friendsCount={profileStats.friends} />
-            {/* Abajo: mensaje, amistad y bloqueo */}
-            {!isMyProfile && (
+            {/* El resto (botones, bandas, reseñas, publicaciones) queda detrás de "Ver más" */}
+            <div className="flex justify-center">
+              <button onClick={() => setShowMore(v => !v)} aria-expanded={showMore} className="flex items-center gap-2 py-2.5 px-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-sm text-white font-semibold hover:border-purple-500/60">
+                {showMore ? <><FaChevronUp size={11} /> Ver menos</> : <><FaChevronDown size={11} /> Ver más</>}
+              </button>
+            </div>
+            {showMore && (
               <div className="flex flex-wrap gap-2 justify-center">
+                {isMyProfile ? (<>
+                <button onClick={() => navigate('/editar-perfil')} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border text-sm font-semibold rounded-lg transition-all hover:brightness-125" style={{ borderColor: themeColor, color: themeColor }}><FaEdit size={13} /> Editar datos</button>
+                <button onClick={() => navigate('/editar-perfil/diseno')} className="flex items-center gap-2 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg hover:opacity-90"><FaPalette size={13} /> Diseñar perfil</button>
+                <button onClick={resetToDefault} className="flex items-center gap-2 py-2.5 px-4 bg-red-900/20 border border-red-700/50 text-red-400 text-sm font-semibold rounded-lg hover:bg-red-900/40"><FaUndo size={13} /> Perfil por defecto</button>
+              </>) : (<>
                 <button onClick={() => navigate(`/chat/${profile.id}`)} disabled={isBlocked} className="flex items-center gap-2 py-2.5 px-4 text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: themeColor }}><FaEnvelope size={13} /> Mensaje</button>
                 <button onClick={handleToggleFriend} className={`flex items-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg border ${isFriend ? 'bg-green-900/20 border-green-500/50 text-green-400' : 'bg-[#0f0f0f] border-purple-500/50 text-purple-300'}`}>{isFriend ? <FaUserMinus size={13} /> : <FaUserPlus size={13} />} {isFriend ? 'Quitar' : 'Agregar'}</button>
                 <button onClick={() => setShowBlockModal(true)} className="flex items-center gap-2 py-2.5 px-4 bg-[#0f0f0f] border border-gray-700 text-gray-300 text-sm rounded-lg hover:text-white" aria-label="Bloquear usuario"><FaBan size={13} /> Bloquear</button>
+              </>)}
               </div>
             )}
           </div>
@@ -429,6 +437,7 @@ export default function VerPerfil() {
           </div>
         )}
 
+        {(!freeLayout || showMore) && (<>
         <ProfileBands profileId={profile.id} isMine={isMyProfile} themeColor={themeColor} />
         <ProfileReviews profileId={profile.id} profileName={profile.display_name.split(' ')[0]} themeColor={themeColor} />
 
@@ -487,6 +496,7 @@ export default function VerPerfil() {
             )
           )}
         </div>
+        </>)}
       </main>
 
       {showShare && <ShareModal target={{ kind: 'profile', id: profile.id, ownerId: profile.id, label: profile.display_name }} onClose={() => setShowShare(false)} />}

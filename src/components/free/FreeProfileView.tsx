@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Profile } from '../../types'
 import { CANVAS_WIDTH, backgroundCss, type FreeLayout } from '../../types/freeLayout'
 import FreeElementView, { elementBoxStyle } from './FreeElementView'
-import { FaSearchPlus, FaSearchMinus, FaExpand, FaDesktop } from 'react-icons/fa'
+import { FaSearchPlus, FaSearchMinus, FaExpand } from 'react-icons/fa'
 
 export default function FreeProfileView({ layout, profile, friendsCount }: { layout: FreeLayout; profile: Profile; friendsCount: number }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -28,10 +28,9 @@ export default function FreeProfileView({ layout, profile, friendsCount }: { lay
   return (
     <div className="space-y-2">
       {isSmall && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-gray-300">
-          <FaDesktop className="text-purple-400 flex-shrink-0" />
-          <p className="flex-1">Perfil con vista de computadora. Usá el zoom (o pellizcá la pantalla) para leer.</p>
-          <div className="flex items-center gap-1 flex-shrink-0">
+        // Solo los botones de zoom, sin texto
+        <div className="flex justify-end">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300">
             <button onClick={() => setZoom(z => Math.max(1, z / 1.4))} disabled={zoom <= 1} className="p-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] disabled:opacity-40" aria-label="Alejar"><FaSearchMinus size={12} /></button>
             <button onClick={() => setZoom(z => Math.min(maxZoom, z * 1.4))} disabled={scale >= 1} className="p-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] disabled:opacity-40" aria-label="Acercar"><FaSearchPlus size={12} /></button>
             <button onClick={() => setZoom(1)} disabled={zoom === 1} className="p-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] disabled:opacity-40" aria-label="Ajustar a la pantalla"><FaExpand size={12} /></button>

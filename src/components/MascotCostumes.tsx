@@ -12,7 +12,7 @@ export type MascotExpression =
   | 'conejo' | 'dj' | 'astronauta' | 'rapero'
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
   | 'timido' | 'cerdito' | 'pollito'
-  | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro'
+  | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro' | 'payaso'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -44,6 +44,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'fantasma', label: 'Fantasma' },
   { id: 'unicornio', label: 'Unicornio/evil' },
   { id: 'siniestro', label: 'Siniestro' },
+  { id: 'payaso', label: 'Payaso' },
 ]
 
 interface CostumeCtx {
@@ -914,37 +915,77 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
   },
 
   siniestro: {
-    // Capucha harapienta
-    back: () => (
-      <Layer top={-22} left={-20} w={140} h={140}>
-        <path d="M70 0 Q128 4 132 64 L136 132 L122 120 L114 136 L102 118 L92 132 L86 70 Q70 58 54 70 L48 132 L38 118 L26 136 L18 120 L4 132 L8 64 Q12 4 70 0 Z" fill="#141414" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-        <path d="M24 70 L20 118 M116 70 L120 118" stroke="#2f2f2f" strokeWidth="2.5" strokeLinecap="round" />
-      </Layer>
-    ),
     front: ({ eye }) => (
       <>
-        {/* Borde de la capucha sobre la frente */}
-        <Layer top={-12} left={-8} w={116} h={34} className="z-20">
-          <path d="M2 34 Q58 -12 114 34 L104 30 Q58 4 12 30 Z" fill="#141414" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        {/* Capucha: un arco oscuro que enmarca la máscara y cae a los costados */}
+        <Layer top={-18} left={-12} w={124} h={110} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
+          <path fillRule="evenodd" d="M62 2 Q118 2 120 56 L122 108 L102 108 Q104 62 98 44 Q88 20 62 20 Q36 20 26 44 Q20 62 22 108 L2 108 L4 56 Q6 2 62 2 Z" fill="#18181b" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M14 58 Q12 82 14 104 M110 58 Q112 82 110 104" fill="none" stroke="#3f3f46" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M30 30 Q62 8 94 30" fill="none" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" />
         </Layer>
         {/* Máscara de porcelana rajada con sonrisa cosida */}
-        <Layer top={14} left={10} w={80} h={82} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
-          <path d="M8 6 Q40 -4 72 6 Q80 40 70 64 Q40 86 10 64 Q0 40 8 6 Z" fill="#f1ede4" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-          {/* Rajaduras */}
-          <path d="M62 8 L54 22 L60 30 L52 40" fill="none" stroke="#6b6b6b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M14 52 L22 46 L20 38" fill="none" stroke="#6b6b6b" strokeWidth="1.5" strokeLinecap="round" />
-          {/* Ojos huecos con un punto de luz que sigue al mouse */}
-          <ellipse cx="26" cy="28" rx="9" ry="11" fill="#050505" />
-          <ellipse cx="54" cy="28" rx="9" ry="11" fill="#050505" />
-          <circle cx={26 + eye.x * 0.7} cy={28 + eye.y * 0.7} r="1.8" fill="#e5e7eb" />
-          <circle cx={54 + eye.x * 0.7} cy={28 + eye.y * 0.7} r="1.8" fill="#e5e7eb" />
-          {/* Sonrisa cosida */}
-          <path d="M14 54 Q40 70 66 54" fill="none" stroke="#7f1d1d" strokeWidth="3.5" strokeLinecap="round" />
-          <path d="M20 53 L18 61 M28 58 L27 66 M36 61 L36 69 M44 61 L45 69 M52 58 L54 66 M60 53 L63 61" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+        <Layer top={16} left={14} w={72} h={76} className="z-20" style={{ filter: 'drop-shadow(2px 2px 0 #000)' }}>
+          <path d="M8 6 Q36 -3 64 6 Q72 36 63 58 Q36 78 9 58 Q0 36 8 6 Z" fill="#f1ede4" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M55 8 L48 20 L53 27 L46 36" fill="none" stroke="#6b6b6b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M13 48 L20 43 L18 36" fill="none" stroke="#6b6b6b" strokeWidth="1.5" strokeLinecap="round" />
+          <ellipse cx="23" cy="26" rx="8" ry="10" fill="#050505" />
+          <ellipse cx="49" cy="26" rx="8" ry="10" fill="#050505" />
+          <circle cx={23 + eye.x * 0.6} cy={26 + eye.y * 0.6} r="1.7" fill="#e5e7eb" />
+          <circle cx={49 + eye.x * 0.6} cy={26 + eye.y * 0.6} r="1.7" fill="#e5e7eb" />
+          <path d="M12 49 Q36 64 60 49" fill="none" stroke="#7f1d1d" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M18 49 L16 56 M25 53 L24 60 M32 55 L32 62 M40 55 L41 62 M47 53 L49 60 M54 49 L57 56" stroke={INK} strokeWidth="2" strokeLinecap="round" />
         </Layer>
       </>
     ),
     // La cara la tapa la máscara
     face: () => null,
+  },
+
+  payaso: {
+    // Mechones de pelo a los costados
+    back: () => (
+      <Layer top={-6} left={-30} w={160} h={60}>
+        <path d="M30 40 Q8 44 4 28 Q14 30 14 20 Q2 14 10 4 Q20 12 28 8 Q30 22 36 30 Z" fill="#ea580c" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M130 40 Q152 44 156 28 Q146 30 146 20 Q158 14 150 4 Q140 12 132 8 Q130 22 124 30 Z" fill="#ea580c" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Sombrerito torcido */}
+        <Layer top={-30} left={56} w={40} h={36} className="z-20" style={{ transform: 'rotate(14deg)' }}>
+          <rect x="2" y="26" width="36" height="7" rx="2" fill="#111" stroke={INK} strokeWidth="2.5" />
+          <rect x="9" y="6" width="22" height="22" rx="2" fill="#111" stroke={INK} strokeWidth="2.5" />
+          <rect x="9" y="19" width="22" height="5" fill="#7f1d1d" />
+        </Layer>
+        {/* Gorguera (cuello de payaso) */}
+        <Layer top={88} left={10} w={80} h={22} className="z-20">
+          <path d="M2 4 Q10 20 20 6 Q30 20 40 6 Q50 20 60 6 Q70 20 78 4 Z" fill="#e5e7eb" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <svg width="86" height="80" viewBox="0 0 86 80" className="mt-2">
+        {/* Maquillaje blanco corrido */}
+        <path d="M8 10 Q43 0 78 10 Q86 44 74 66 Q43 84 12 66 Q0 44 8 10 Z" fill="#f4f4f5" />
+        {/* Rombos negros sobre los ojos */}
+        <polygon points="24,4 30,22 24,40 18,22" fill="#111" />
+        <polygon points="62,4 68,22 62,40 56,22" fill="#111" />
+        {/* Ojos con párpados caídos: cara de pocos amigos */}
+        {[24, 62].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="22" rx="8" ry="7" fill="#fff" stroke={INK} strokeWidth="2" />
+            <circle cx={cx + eye.x * 0.7} cy={23 + eye.y * 0.5} r="3.5" fill={INK} />
+            <path d={`M${cx - 9} 19 L${cx + 9} 19 L${cx + 9} 14 Q${cx} 12 ${cx - 9} 14 Z`} fill="#f4f4f5" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          </g>
+        ))}
+        <path d="M12 10 L34 15 M74 10 L52 15" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        {/* Nariz roja */}
+        <circle cx="43" cy="40" r="7" fill="#dc2626" stroke={INK} strokeWidth="2.5" />
+        <circle cx="41" cy="38" r="2" fill="#fca5a5" />
+        {/* Sonrisa pintada hacia abajo y la boca de verdad torcida */}
+        <path d="M20 66 Q43 52 66 66" fill="none" stroke="#b91c1c" strokeWidth="6" strokeLinecap="round" opacity="0.85" />
+        <path d="M32 60 Q42 56 54 62" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    ),
   },
 }

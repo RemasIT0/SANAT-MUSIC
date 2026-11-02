@@ -121,14 +121,13 @@ export default function BottomNav() {
                 <span className="text-sm text-gray-300">Instalar app</span>
               </button>
             )}
-            {notifPermission !== 'unsupported' && (
-              <button onClick={handleNotifications} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
-                {notifPermission === 'denied' ? <FaBellSlash className="text-gray-400" /> : <FaBell className={notifPermission === 'granted' ? 'text-green-400' : 'text-yellow-400'} />}
-                <span className="text-sm text-gray-300">
-                  {notifPermission === 'granted' ? 'Notificaciones activadas' : notifPermission === 'denied' ? 'Notificaciones bloqueadas' : 'Activar notificaciones'}
-                </span>
-              </button>
-            )}
+            {/* Siempre visible: si el navegador no las permite, se explica cómo hacerlo */}
+            <button onClick={handleNotifications} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
+              {notifPermission === 'denied' || notifPermission === 'unsupported' ? <FaBellSlash className="text-gray-400" /> : <FaBell className={notifPermission === 'granted' ? 'text-green-400' : 'text-yellow-400'} />}
+              <span className="text-sm text-gray-300">
+                {notifPermission === 'granted' ? 'Notificaciones activadas' : notifPermission === 'denied' ? 'Notificaciones bloqueadas' : notifPermission === 'unsupported' ? 'Notificaciones (ver cómo activarlas)' : 'Activar notificaciones'}
+              </span>
+            </button>
             <button onClick={() => { setShowMenu(false); openSuggestionModal(); }} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#2a2a2a] transition-colors border-b border-[#2a2a2a]">
               <FaRegEnvelope className="text-blue-400" />
               <span className="text-sm text-gray-300">Sugerencias</span>
@@ -178,6 +177,13 @@ export default function BottomNav() {
                   <p className="font-semibold text-amber-200 flex items-center gap-2"><FaBellSlash /> Notificaciones bloqueadas</p>
                   <p className="mt-1">Mientras estén bloqueadas <b>no te van a llegar avisos de mensajes nuevos ni de likes</b>.</p>
                   <p className="mt-1">Para activarlas: tocá el <b>candado</b> al lado de la dirección → <b>Permisos</b> → <b>Notificaciones</b> → <b>Permitir</b>, y recargá la página. Si instalaste la app: mantené apretado el ícono → <b>Información de la app</b> → <b>Notificaciones</b> → activar.</p>
+                </div>
+              )}
+              {notifPermission === 'unsupported' && (
+                <div className="p-3 rounded-lg bg-amber-900/20 border border-amber-700/40">
+                  <p className="font-semibold text-amber-200 flex items-center gap-2"><FaBellSlash /> Este navegador no deja pedir notificaciones</p>
+                  <p className="mt-1"><b>Brave:</b> tocá el menú <b>⋮</b> → <b>Configuración</b> → <b>Configuración de sitios</b> → <b>Notificaciones</b> y activalas. También revisá que el <b>escudo de Brave</b> (al lado de la dirección) no las esté bloqueando para esta página. Después recargá y volvé a tocar este botón.</p>
+                  <p className="mt-1">Si sigue sin aparecer, abrí SANAT en <b>Chrome</b> o instalala como app: ahí las notificaciones funcionan seguro.</p>
                 </div>
               )}
               {notifPermission === 'granted' && (
