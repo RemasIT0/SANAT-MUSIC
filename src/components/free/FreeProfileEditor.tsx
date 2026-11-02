@@ -448,16 +448,18 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                         <button onClick={() => updateEl(selected.id, { links: (selected.links || []).filter((_, j) => j !== i) })} className="text-red-400" aria-label="Quitar"><FaTimes size={11} /></button>
                       </div>
                     ))}
-                    <div className="flex gap-2">
-                      <select value={newLink.platform} onChange={e => setNewLink({ ...newLink, platform: e.target.value })} className={`${input} w-28 flex-shrink-0`}>
-                        {SOCIAL_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <input ref={socialUrlRef} value={newLink.url} onChange={e => setNewLink({ ...newLink, url: e.target.value })} placeholder="https://..." className={input} />
-                    </div>
+                    {/* Red y link uno debajo del otro: en fila, el selector tapaba el campo del link */}
+                    <select value={newLink.platform} onChange={e => setNewLink({ ...newLink, platform: e.target.value })} className={input} aria-label="Red social">
+                      {SOCIAL_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <input ref={socialUrlRef} type="url" inputMode="url" value={newLink.url} onChange={e => setNewLink({ ...newLink, url: e.target.value })} placeholder="Pegá tu link, ej: instagram.com/tuusuario" className={input} aria-label="Link de la red" />
                     <button
                       onClick={() => {
-                        const url = newLink.url.trim()
-                        if (!/^https?:\/\//i.test(url)) { setToast({ message: 'El link tiene que empezar con https://', type: 'error' }); return }
+                        let url = newLink.url.trim()
+                        if (!url) { setToast({ message: 'Pegá el link de tu red', type: 'info' }); socialUrlRef.current?.focus(); return }
+                        // Si falta "https://" se agrega solo
+                        if (!/^https?:\/\//i.test(url)) url = `https://${url.replace(/^\/+/, '')}`
+                        if (!/^https?:\/\/[^\s/]+\.[^\s]+/i.test(url)) { setToast({ message: 'Ese link no parece válido', type: 'error' }); return }
                         updateEl(selected.id, { links: [...(selected.links || []), { platform: newLink.platform, url }] })
                         setNewLink({ ...newLink, url: '' })
                       }}
