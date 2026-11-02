@@ -98,6 +98,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
   // Imágenes usadas: las del lienzo + la de fondo (si hay)
   const imagesUsed = (layout?.elements.filter(e => e.type === 'image').length || 0) + (layout?.background.type === 'image' && layout.background.image ? 1 : 0)
 
+  const socialUrlRef = useRef<HTMLInputElement>(null)
   const addElement = (type: FreeElementType) => {
     if (!layout) return
     if (layout.elements.length >= MAX_ELEMENTS) { setToast({ message: `Máximo ${MAX_ELEMENTS} elementos por perfil`, type: 'info' }); return }
@@ -106,6 +107,11 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     change(prev => ({ ...prev, elements: [...prev.elements, el] }))
     setSelectedId(el.id)
     setTab('element')
+    // Redes sociales: ir directo al campo para pegar el primer link
+    if (type === 'social') window.setTimeout(() => {
+      socialUrlRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      socialUrlRef.current?.focus()
+    }, 150)
   }
 
   const removeSelected = () => {
@@ -432,8 +438,9 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                   </div>
                 )}
                 {selected.type === 'social' && (
-                  <div className="space-y-2">
+                  <div className={`space-y-2 ${(selected.links || []).length === 0 ? 'p-2.5 rounded-xl border border-purple-500/60 bg-purple-900/15' : ''}`}>
                     <span className={label}>Redes sociales</span>
+                    {(selected.links || []).length === 0 && <p className="text-xs text-purple-200">Elegí la red, pegá tu link y tocá "Agregar red".</p>}
                     {(selected.links || []).map((link, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-2">
                         <span className="font-semibold">{link.platform}</span>
@@ -445,7 +452,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                       <select value={newLink.platform} onChange={e => setNewLink({ ...newLink, platform: e.target.value })} className={`${input} w-28 flex-shrink-0`}>
                         {SOCIAL_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
-                      <input value={newLink.url} onChange={e => setNewLink({ ...newLink, url: e.target.value })} placeholder="https://..." className={input} />
+                      <input ref={socialUrlRef} value={newLink.url} onChange={e => setNewLink({ ...newLink, url: e.target.value })} placeholder="https://..." className={input} />
                     </div>
                     <button
                       onClick={() => {
