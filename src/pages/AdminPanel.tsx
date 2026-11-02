@@ -143,8 +143,13 @@ export default function AdminPanel() {
         })))
       } else { setReportsList([]) }
 
-      const { data: adsData } = await supabase.from('ads').select('*').order('created_at', { ascending: false })
-      setAdsList(adsData || [])
+      // Brave y los bloqueadores cortan las direcciones con "ads": se lee por la función "admin_tele_lista"
+      const tele = await supabase.rpc('admin_tele_lista')
+      if (!tele.error) setAdsList(Array.isArray(tele.data) ? tele.data : [])
+      else {
+        const { data: adsData } = await supabase.from('ads').select('*').order('created_at', { ascending: false })
+        setAdsList(adsData || [])
+      }
 
     } catch (error) {
       console.error('Error en fetchData:', error)
@@ -169,6 +174,9 @@ export default function AdminPanel() {
   const describeError = (error: any) => {
     console.error('Error en panel admin:', error)
     if (!error) return 'Error desconocido'
+    if (/Failed to fetch|NetworkError|Load failed/i.test(String(error.message || error))) {
+      return 'La conexión se cortó antes de llegar a Supabase. Si usás Brave o un bloqueador de publicidad, desactivalo para SANAT (escudo de Brave) o probá con otro navegador; si no, revisá tu internet.'
+    }
     if (error.code === '42501') {
       window.dispatchEvent(new Event(ADMIN_RECHECK_EVENT))
       return 'Supabase rechazó el permiso (código 42501). Corré el SQL ARREGLAR_anuncios o respondé de nuevo la pregunta secreta.'
@@ -177,7 +185,7 @@ export default function AdminPanel() {
     return parts.length ? parts.join(' — ') : String(error)
   }
 
-  // Anuncios: la función no existe todavía (falta correr ANUNCIOS_funciones_admin.sql)
+  // Anuncios: la función no existe todavía (falta correr TELE_sin_bloqueadores.sql)
   const isMissingFunction = (error: any) => !!error && (error.code === 'PGRST202' || /Could not find the function/i.test(error.message || ''))
   // Motivo claro según lo que devuelve Supabase
   const adErrorText = (error: any) => {
@@ -328,7 +336,7 @@ export default function AdminPanel() {
     setAdSaving(true)
     try {
       // Primero con la función del admin (da el motivo exacto si algo falla)
-      const rpc = await supabase.rpc('admin_save_ad', {
+      const rpc = await supabase.rpc('admin_tele_guardar', {
         p_id: editingAd ? String(editingAd.id) : '',
         p_title: adForm.title.trim(),
         p_message: adForm.message.trim(),
@@ -381,7 +389,7 @@ export default function AdminPanel() {
 
   const toggleAdActive = async (ad: any) => {
     try {
-      const rpc = await supabase.rpc('admin_toggle_ad', { p_id: String(ad.id), p_is_active: !ad.is_active })
+      const rpc = await supabase.rpc('admin_tele_estado', { p_id: String(ad.id), p_is_active: !ad.is_active })
       if (isMissingFunction(rpc.error)) {
         const { data, error } = await supabase.from('ads').update({ is_active: !ad.is_active }).eq('id', ad.id).select('id')
         if (error) throw error
@@ -399,7 +407,7 @@ export default function AdminPanel() {
     '¿Eliminar este anuncio?', `"${ad.title}" se borra de la tele para siempre.`, 'ELIMINAR',
     async () => {
       try {
-        const rpc = await supabase.rpc('admin_delete_ad', { p_id: String(ad.id) })
+        const rpc = await supabase.rpc('admin_tele_borrar', { p_id: String(ad.id) })
         if (isMissingFunction(rpc.error)) {
           const { data, error } = await supabase.from('ads').delete().eq('id', ad.id).select('id')
           if (error) throw error

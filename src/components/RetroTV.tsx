@@ -19,12 +19,16 @@ export default function RetroTV() {
   useEffect(() => {
     const fetchAds = async () => {
       try {
-        const { data, error } = await supabase
-          .from('ads')
-          .select('id, title, message, image_url')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-        
+        // Por función: los bloqueadores de publicidad cortan las direcciones con "ads"
+        let { data, error }: { data: any[] | null; error: any } = await supabase.rpc('tele_activos')
+        if (error) {
+          ;({ data, error } = await supabase
+            .from('ads')
+            .select('id, title, message, image_url')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }))
+        }
+
         if (error) throw error
         setAds(data || [])
       } catch (error) {
@@ -38,7 +42,7 @@ export default function RetroTV() {
 
   useEffect(() => {
     if (ads.length === 0) return
-    
+
     const interval = setInterval(() => {
       setIsStatic(true)
       setTimeout(() => {
@@ -60,13 +64,13 @@ export default function RetroTV() {
   const currentAd = ads[currentIndex]
 
   return (
-    <div className="w-full max-w-[340px]">    
+    <div className="w-full max-w-[340px]">
       <div className="relative bg-gradient-to-br from-[#3a2f28] via-[#2a221c] to-[#1a1510] rounded-lg p-2 shadow-[0_8px_24px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] border border-[#1a1510]">
         <div className="flex gap-1.5">
           <div className="flex-[3] relative">
             <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-sm p-1.5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.9)]">
               <div className="relative aspect-[4/3] bg-black overflow-hidden rounded-[8%] shadow-[inset_0_0_20px_rgba(0,0,0,1)]">
-                <div 
+                <div
                   className="absolute inset-0 z-20 pointer-events-none opacity-40"
                   style={{
                     background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0px, rgba(0,0,0,0.3) 1px, transparent 1px, transparent 3px)'
@@ -90,19 +94,19 @@ export default function RetroTV() {
                   ) : (
                     <>
                       {currentAd?.image_url && (
-                        <img 
-                          src={currentAd.image_url} 
-                          alt={currentAd.title} 
-                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isStatic ? 'opacity-0' : 'opacity-70'}`} 
+                        <img
+                          src={currentAd.image_url}
+                          alt={currentAd.title}
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isStatic ? 'opacity-0' : 'opacity-70'}`}
                         />
                       )}
 
                       {isStatic && (
-                        <div className="absolute inset-0 bg-gray-400 animate-pulse z-30" 
-                             style={{ 
+                        <div className="absolute inset-0 bg-gray-400 animate-pulse z-30"
+                             style={{
                                backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 0px, rgba(0,0,0,0.3) 2px)',
                                backgroundSize: '4px 4px'
-                             }} 
+                             }}
                         />
                       )}
 
