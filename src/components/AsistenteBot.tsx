@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Mascot from './Mascot'
+import SaniFace from './SaniFace'
 import { FaTimes, FaArrowRight, FaUndo, FaPaperPlane, FaExternalLinkAlt, FaUserShield, FaQuestionCircle } from 'react-icons/fa'
 import {
   TOPICS, CATEGORIES, SONGS, SONG_GENRES, SONG_KEYWORDS,
@@ -180,7 +181,8 @@ export default function AsistenteBot({ open, onClose }: { open: boolean; onClose
       {/* Cabecera */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="w-10 h-10 rounded-full bg-[#0f0f0f] border border-purple-500/40 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <div className="mt-2 pointer-events-none"><Mascot color={profile?.avatar_color || '#a855f7'} size={22} expression={mode === 'admin' ? 'rockero' : 'feliz'} /></div>
+          {/* Solo la cara de Sani: intelectual y un poco soberbio */}
+          <SaniFace color={profile?.avatar_color || '#a855f7'} size={34} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white font-semibold text-sm">Sani</p>
