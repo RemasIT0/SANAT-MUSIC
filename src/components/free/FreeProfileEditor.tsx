@@ -8,11 +8,11 @@ import Toast from '../Toast'
 import { useDialog } from '../DialogProvider'
 import { compressImage, imageExtension } from '../../lib/imageCompress'
 import { PROFILE_TEMPLATES, type ProfileTemplate } from '../../types/profileTemplates'
-import FreeElementView, { elementBoxStyle } from './FreeElementView'
+import FreeElementView, { elementBoxStyle, elementFxClass } from './FreeElementView'
 import {
   CANVAS_WIDTH, MIN_CANVAS_HEIGHT, MAX_CANVAS_HEIGHT, MAX_ELEMENTS, MAX_IMAGES, MAX_SAVED_DESIGNS,
-  ELEMENT_CATALOG, STICKERS, FONTS, makeElement, cloneElement, defaultFreeLayout, parseFreeLayout, backgroundCss,
-  type FreeLayout, type FreeElement, type FreeElementType, type FreeElementStyle, type FontKey,
+  ELEMENT_CATALOG, STICKERS, FONTS, ANIMATIONS, PATTERNS, makeElement, cloneElement, defaultFreeLayout, parseFreeLayout, backgroundCss,
+  type FreeLayout, type FreeElement, type FreeElementType, type FreeElementStyle, type FontKey, type AnimationKey, type PatternKey,
 } from '../../types/freeLayout'
 import {
   FaArrowLeft, FaSave, FaSpinner, FaPlus, FaTrash, FaClone, FaArrowUp, FaArrowDown, FaUndo, FaUpload,
@@ -22,7 +22,7 @@ import {
 
 type Tab = 'add' | 'element' | 'background' | 'designs'
 const SOCIAL_PLATFORMS = ['Instagram', 'YouTube', 'Spotify', 'TikTok', 'Twitter/X']
-const TEXT_TYPES: FreeElementType[] = ['name', 'bio', 'instruments', 'genres', 'location', 'friends', 'social', 'text']
+const TEXT_TYPES: FreeElementType[] = ['name', 'bio', 'instruments', 'genres', 'location', 'friends', 'social', 'text', 'marquee']
 const WARNING_KEY = 'sanat_free_editor_warning_seen'
 
 interface SavedDesign { id: string; name: string; data: FreeLayout; created_at: string }
@@ -254,7 +254,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     if (error) { setToast({ message: 'Error al guardar: ' + error.message, type: 'error' }); return }
     setDirty(false)
     setToast({ message: '¡Perfil publicado!', type: 'success' })
-    setTimeout(onClose, 900)
+    setTimeout(onClose, 350)
   }
 
   const saveDesign = async () => {
@@ -358,6 +358,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                 return (
                   <div
                     key={el.id}
+                    className={isSelected ? undefined : elementFxClass(el)}
                     style={{ ...elementBoxStyle(el), touchAction: 'none', cursor: 'move', outline: isSelected ? `${2 / scale}px dashed #c084fc` : undefined, outlineOffset: 2 / scale }}
                     onPointerDown={(e) => startDrag(e, el, 'move')}
                   >
@@ -415,13 +416,17 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                 </div>
 
                 {/* Contenido */}
+                {selected.type === 'marquee' && (
+                  <div><span className={label}>Mensaje del cartel</span><input value={selected.content || ''} onChange={e => updateEl(selected.id, { content: e.target.value })} maxLength={120} className={input} placeholder="Ej: TOCAMOS ESTE SÁBADO" /></div>
+                )}
+                {selected.type === 'equalizer' && colorField('Color de las barras', selected.style.color, v => updateStyle(selected.id, { color: v }))}
                 {selected.type === 'text' && (
                   <div><span className={label}>Texto</span><textarea value={selected.content || ''} onChange={e => updateEl(selected.id, { content: e.target.value })} rows={4} maxLength={1000} className={`${input} resize-none`} /></div>
                 )}
                 {selected.type === 'sticker' && (
                   <div>
                     <span className={label}>Sticker</span>
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-7 gap-1 max-h-64 overflow-y-auto pr-1">
                       {Object.entries(STICKERS).map(([key, sticker]) => (
                         <button key={key} onClick={() => updateEl(selected.id, { content: key })} title={sticker.label} aria-label={sticker.label} className={`p-2 rounded flex items-center justify-center ${selected.content === key ? 'bg-purple-700 text-white' : 'text-gray-200 hover:bg-white/10'}`}>
                           <sticker.icon size={18} />
@@ -496,6 +501,22 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
 
                 {/* Caja */}
                 {colorField('Fondo', selected.style.bg, v => updateStyle(selected.id, { bg: v }), true)}
+                {!['photo', 'image', 'sticker', 'mascot', 'lights', 'equalizer', 'audio'].includes(selected.type) && (
+                  <div className="space-y-2">
+                    <span className={label}>Dibujo del fondo</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(Object.keys(PATTERNS) as PatternKey[]).map(key => (
+                        <button key={key} onClick={() => updateStyle(selected.id, { pattern: key })} className={`px-2 py-1.5 rounded-lg text-[11px] ${selected.style.pattern === key ? 'bg-purple-700 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-200'}`}>{PATTERNS[key]}</button>
+                      ))}
+                    </div>
+                    {selected.style.pattern !== 'none' && (
+                      <>
+                        {colorField('Color del dibujo', selected.style.patternColor, v => updateStyle(selected.id, { patternColor: v }))}
+                        <div><span className={label}>Tamaño del dibujo: {selected.style.patternSize}px</span><input type="range" min={6} max={80} value={selected.style.patternSize} onChange={e => updateStyle(selected.id, { patternSize: Number(e.target.value) })} className="w-full accent-purple-500" /></div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {colorField('Color de borde', selected.style.borderColor, v => updateStyle(selected.id, { borderColor: v }))}
                 <div className="grid grid-cols-2 gap-2">
                   <div><span className={label}>Borde: {selected.style.borderWidth}px</span><input type="range" min={0} max={12} value={selected.style.borderWidth} onChange={e => updateStyle(selected.id, { borderWidth: Number(e.target.value) })} className="w-full accent-purple-500" /></div>
@@ -504,6 +525,21 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                   <div><span className={label}>Rotación: {selected.rotation}°</span><input type="range" min={-180} max={180} value={selected.rotation} onChange={e => updateEl(selected.id, { rotation: Number(e.target.value) })} className="w-full accent-purple-500" /></div>
                 </div>
                 <label className="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" checked={selected.style.shadow} onChange={e => updateStyle(selected.id, { shadow: e.target.checked })} className="accent-purple-500 w-4 h-4" /> Sombra marcada</label>
+
+                {/* Efectos: animación y luz neón */}
+                <div className="space-y-2 pt-2 border-t border-[#2a2a2a]">
+                  <span className={label}>Animación</span>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(Object.keys(ANIMATIONS) as AnimationKey[]).map(key => (
+                      <button key={key} onClick={() => updateStyle(selected.id, { animation: key })} className={`px-2 py-1.5 rounded-lg text-[11px] ${selected.style.animation === key ? 'bg-purple-700 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-200'}`}>
+                        {key === 'none' ? 'Ninguna' : ANIMATIONS[key]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-500">Mientras está seleccionado queda quieto para que lo puedas mover.</p>
+                  <label className="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" checked={selected.style.glow} onChange={e => updateStyle(selected.id, { glow: e.target.checked })} className="accent-purple-500 w-4 h-4" /> Luz neón</label>
+                  {selected.style.glow && colorField('Color de la luz', selected.style.glowColor, v => updateStyle(selected.id, { glowColor: v }))}
+                </div>
 
                 {/* Acciones */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -528,6 +564,22 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                 </div>
                 {colorField(layout.background.type === 'gradient' ? 'Color de arriba' : 'Color', layout.background.color, v => change(prev => ({ ...prev, background: { ...prev.background, color: v } })))}
                 {layout.background.type === 'gradient' && colorField('Color de abajo', layout.background.color2, v => change(prev => ({ ...prev, background: { ...prev.background, color2: v } })))}
+                {layout.background.type !== 'image' && (
+                  <div className="space-y-2">
+                    <span className={label}>Dibujo repetido</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(Object.keys(PATTERNS) as PatternKey[]).map(key => (
+                        <button key={key} onClick={() => change(prev => ({ ...prev, background: { ...prev.background, pattern: key } }))} className={`px-2 py-1.5 rounded-lg text-[11px] ${(layout.background.pattern || 'none') === key ? 'bg-purple-700 text-white' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-200'}`}>{PATTERNS[key]}</button>
+                      ))}
+                    </div>
+                    {(layout.background.pattern || 'none') !== 'none' && (
+                      <>
+                        {colorField('Color del dibujo', layout.background.patternColor || '#ffffff', v => change(prev => ({ ...prev, background: { ...prev.background, patternColor: v } })))}
+                        <div><span className={label}>Tamaño del dibujo: {layout.background.patternSize || 28}px</span><input type="range" min={6} max={80} value={layout.background.patternSize || 28} onChange={e => change(prev => ({ ...prev, background: { ...prev.background, patternSize: Number(e.target.value) } }))} className="w-full accent-purple-500" /></div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {layout.background.type === 'image' && (
                   <div>
                     <p className={`text-[11px] mb-2 ${imagesUsed >= MAX_IMAGES && !layout.background.image ? 'text-amber-300' : 'text-gray-400'}`}>La imagen de fondo cuenta dentro de las {MAX_IMAGES} imágenes del perfil ({imagesUsed}/{MAX_IMAGES} usadas).</p>

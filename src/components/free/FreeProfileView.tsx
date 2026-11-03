@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Profile } from '../../types'
 import { CANVAS_WIDTH, backgroundCss, type FreeLayout } from '../../types/freeLayout'
-import FreeElementView, { elementBoxStyle } from './FreeElementView'
+import FreeElementView, { elementBoxStyle, elementFxClass } from './FreeElementView'
 import { FaSearchPlus, FaSearchMinus, FaExpand } from 'react-icons/fa'
 
 export default function FreeProfileView({ layout, profile, friendsCount }: { layout: FreeLayout; profile: Profile; friendsCount: number }) {
@@ -42,7 +42,7 @@ export default function FreeProfileView({ layout, profile, friendsCount }: { lay
         <div style={{ width: CANVAS_WIDTH * scale, height: layout.height * scale, margin: scale < fitScale + 0.001 ? '0 auto' : undefined }}>
           <div className="relative overflow-hidden" style={{ width: CANVAS_WIDTH, height: layout.height, transform: `scale(${scale})`, transformOrigin: 'top left', ...backgroundCss(layout.background) }}>
             {layout.elements.map(el => (
-              <div key={el.id} style={elementBoxStyle(el)}>
+              <div key={el.id} style={elementBoxStyle(el)} className={elementFxClass(el)}>
                 <FreeElementView el={el} profile={profile} friendsCount={friendsCount} />
               </div>
             ))}

@@ -160,7 +160,7 @@ export default function BottomNav() {
       {showInstallHelp && (
         <div className="fixed inset-0 z-[75] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInstallHelp(false)} />
-          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 max-w-sm w-full shadow-2xl animate-[scaleIn_0.2s_ease-out]">
+          <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-2xl animate-[scaleIn_0.2s_ease-out]">
             <button onClick={() => setShowInstallHelp(false)} className="absolute top-3 right-3 p-2 text-gray-400 hover:text-white" aria-label="Cerrar"><FaTimes /></button>
             <h3 className="text-white text-lg mb-3 flex items-center gap-2"><FaMobileAlt className="text-green-400" /> SANAT como app</h3>
             <div className="space-y-3 text-sm text-gray-300">
@@ -186,6 +186,36 @@ export default function BottomNav() {
                   <p className="mt-1">Si sigue sin aparecer, abrí SANAT en <b>Chrome</b> o instalala como app: ahí las notificaciones funcionan seguro.</p>
                 </div>
               )}
+              {/* Avisos con la app cerrada: el sistema del celular puede frenarlos */}
+              <details className="rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 group">
+                <summary className="font-semibold text-white cursor-pointer list-none flex items-center gap-2">
+                  <FaBell className="text-yellow-400" /> ¿No te llegan con la app cerrada?
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs text-gray-400">Muchos celulares cierran las apps en segundo plano para ahorrar batería y eso frena los avisos. SANAT usa Chrome por dentro, así que es <b>Chrome</b> el que necesita permiso.</p>
+                  <div>
+                    <p className="font-semibold text-white flex items-center gap-2"><FaAndroid className="text-green-400" /> Android</p>
+                    <ol className="list-decimal pl-5 space-y-1 mt-1 text-[13px]">
+                      <li><b>Ajustes → Aplicaciones → Chrome → Batería</b> → elegí <b>Sin restricciones</b>.</li>
+                      <li>En esa misma pantalla, activá <b>Notificaciones</b> y <b>Datos en segundo plano</b>.</li>
+                      <li>Si tu celular tiene <b>Inicio automático</b> (Xiaomi, Nubia, Huawei, Oppo…), activalo para Chrome.</li>
+                      <li>En las apps recientes, mantené apretado Chrome y tocá el <b>candado</b> para que no se cierre al limpiar.</li>
+                      <li>Desactivá el <b>ahorro de energía</b> o el <b>modo juego</b> si los usás.</li>
+                    </ol>
+                    <p className="text-[11px] text-gray-500 mt-1">Los nombres cambian según la marca: si no encontrás una opción, buscá "Chrome" en el buscador de Ajustes.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white flex items-center gap-2"><FaApple className="text-gray-200" /> iPhone</p>
+                    <ol className="list-decimal pl-5 space-y-1 mt-1 text-[13px]">
+                      <li>Necesitás iOS 16.4 o más nuevo.</li>
+                      <li>Abrí SANAT en <b>Safari</b> → <b>Compartir</b> → <b>Agregar a inicio</b>.</li>
+                      <li>Entrá a SANAT <b>desde ese ícono</b> (no desde Safari) y activá las notificaciones en Opciones.</li>
+                      <li>En <b>Ajustes → Notificaciones → SANAT</b>, revisá que estén permitidas y que el modo <b>Concentración</b> no las silencie.</li>
+                    </ol>
+                  </div>
+                  <p className="text-[11px] text-gray-500">Si el celular estaba sin conexión o la app no podía despertarse, el aviso te llega cuando vuelve a funcionar (se guarda hasta 24 horas).</p>
+                </div>
+              </details>
               {notifPermission === 'granted' && (
                 <p className="text-green-300 flex items-center gap-2"><FaCheckCircle /> Las notificaciones ya están activadas: te van a llegar los mensajes y likes nuevos.</p>
               )}

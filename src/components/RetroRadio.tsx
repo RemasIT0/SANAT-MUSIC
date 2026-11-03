@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FaPlay, FaPause, FaXmark, FaRadio,
-  FaGuitar, FaFlag, FaHeadphones, FaRecordVinyl, FaBolt, FaSkull
+  FaGuitar, FaFlag, FaHeadphones, FaRecordVinyl, FaBolt, FaSkull, FaArrowUpRightFromSquare
 } from 'react-icons/fa6'
 import { PiCassetteTapeFill } from 'react-icons/pi'
 import { PAUSE_RADIO_EVENT } from '../pages/Demos'
@@ -12,16 +12,18 @@ import { FaVolumeXmark } from "react-icons/fa6"
 
 // Transmisiones públicas de cada radio (verificadas el 01/11/2026). Todas con HTTPS:
 // los navegadores bloquean audio "http://" dentro de una web segura.
-const RADIO_STATIONS = [
-  { id: 'nacional-rock', name: 'Nacional Rock 93.7', icon: FaFlag, url: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad39' },
-  { id: 'la100-rock-nacional', name: 'La 100 Rock Nacional', icon: FaGuitar, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/FROCKNAC_56AAC.aac' },
+// "site": página oficial de la emisora (solo si está verificada). El audio llega directo desde
+// el servidor de cada radio: SANAT no lo aloja, no lo graba ni lo retransmite.
+const RADIO_STATIONS: { id: string; name: string; icon: any; url: string; site?: string }[] = [
+  { id: 'nacional-rock', name: 'Nacional Rock 93.7', icon: FaFlag, url: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad39', site: 'https://www.radionacional.com.ar' },
+  { id: 'la100-rock-nacional', name: 'La 100 Rock Nacional', icon: FaGuitar, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/FROCKNAC_56AAC.aac', site: 'https://la100.cienradios.com' },
   { id: 'puro-rock-nacional', name: 'Puro Rock Nacional 103.5', icon: FaGuitar, url: 'https://srv591.grupomultimedios.com.ar:9902/listen/radio_zeta/radio.mp3' },
-  { id: 'rock-and-pop', name: 'Rock & Pop 95.9', icon: FaHeadphones, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/ROCKANDPOP.mp3' },
-  { id: 'vorterix', name: 'Vorterix', icon: FaBolt, url: 'https://ice2.edge-apps.net/radio1_high-20057.audio' },
-  { id: 'pobre-johnny', name: 'Pobre Johnny', icon: FaRecordVinyl, url: 'https://stream4.suenas.net/pobrejohnny' },
+  { id: 'rock-and-pop', name: 'Rock & Pop 95.9', icon: FaHeadphones, url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/ROCKANDPOP.mp3', site: 'https://fmrockandpop.com' },
+  { id: 'vorterix', name: 'Vorterix', icon: FaBolt, url: 'https://ice2.edge-apps.net/radio1_high-20057.audio', site: 'https://www.vorterix.com' },
+  { id: 'pobre-johnny', name: 'Pobre Johnny', icon: FaRecordVinyl, url: 'https://stream4.suenas.net/pobrejohnny', site: 'https://www.pobrejohnny.com.ar' },
   { id: 'clasicos-rock', name: 'Clásicos del Rock 70s-90s', icon: FaRecordVinyl, url: 'https://cast1.torontocast.com:4610/stream' },
   { id: 'heavy-metal', name: 'Heavy Metal', icon: FaSkull, url: 'https://cast1.torontocast.com:4660/stream' },
-  { id: 'wacken', name: 'Wacken Radio (Metal)', icon: FaSkull, url: 'https://wackenradio-high.rautemusik.fm/' },
+  { id: 'wacken', name: 'Wacken Radio (Metal)', icon: FaSkull, url: 'https://wackenradio-high.rautemusik.fm/', site: 'https://www.rm.fm' },
 ]
 
 // Para elegir texto negro o blanco según qué tan claro sea el color del perfil
@@ -186,6 +188,17 @@ export default function RetroRadio() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Crédito: de quién es la transmisión */}
+            <div className="bg-[#111] px-4 py-2 border-t border-gray-800 text-[10px] text-gray-400 leading-snug" onClick={(e) => e.stopPropagation()}>
+              <p>
+                Escuchás <b className="text-gray-200">{currentStation.name}</b>, transmisión pública de la emisora.
+                {currentStation.site && (
+                  <> <a href={currentStation.site} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-300 hover:text-purple-200 underline underline-offset-2">Sitio oficial <FaArrowUpRightFromSquare size={8} /></a></>
+                )}
+              </p>
+              <p className="text-gray-500 mt-0.5">SANAT no aloja ni retransmite el audio. <a href="/legal#radios" className="underline underline-offset-2 hover:text-gray-300">Más info</a></p>
             </div>
 
             {/* 3. Controles Principales (Más notorios para móvil, pero estilo retro) */}

@@ -21,19 +21,30 @@ export default function AdminSecretGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
 
-  const checkUnlocked = async (): Promise<boolean> => {
-    const { data, error } = await supabase.rpc('is_admin_verified')
-    // PGRST202 = la función no existe: el SQL de seguridad todavía no se instaló
-    if (error?.code === 'PGRST202') {
-      console.warn('Pregunta secreta no instalada en Supabase (SEGURIDAD_admin_y_likes.sql)')
-      return true
+  // 'si' / 'no' = respuesta real de Supabase; 'desconocido' = no se pudo consultar (conexión).
+  // Una falla de conexión NO es "venció la verificación": antes eso pedía la pregunta sin motivo.
+  // (Igual no hay riesgo: Supabase revisa la verificación en cada acción de admin.)
+  const checkUnlocked = async (): Promise<'si' | 'no' | 'desconocido'> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data, error } = await supabase.rpc('is_admin_verified')
+        // PGRST202 = la función no existe: el SQL de seguridad todavía no se instaló
+        if (error?.code === 'PGRST202') {
+          console.warn('Pregunta secreta no instalada en Supabase (SEGURIDAD_admin_y_likes.sql)')
+          return 'si'
+        }
+        if (!error) return data === true ? 'si' : 'no'
+      } catch { /* conexión: se reintenta */ }
+      await new Promise(r => setTimeout(r, 1500))
     }
-    return !!data
+    return 'desconocido'
   }
 
   useEffect(() => {
     const init = async () => {
-      if (await checkUnlocked()) { setStatus('unlocked'); return }
+      const result = await checkUnlocked()
+      // Si no se pudo consultar al entrar, se deja pasar: las acciones de admin las valida Supabase igual
+      if (result !== 'no') { setStatus('unlocked'); return }
       const { data } = await supabase.rpc('get_admin_question')
       setQuestion(data ?? null)
       setStatus('locked')
@@ -45,7 +56,8 @@ export default function AdminSecretGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status !== 'unlocked') return
     const recheck = async () => {
-      if (!(await checkUnlocked())) {
+      // Solo se vuelve a pedir la pregunta si Supabase confirma que venció
+      if ((await checkUnlocked()) === 'no') {
         const { data } = await supabase.rpc('get_admin_question')
         setQuestion(data ?? null)
         setAnswer('')

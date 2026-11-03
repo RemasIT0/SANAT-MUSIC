@@ -3,10 +3,10 @@
 // Página pública (se puede leer sin iniciar sesión).
 import { useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { FaArrowLeft, FaFileContract, FaUserShield, FaUsers, FaEnvelope } from 'react-icons/fa'
+import { FaArrowLeft, FaFileContract, FaUserShield, FaUsers, FaEnvelope, FaBroadcastTower } from 'react-icons/fa'
 
 const CONTACT_EMAIL = 'remaslove281@gmail.com'
-const LAST_UPDATE = '1 de noviembre de 2026'
+const LAST_UPDATE = '3 de noviembre de 2026'
 
 function Section({ id, title, icon, children }: { id: string; title: string; icon: ReactNode; children: ReactNode }) {
   return (
@@ -44,7 +44,7 @@ export default function Legal() {
             Te pedimos que lo leas con atención: al crear una cuenta o usar SANAT, aceptás lo que se detalla a continuación.
           </p>
           <nav className="flex flex-wrap gap-2 pt-1" aria-label="Secciones">
-            {[['terminos', 'Términos y condiciones'], ['privacidad', 'Política de privacidad'], ['normas', 'Normas de la comunidad'], ['contacto', 'Contacto']].map(([id, label]) => (
+            {[['terminos', 'Términos y condiciones'], ['privacidad', 'Política de privacidad'], ['normas', 'Normas de la comunidad'], ['radios', 'Radios'], ['contacto', 'Contacto']].map(([id, label]) => (
               <a key={id} href={`#${id}`} className="px-3 py-1.5 rounded-full border border-[#3a3a3a] text-xs text-gray-200 hover:border-purple-500 hover:text-white">{label}</a>
             ))}
           </nav>
@@ -145,6 +145,13 @@ export default function Legal() {
             <li><b>Cuidate al encontrarte.</b> Si acordás un ensayo o una reunión, hacelo en un lugar público, avisale a alguien de confianza y nunca compartas datos sensibles o bancarios.</li>
             <li><b>Usá las herramientas.</b> Si algo no está bien, reportalo o bloqueá a la persona. Revisamos cada reporte.</li>
           </ul>
+        </Section>
+
+        {/* ---------------- RADIOS ---------------- */}
+        <Section id="radios" title="Radios" icon={<FaBroadcastTower className="text-purple-400" />}>
+          <p className="text-gray-300 text-sm leading-relaxed">La radio de SANAT reproduce <b>transmisiones públicas</b> que cada emisora ofrece en internet. El audio llega <b>directamente desde los servidores de cada emisora</b> al dispositivo de quien escucha: SANAT no lo aloja, no lo graba ni lo retransmite, y no cobra ni muestra publicidad sobre esas transmisiones.</p>
+          <p className="text-gray-300 text-sm leading-relaxed">Los nombres, marcas y contenidos de cada radio pertenecen a sus respectivos dueños. Su inclusión no implica que exista una relación, auspicio o acuerdo con SANAT. Cuando la emisora tiene un sitio oficial verificado, lo mostramos en el reproductor.</p>
+          <p className="text-gray-300 text-sm leading-relaxed">Si sos responsable de una emisora y preferís que no aparezca en SANAT, escribinos a <a href={`mailto:${CONTACT_EMAIL}`} className="text-purple-300 underline">{CONTACT_EMAIL}</a> y la quitamos a la brevedad.</p>
         </Section>
 
         {/* ---------------- CONTACTO ---------------- */}

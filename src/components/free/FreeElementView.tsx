@@ -2,7 +2,7 @@
 // Dibuja un elemento del perfil libre. Lo usan el editor y la vista pública.
 import type { CSSProperties } from 'react'
 import type { Profile } from '../../types'
-import { FONTS, STICKERS, type FreeElement } from '../../types/freeLayout'
+import { FONTS, STICKERS, patternLayers, type FreeElement } from '../../types/freeLayout'
 import Mascot from '../Mascot'
 import { ProfileAudioPlayer } from '../ProfileAudio'
 import {
@@ -13,22 +13,44 @@ const SOCIAL_ICONS: Record<string, any> = { Instagram: FaInstagram, YouTube: FaY
 
 const NO_PADDING = ['photo', 'image', 'sticker', 'mascot', 'box']
 
+// Elementos sin fondo ni borde: la luz neón se aplica a la figura, no a la caja
+const isBare = (el: FreeElement) => (el.style.bg === 'transparent' || !el.style.bg) && el.style.borderWidth === 0
+
+// Clase de animación (las define index.css)
+export function elementFxClass(el: FreeElement): string | undefined {
+  const a = el.style.animation
+  return a && a !== 'none' ? `fx-${a}` : undefined
+}
+
 export function elementBoxStyle(el: FreeElement): CSSProperties {
   const s = el.style
+  const glow = s.glow ? (s.glowColor || '#a855f7') : null
+  const shadows = [
+    s.shadow ? '6px 6px 0 rgba(0,0,0,0.85)' : '',
+    glow && !isBare(el) ? `0 0 12px ${glow}, 0 0 30px ${glow}` : '',
+  ].filter(Boolean).join(', ')
   return {
     position: 'absolute',
     left: el.x,
     top: el.y,
     width: el.w,
     height: el.h,
-    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+    // "rotate" aparte de "transform": así las animaciones se combinan con la rotación
+    rotate: el.rotation ? `${el.rotation}deg` : undefined,
+    ['--rot' as any]: `${el.rotation || 0}deg`,
     zIndex: el.z,
-    background: s.bg,
+    backgroundColor: s.bg,
+    ...(() => {
+      const layers = patternLayers(s.pattern, s.patternColor || '#ffffff', s.patternSize || 24)
+      return layers.images.length ? { backgroundImage: layers.images.join(', '), backgroundSize: layers.sizes.join(', ') } : {}
+    })(),
     color: s.color,
     border: s.borderWidth > 0 ? `${s.borderWidth}px solid ${s.borderColor}` : 'none',
     borderRadius: Math.min(s.radius, Math.min(el.w, el.h) / 2),
     opacity: s.opacity,
-    boxShadow: s.shadow ? '6px 6px 0 rgba(0,0,0,0.85)' : undefined,
+    boxShadow: shadows || undefined,
+    filter: glow && isBare(el) ? `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 16px ${glow})` : undefined,
+    textShadow: glow && !isBare(el) ? `0 0 8px ${glow}` : undefined,
     fontFamily: FONTS[s.font]?.css,
     fontSize: s.fontSize,
     textAlign: s.align,
@@ -118,6 +140,54 @@ export default function FreeElementView({ el, profile, friendsCount, interactive
       return (
         <div className="w-full h-full flex items-center justify-center leading-none select-none" style={{ fontSize: size }}>
           {sticker ? <sticker.icon size={size} color={el.style.color} /> : el.content}
+        </div>
+      )
+    }
+    case 'lights': {
+      // Guirnalda: cable y lamparitas de colores que se prenden en secuencia
+      const count = Math.max(4, Math.round(el.w / 46))
+      const palette = ['#ff4d6d', '#ffd60a', '#38bdf8', '#4ade80', '#c084fc']
+      const bulb = Math.min(26, el.h * 0.42)
+      return (
+        <div className="relative w-full h-full">
+          <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${el.w} ${el.h}`} preserveAspectRatio="none" aria-hidden="true">
+            <path d={`M0 ${el.h * 0.22} Q ${el.w / 2} ${el.h * 0.62} ${el.w} ${el.h * 0.22}`} fill="none" stroke="#2b2b2b" strokeWidth="3" />
+          </svg>
+          {Array.from({ length: count }).map((_, i) => {
+            const t = (i + 0.5) / count
+            const y = el.h * 0.22 + (el.h * 0.4) * 4 * t * (1 - t) * 0.5
+            const color = palette[i % palette.length]
+            return (
+              <span key={i} className="absolute fx-bulb" style={{
+                left: `calc(${t * 100}% - ${bulb / 2}px)`, top: y, width: bulb, height: bulb * 1.3,
+                borderRadius: '50% 50% 45% 45%', backgroundColor: color, color,
+                boxShadow: `0 0 10px ${color}, 0 0 22px ${color}`, animationDelay: `${(i % 5) * 0.25}s`,
+              }} />
+            )
+          })}
+        </div>
+      )
+    }
+    case 'marquee':
+      // Cartel LED: el texto se desplaza de derecha a izquierda
+      return (
+        <div className="w-full h-full flex items-center overflow-hidden">
+          <span className="fx-marquee whitespace-nowrap font-bold tracking-widest" style={{ textShadow: `0 0 8px ${el.style.color}` }}>
+            {el.content || 'Escribí tu mensaje'}
+          </span>
+        </div>
+      )
+    case 'equalizer': {
+      // Ecualizador: barras que suben y bajan a distinto ritmo
+      const bars = Math.max(5, Math.round(el.w / 24))
+      return (
+        <div className="w-full h-full flex items-end gap-[6%] px-[4%] pb-[4%]" style={{ gap: Math.max(3, el.w / bars * 0.25) }}>
+          {Array.from({ length: bars }).map((_, i) => (
+            <span key={i} className="flex-1 rounded-t fx-eq" style={{
+              backgroundColor: el.style.color, height: '100%',
+              animationDuration: `${0.7 + ((i * 37) % 7) / 10}s`, animationDelay: `${((i * 53) % 9) / -10}s`,
+            }} />
+          ))}
         </div>
       )
     }

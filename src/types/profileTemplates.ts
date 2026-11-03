@@ -226,6 +226,60 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
     },
   },
   {
+    key: 'escena',
+    name: 'Escena 2008',
+    description: 'Neón flúor, damero, letras pixeladas y todo brillando. Pura época de fotolog.',
+    preview: 'linear-gradient(160deg, #7cff00 0 14%, #050505 14% 86%, #ff2bd6 86%)',
+    build: (hasAudio) => {
+      const lime = '#7cff00'
+      const pink = '#ff2bd6'
+      const cyan = '#00e5ff'
+      const plain: Partial<FreeElementStyle> = { bg: 'transparent', borderWidth: 0, color: '#ffffff', font: 'sans', fontSize: 17 }
+      const title = (color: string): Partial<FreeElementStyle> => ({ bg: '#000000', color, borderColor: color, borderWidth: 3, radius: 4, font: 'pixel', fontSize: 15, align: 'center' })
+      const checker = (color: string): Partial<FreeElementStyle> => ({ bg: '#000000', borderWidth: 0, radius: 0, pattern: 'damero', patternColor: color, patternSize: 14 })
+      const elements = [
+        // Marco y barra superior
+        make('box', 20, 20, 960, 1060, { bg: '#050505', borderColor: lime, borderWidth: 6, radius: 18, glow: true, glowColor: lime }),
+        make('box', 40, 40, 920, 84, { bg: lime, borderWidth: 0, radius: 10 }),
+        make('social', 56, 54, 280, 58, { bg: '#000000', color: '#ffffff', borderColor: pink, borderWidth: 3, radius: 10, fontSize: 14 }),
+        make('name', 356, 50, 590, 66, { bg: '#000000', color: cyan, borderWidth: 0, radius: 999, font: 'marker', fontSize: 34, align: 'center' }),
+        // Columna izquierda
+        make('box', 56, 146, 300, 22, checker('#ffffff')),
+        make('photo', 56, 180, 300, 300, { radius: 6, borderWidth: 4, borderColor: pink }),
+        make('box', 56, 494, 300, 22, checker('#ffffff')),
+        make('text', 56, 528, 300, 52, { ...title(lime), bg: lime, color: '#000000', radius: 999 }, { content: 'SOBRE MI' }),
+        make('bio', 56, 590, 300, 190, plain),
+        // Columna del medio
+        make('text', 380, 146, 280, 48, { ...plain, color: cyan, font: 'marker', fontSize: 24 }, { content: 'mis amigos <3' }),
+        make('friends', 380, 196, 280, 50, plain),
+        make('marquee', 380, 262, 280, 52, { bg: '#1d4ed8', color: '#ffe14d', borderColor: '#ffe14d', borderWidth: 2, radius: 4, font: 'pixel', fontSize: 15, glow: true, glowColor: '#ffe14d' }, { content: 'CUIDADO: ZONA DE RUIDO  ' }),
+        make('text', 380, 334, 280, 44, { ...plain, color: pink, font: 'marker', fontSize: 24 }, { content: 'lo que toco!!' }),
+        make('instruments', 380, 380, 280, 150, plain),
+        make('genres', 380, 544, 280, 110, { ...plain, borderColor: lime, borderWidth: 2, radius: 6 }),
+        make('mascot', 430, 690, 180, 200, {}, { }),
+        // Columna derecha
+        make('lights', 690, 140, 270, 70),
+        make('text', 690, 222, 270, 54, title('#ff3b3b'), { content: 'NO ME GUSTA >:(' }),
+        make('text', 690, 284, 270, 110, plain, { content: 'el silencio, los ensayos que se suspenden y los lunes.' }),
+        make('text', 690, 404, 270, 54, title(lime), { content: 'OTROS.' }),
+        make('text', 690, 466, 270, 120, plain, { content: 'Toco los findes. Busco gente para armar algo ruidoso. ¡Escribime!' }),
+        make('sticker', 690, 600, 86, 86, { color: pink, glow: true, glowColor: pink }, { content: 'calavera', rotation: -10 }),
+        make('sticker', 782, 600, 86, 86, { color: '#ffe14d', animation: 'parpadeo' }, { content: 'rayo' }),
+        make('sticker', 874, 600, 86, 86, { color: lime, animation: 'flotar' }, { content: 'alien', rotation: 8 }),
+        make('box', 690, 704, 270, 22, checker(pink)),
+        make('equalizer', 690, 740, 270, 110, { color: cyan }),
+        // Cartel de abajo
+        make('marquee', 40, 990, 920, 66, { bg: '#000000', color: lime, borderColor: lime, borderWidth: 3, radius: 10, font: 'pixel', fontSize: 20 }, { content: 'SANAT  *  ESCENA 2008  *  RAWR  *  ' }),
+      ]
+      if (hasAudio) elements.push(make('audio', 380, 876, 580, 106, { bg: '#000000', color: '#ffffff', borderColor: pink, borderWidth: 3, radius: 10 }))
+      return {
+        height: 1100,
+        background: { type: 'solid', color: '#000000', color2: '#000000', image: '', pattern: 'lunares', patternColor: '#2a0a3d', patternSize: 30 },
+        elements,
+      }
+    },
+  },
+  {
     key: 'minimal',
     name: 'Minimal',
     description: 'Blanco, limpio y ordenado. Que hable tu música.',

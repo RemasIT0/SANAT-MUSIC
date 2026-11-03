@@ -302,7 +302,7 @@ export default function Bandeja() {
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className={`text-sm truncate flex-1 ${unread ? 'text-gray-100' : 'text-gray-400'}`}>
                                   {isMine && <span className={conv.lastMessage.is_read ? 'text-cyan-400' : 'text-gray-500'}>{conv.lastMessage.is_read ? '✓✓ ' : '✓ '}</span>}
-                                  {isMine ? 'Vos: ' : ''}{preview(conv.lastMessage)}
+                                  {isMine ? 'Tu: ' : ''}{preview(conv.lastMessage)}
                                 </p>
                                 {unread && <span className="text-white text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center flex-shrink-0" style={{ backgroundColor: theme }}>{conv.unreadCount > 9 ? '9+' : conv.unreadCount}</span>}
                               </div>

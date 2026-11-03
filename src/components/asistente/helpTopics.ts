@@ -114,6 +114,11 @@ export const TOPICS: Record<string, Topic> = {
     answer: 'Primero activalas en "Opciones" → "Activar notificaciones". Si dice "bloqueadas", es porque el navegador las tiene desactivadas y así no te llegan avisos de mensajes ni likes: tocá el candado al lado de la dirección → Permisos → Notificaciones → Permitir, y recargá. Si instalaste la app: mantené apretado el ícono → Información de la app → Notificaciones. Ojo: llegan mientras la app está abierta o en segundo plano.',
     keywords: ['notificacion', 'no me llegan', 'bloqueada', 'avisos', 'permiso', 'campana'],
   },
+  notificacionesCerrada: {
+    question: 'No me llegan con la app cerrada',
+    answer: 'Muchos celulares cierran las apps en segundo plano para ahorrar batería. En Android: Ajustes → Aplicaciones → Chrome → Batería → "Sin restricciones"; activá Notificaciones y Datos en segundo plano, el "Inicio automático" si tu celular lo tiene, y bloqueá Chrome en las apps recientes con el candado. En iPhone: agregá SANAT a la pantalla de inicio desde Safari (Compartir → Agregar a inicio), entrá desde ese ícono y activá las notificaciones en Opciones. Los pasos detallados están en Opciones → Notificaciones.',
+    keywords: ['app cerrada', 'cerrada', 'segundo plano', 'bateria', 'batería', 'no llegan cerrada', 'android', 'iphone', 'nubia', 'xiaomi', 'samsung'],
+  },
   donar: {
     question: '¿Cómo puedo apoyar a SANAT?',
     answer: 'SANAT es gratis y sin publicidad. Si querés ayudar a mantener los servidores, en el menú "Opciones" vas a encontrar "Apoyar a SANAT" cuando las donaciones estén habilitadas. Es totalmente voluntario. ¡También ayudás invitando a otros músicos!',
@@ -162,7 +167,7 @@ export const TOPICS: Record<string, Topic> = {
   },
   plantillas: {
     question: '¿Hay diseños de perfil listos?',
-    answer: 'Sí: en "Diseñar perfil" → pestaña "Diseños" hay plantillas Grunge 90s, Neón, Folklore, Punk fanzine, Jazz club, Metal, Terror, Videojuego y Minimal. Se arman con tus datos y después las editás como quieras.',
+    answer: 'Sí: en "Diseñar perfil" → pestaña "Diseños" hay plantillas Grunge 90s, Neón, Folklore, Punk fanzine, Jazz club, Metal, Terror, Videojuego, Escena 2008 y Minimal. Se arman con tus datos y después las editás como quieras.',
     keywords: ['plantilla', 'diseno listo', 'tema', 'estilo de perfil'],
     actions: [{ label: 'Diseñar perfil', to: '/editar-perfil/diseno' }],
   },
@@ -180,7 +185,7 @@ export const CATEGORIES: { label: string; topics: string[] }[] = [
   { label: '📝 Publicar', topics: ['publicar', 'coincidencias', 'editarPost', 'likes'] },
   { label: '👤 Mi perfil', topics: ['perfil', 'diseno', 'plantillas', 'mascota', 'resenas'] },
   { label: '💬 Gente', topics: ['bandas', 'agenda', 'mensajes', 'amigos', 'buscar', 'seguridad'] },
-  { label: '🔑 Cuenta', topics: ['recorrido', 'app', 'notificaciones', 'login', 'password', 'ban', 'privacidad', 'donar', 'contacto'] },
+  { label: '🔑 Cuenta', topics: ['recorrido', 'app', 'notificaciones', 'notificacionesCerrada', 'login', 'password', 'ban', 'privacidad', 'donar', 'contacto'] },
 ]
 
 // ---------------------------------------------------------------------------

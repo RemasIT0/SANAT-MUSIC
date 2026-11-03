@@ -13,6 +13,7 @@ export type MascotExpression =
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
   | 'timido' | 'cerdito' | 'pollito'
   | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro' | 'payaso'
+  | 'bufon' | 'verdugo' | 'sombra' | 'infectado' | 'penitente'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -45,6 +46,11 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'unicornio', label: 'Unicornio/evil' },
   { id: 'siniestro', label: 'Siniestro' },
   { id: 'payaso', label: 'Payaso' },
+  { id: 'bufon', label: 'Bufón' },
+  { id: 'verdugo', label: 'Verdugo' },
+  { id: 'sombra', label: 'Sombra' },
+  { id: 'infectado', label: 'Infectado' },
+  { id: 'penitente', label: 'Penitente' },
 ]
 
 interface CostumeCtx {
@@ -987,5 +993,128 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         <path d="M32 60 Q42 56 54 62" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
       </svg>
     ),
+  },
+
+  bufon: {
+    // Gorro de bufón de dos puntas con cascabeles
+    back: () => (
+      <Layer top={-34} left={-14} w={128} h={50}>
+        <path d="M30 46 Q18 18 2 8 Q20 4 40 22 L50 46 Z" fill="#581c87" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M98 46 Q110 18 126 8 Q108 4 88 22 L78 46 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M40 46 Q64 14 88 46 Z" fill="#7f1d1d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <circle cx="4" cy="9" r="5" fill="#facc15" stroke={INK} strokeWidth="2" />
+        <circle cx="124" cy="9" r="5" fill="#facc15" stroke={INK} strokeWidth="2" />
+      </Layer>
+    ),
+    face: ({ eye }) => (
+      <svg width="88" height="82" viewBox="0 0 88 82" className="mt-1">
+        {/* Media máscara: mitad blanca, mitad negra */}
+        <path d="M44 4 Q14 4 8 30 Q6 60 44 78 Z" fill="#f4f4f5" />
+        <path d="M44 4 Q74 4 80 30 Q82 60 44 78 Z" fill="#111" />
+        <path d="M44 4 L44 78" stroke={INK} strokeWidth="2" />
+        {/* Ojos invertidos */}
+        <circle cx="26" cy="30" r="8" fill="#111" />
+        <circle cx={26 + eye.x * 0.6} cy={30 + eye.y * 0.6} r="2.5" fill="#fff" />
+        <circle cx="62" cy="30" r="8" fill="#f4f4f5" />
+        <circle cx={62 + eye.x * 0.6} cy={30 + eye.y * 0.6} r="2.5" fill="#111" />
+        {/* Sonrisa enorme con dientes en punta */}
+        <path d="M14 52 Q44 74 74 52 Q44 62 14 52 Z" fill="#7f1d1d" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M22 55 L26 62 L30 57 L34 64 L38 58 L42 65 L46 58 L50 64 L54 57 L58 62 L62 55" fill="none" stroke="#f4f4f5" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+
+  verdugo: {
+    // Capucha de verdugo que cubre toda la cabeza, con dos agujeros
+    front: ({ eye }) => (
+      <Layer top={-16} left={-6} w={112} h={108} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
+        <path fillRule="evenodd" d="M56 2 Q104 4 108 48 L110 106 L2 106 L4 48 Q8 4 56 2 Z M22 50 Q34 40 46 50 Q34 58 22 50 Z M66 50 Q78 40 90 50 Q78 58 66 50 Z" fill="#1c1917" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M56 6 L56 30" stroke="#44403c" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M14 84 Q56 96 98 84" fill="none" stroke="#44403c" strokeWidth="2.5" strokeLinecap="round" />
+        {/* Ojos rojos que brillan desde adentro */}
+        <circle cx={34 + eye.x * 0.5} cy={50 + eye.y * 0.3} r="3.5" fill="#ef4444" style={{ filter: 'drop-shadow(0 0 4px #ef4444)' }} />
+        <circle cx={78 + eye.x * 0.5} cy={50 + eye.y * 0.3} r="3.5" fill="#ef4444" style={{ filter: 'drop-shadow(0 0 4px #ef4444)' }} />
+      </Layer>
+    ),
+    face: () => null,
+  },
+
+  sombra: {
+    // Cuerpo cubierto de oscuridad, con bordes como humo
+    front: ({ eye }) => (
+      <Layer top={-8} left={-8} w={116} h={116} className="z-20">
+        <path d="M14 20 Q20 2 40 8 Q58 -2 76 8 Q98 2 104 22 Q116 40 106 58 Q114 78 100 92 Q92 112 70 106 Q56 116 40 106 Q18 112 12 92 Q0 76 8 58 Q-2 40 14 20 Z" fill="#050508" opacity="0.92" />
+        {/* Ojos que brillan, sin boca ni rostro */}
+        <path d={`M${30 + eye.x} ${50 + eye.y} Q${40 + eye.x} ${42 + eye.y} ${50 + eye.x} ${50 + eye.y} Q${40 + eye.x} ${54 + eye.y} ${30 + eye.x} ${50 + eye.y} Z`} fill="#e0f2fe" style={{ filter: 'drop-shadow(0 0 5px #7dd3fc)' }} />
+        <path d={`M${66 + eye.x} ${50 + eye.y} Q${76 + eye.x} ${42 + eye.y} ${86 + eye.x} ${50 + eye.y} Q${76 + eye.x} ${54 + eye.y} ${66 + eye.x} ${50 + eye.y} Z`} fill="#e0f2fe" style={{ filter: 'drop-shadow(0 0 5px #7dd3fc)' }} />
+      </Layer>
+    ),
+    face: () => null,
+  },
+
+  infectado: {
+    // Venas verdes sobre el cuerpo
+    back: () => null,
+    front: () => (
+      <>
+        <Layer top={4} left={4} w={92} h={92} className="z-[15]">
+          <path d="M6 70 L18 60 L16 48 M86 22 L74 30 L78 42 M70 86 L64 74 L72 66" fill="none" stroke="#65a30d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+        </Layer>
+        {/* Máscara de gas con dos filtros */}
+        <Layer top={52} left={14} w={72} h={44} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M18 4 L54 4 Q64 20 54 36 L18 36 Q8 20 18 4 Z" fill="#3f3f46" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <circle cx="10" cy="26" r="9" fill="#52525b" stroke={INK} strokeWidth="2.5" />
+          <circle cx="62" cy="26" r="9" fill="#52525b" stroke={INK} strokeWidth="2.5" />
+          <path d="M6 26 L14 26 M58 26 L66 26 M28 18 L44 18 M28 24 L44 24" stroke="#18181b" strokeWidth="2" strokeLinecap="round" />
+        </Layer>
+        {/* Parche de peligro biológico */}
+        <Layer top={-6} left={74} w={26} h={26} className="z-20">
+          <circle cx="13" cy="13" r="11" fill="#facc15" stroke={INK} strokeWidth="2.5" />
+          <circle cx="13" cy="13" r="3" fill="#111" />
+          <path d="M13 4 L13 9 M5 18 L9 15.5 M21 18 L17 15.5" stroke="#111" strokeWidth="2.5" strokeLinecap="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <svg width="80" height="40" viewBox="0 0 80 40" className="mb-8">
+        {/* Antiparras con ojos amarillentos */}
+        <rect x="2" y="8" width="76" height="8" rx="4" fill="#111" />
+        {[22, 58].map(cx => (
+          <g key={cx}>
+            <circle cx={cx} cy="20" r="13" fill="#d9f99d" stroke={INK} strokeWidth="3.5" />
+            <circle cx={cx + eye.x * 0.7} cy={20 + eye.y * 0.7} r="4" fill="#3f6212" />
+          </g>
+        ))}
+      </svg>
+    ),
+  },
+
+  penitente: {
+    // Capirote: capucha alta y puntiaguda, con rosario
+    back: () => (
+      <Layer top={-62} left={20} w={60} h={70}>
+        <path d="M30 2 L56 70 L4 70 Z" fill="#4a0d0d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M30 14 L40 52 M30 14 L20 52" stroke="#7f1d1d" strokeWidth="2" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: ({ eye }) => (
+      <>
+        {/* Tela que cubre la cara, con dos ranuras */}
+        <Layer top={-6} left={-4} w={108} h={84} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path fillRule="evenodd" d="M4 8 Q54 -6 104 8 L106 78 Q80 70 54 80 Q28 70 2 78 Z M24 34 L46 34 L44 40 L26 40 Z M62 34 L84 34 L82 40 L64 40 Z" fill="#4a0d0d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <circle cx={35 + eye.x * 0.5} cy="37" r="2.2" fill="#fde68a" />
+          <circle cx={73 + eye.x * 0.5} cy="37" r="2.2" fill="#fde68a" />
+          <path d="M14 60 Q54 52 94 60" fill="none" stroke="#7f1d1d" strokeWidth="2" strokeLinecap="round" />
+        </Layer>
+        {/* Rosario de cuentas con cruz */}
+        <Layer top={76} left={18} w={64} h={36} className="z-20">
+          <path d="M4 4 Q32 26 60 4" fill="none" stroke="#a16207" strokeWidth="1.5" />
+          {[[8, 8], [16, 14], [24, 18], [40, 18], [48, 14], [56, 8]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.6" fill="#d6d3d1" stroke={INK} strokeWidth="1" />)}
+          <rect x="30" y="18" width="4" height="15" fill="#d6d3d1" stroke={INK} strokeWidth="1" />
+          <rect x="26" y="22" width="12" height="4" fill="#d6d3d1" stroke={INK} strokeWidth="1" />
+        </Layer>
+      </>
+    ),
+    face: () => null,
   },
 }
