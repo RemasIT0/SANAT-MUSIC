@@ -1,8 +1,8 @@
 // src/pages/Onboarding.tsx
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, isProfileComplete } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
 import InstrumentsInput, { cleanInstruments, emptyInstrument } from '../components/InstrumentsInput'
 import { compressImage, imageExtension, MAX_INPUT_IMAGE_MB } from '../lib/imageCompress'
@@ -43,8 +43,8 @@ const GENEROS_FIJOS = [
   { name: 'Jazz', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' },
   { name: 'Electrónica', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' },
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' },
-  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },       
-  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }    
+  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },
+  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }
 ]
 
 const PALETA_COMPLETA = [
@@ -60,14 +60,14 @@ const coloresTema = PALETA_COMPLETA
 export default function Onboarding() {
   const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
-  
+
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-  
+
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   const [selectedColor, setSelectedColor] = useState(coloresMascota[0])
   const [selectedTheme, setSelectedTheme] = useState('#a855f7')
   const [selectedExpression, setSelectedExpression] = useState<MascotExpression>('normal')
@@ -95,8 +95,8 @@ export default function Onboarding() {
   const toggleGenre = (genre: string) => {
     setFormData(prev => ({
       ...prev,
-      genres: prev.genres.includes(genre) 
-        ? prev.genres.filter(g => g !== genre) 
+      genres: prev.genres.includes(genre)
+        ? prev.genres.filter(g => g !== genre)
         : [...prev.genres, genre]
     }))
   }
@@ -116,10 +116,34 @@ export default function Onboarding() {
     setImagePreview(URL.createObjectURL(file))
   }
 
+  // Si la cuenta ya tiene perfil completo, el onboarding no corresponde: al Inicio
+  useEffect(() => {
+    if (!user) return
+    supabase.from('profiles').select('*').eq('id', user.id).maybeSingle().then(({ data, error }) => {
+      if (!error && isProfileComplete(data)) {
+        refreshProfile()
+        navigate('/home', { replace: true })
+      }
+    })
+  }, [user])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
     setLoading(true)
+
+    // Freno de seguridad: jamás sobrescribir un perfil que ya existe
+    const current = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+    if (current.error) {
+      setToast({ message: 'No se pudo verificar tu cuenta. Revisá la conexión y probá de nuevo.', type: 'error' })
+      setLoading(false)
+      return
+    }
+    if (isProfileComplete(current.data)) {
+      await refreshProfile()
+      navigate('/home', { replace: true })
+      return
+    }
 
     const { data: existingUser } = await supabase
       .from('profiles')
@@ -157,7 +181,7 @@ export default function Onboarding() {
         const { data: urlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath)
-        
+
         finalAvatarUrl = urlData.publicUrl
       }
 
@@ -171,7 +195,8 @@ export default function Onboarding() {
           avatar_color: selectedColor,
           theme_color: selectedTheme,
           expression: selectedExpression,
-          avatar_url: finalAvatarUrl,
+          // Sin foto nueva no se toca la que hubiera
+          ...(finalAvatarUrl ? { avatar_url: finalAvatarUrl } : {}),
           instruments: cleanInstruments(instruments),
           genres: formData.genres,
           departamento: formData.departamento,
@@ -180,12 +205,12 @@ export default function Onboarding() {
         })
 
       if (error) throw error
-      
+
       setToast({ message: '¡Perfil creado con éxito!', type: 'success' })
-      await refreshProfile() 
-      
+      await refreshProfile()
+
       setTimeout(() => {
-        navigate('/home') 
+        navigate('/home')
       }, 1000)
 
     } catch (error: any) {
@@ -195,7 +220,7 @@ export default function Onboarding() {
     }
   }
 
-  const isFormValid = 
+  const isFormValid =
     formData.username.trim().length > 0 &&
     formData.display_name.trim().length > 0 &&
     cleanInstruments(instruments).length > 0 &&
@@ -209,9 +234,9 @@ export default function Onboarding() {
 
       <div className="w-full max-w-5xl">
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
-          
+
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
-            
+
             <div className="relative group cursor-pointer mb-2" onClick={() => fileInputRef.current?.click()}>
               <Avatar url={imagePreview} name={formData.display_name || 'Usuario'} color={selectedColor} size={100}  />
               <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -220,7 +245,7 @@ export default function Onboarding() {
             </div>
             <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
             <p className="text-xs text-gray-500 mb-4">Toca para agregar foto (opcional)</p>
-            
+
             {/* ✅ SELECTOR DE COLOR DE MASCOTA */}
             <div className="w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Mascota</label>
@@ -237,26 +262,26 @@ export default function Onboarding() {
                   />
                 ))}
                 {/* Botón de Color Personalizado */}
-                <label 
+                <label
                   htmlFor="custom-mascot-color"
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
                     !coloresMascota.includes(selectedColor) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
                   }`}
                   style={{
-                    background: !coloresMascota.includes(selectedColor) 
-                      ? selectedColor 
+                    background: !coloresMascota.includes(selectedColor)
+                      ? selectedColor
                       : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
                   }}
                   title="Elegir color personalizado"
                 >
                   <FaPalette className="text-white drop-shadow-md" size={12} />
                 </label>
-                <input 
-                  type="color" 
-                  id="custom-mascot-color" 
-                  value={selectedColor} 
-                  onChange={(e) => setSelectedColor(e.target.value)} 
-                  className="hidden" 
+                <input
+                  type="color"
+                  id="custom-mascot-color"
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value)}
+                  className="hidden"
                 />
               </div>
             </div>
@@ -277,26 +302,26 @@ export default function Onboarding() {
                   />
                 ))}
                 {/* Botón de Color Personalizado */}
-                <label 
+                <label
                   htmlFor="custom-theme-color"
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
                     !coloresTema.includes(selectedTheme) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
                   }`}
                   style={{
-                    background: !coloresTema.includes(selectedTheme) 
-                      ? selectedTheme 
+                    background: !coloresTema.includes(selectedTheme)
+                      ? selectedTheme
                       : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
                   }}
                   title="Elegir color personalizado"
                 >
                   <FaPalette className="text-white drop-shadow-md" size={12} />
                 </label>
-                <input 
-                  type="color" 
-                  id="custom-theme-color" 
-                  value={selectedTheme} 
-                  onChange={(e) => setSelectedTheme(e.target.value)} 
-                  className="hidden" 
+                <input
+                  type="color"
+                  id="custom-theme-color"
+                  value={selectedTheme}
+                  onChange={(e) => setSelectedTheme(e.target.value)}
+                  className="hidden"
                 />
               </div>
             </div>
@@ -385,8 +410,8 @@ export default function Onboarding() {
                     type="button"
                     onClick={() => toggleGenre(genero.name)}
                     className={`px-4 py-2 rounded-full border text-sm font-semibold transition-all duration-200 ${
-                      isSelected 
-                        ? `${genero.color} scale-105 shadow-lg` 
+                      isSelected
+                        ? `${genero.color} scale-105 shadow-lg`
                         : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-500 hover:border-gray-500'
                     }`}
                   >
@@ -414,7 +439,7 @@ export default function Onboarding() {
               'Crear Perfil y Continuar'
             )}
           </button>
-          
+
           {!isFormValid && !loading && (
             <p className="text-center text-xs text-gray-500 mt-3 animate-pulse">
               * Completa tu nombre, instrumento y elige al menos un género para continuar.

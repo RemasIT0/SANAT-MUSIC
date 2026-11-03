@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense, type ComponentType } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { supabase } from './lib/supabaseClient'
@@ -7,24 +7,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus' // ✅ NUEVO IMPORT
 
 
 import Notificaciones from './pages/Notificaciones'
-import Login from './pages/Login'
-import Onboarding from './pages/Onboarding'
-import VerificarEmail from './pages/VerificarEmail'
-import Home from './pages/Inicio'
-import VerPerfil from './pages/VerPerfil'
-import EditarPerfil from './pages/EditarPerfil'
-import ChatRoom from './pages/ChatRoom'
-import Bandeja from './pages/Bandeja'
-import Guardados from './pages/Guardados'
-import Demos from './pages/Demos'
-import Bandas from './pages/Bandas'
-import Banda from './pages/Banda'
-import Agenda from './pages/Agenda'
 import AvisosAdmin, { ADMIN_THREAD_ID } from './pages/AvisosAdmin'
-import AdminPanel from './pages/AdminPanel'
-import RestablecerContrasena from './pages/RestablecerContrasena'
-import Baneado from './pages/Baneado'
-import Legal from './pages/Legal'
 import BottomNav from './components/BottomNav'
 import AnimatedBackground from './components/AnimatedBackground'
 import RetroRadio from './components/RetroRadio'
@@ -34,15 +17,61 @@ import AdminSecretGate from './components/AdminSecretGate'
 import TestBanner from './components/TestBanner'
 import DeviceNotifications from './components/DeviceNotifications'
 
-import FreeProfileEditor from './components/free/FreeProfileEditor'
 
 import { FaTimes, FaRegEnvelope, FaQuestionCircle, FaEnvelopeOpenText, FaEnvelope, FaPaperPlane, FaSpinner, } from 'react-icons/fa'
 import { FaRadio } from "react-icons/fa6";
 import { FaUser } from "react-icons/fa";
 import { FaMusic } from "react-icons/fa";
 
+
+// Cada pantalla se descarga recién cuando se entra (la primera carga es mucho más liviana).
+// Si justo se publicó una versión nueva y el archivo viejo ya no existe, se recarga la página una vez.
+function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  return lazy(async () => {
+    try {
+      const mod = await load()
+      sessionStorage.removeItem('sanat_chunk_reload')
+      return mod
+    } catch (error) {
+      if (!sessionStorage.getItem('sanat_chunk_reload')) {
+        sessionStorage.setItem('sanat_chunk_reload', '1')
+        window.location.reload()
+        return new Promise<{ default: T }>(() => {})
+      }
+      throw error
+    }
+  })
+}
+
+const Login = lazyPage(() => import('./pages/Login'))
+const Onboarding = lazyPage(() => import('./pages/Onboarding'))
+const VerificarEmail = lazyPage(() => import('./pages/VerificarEmail'))
+const Home = lazyPage(() => import('./pages/Inicio'))
+const VerPerfil = lazyPage(() => import('./pages/VerPerfil'))
+const EditarPerfil = lazyPage(() => import('./pages/EditarPerfil'))
+const ChatRoom = lazyPage(() => import('./pages/ChatRoom'))
+const Bandeja = lazyPage(() => import('./pages/Bandeja'))
+const Guardados = lazyPage(() => import('./pages/Guardados'))
+const Demos = lazyPage(() => import('./pages/Demos'))
+const Bandas = lazyPage(() => import('./pages/Bandas'))
+const Banda = lazyPage(() => import('./pages/Banda'))
+const Agenda = lazyPage(() => import('./pages/Agenda'))
+const AdminPanel = lazyPage(() => import('./pages/AdminPanel'))
+const RestablecerContrasena = lazyPage(() => import('./pages/RestablecerContrasena'))
+const Baneado = lazyPage(() => import('./pages/Baneado'))
+const Legal = lazyPage(() => import('./pages/Legal'))
+const FreeProfileEditor = lazyPage(() => import('./components/free/FreeProfileEditor'))
+
 const IS_MAINTENANCE_MODE = false
 const ADMIN_EMAIL = 'remaslove281@gmail.com'
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="animate-spin rounded-full h-9 w-9 border-t-2 border-b-2 border-purple-600" />
+    </div>
+  )
+}
 
 function LoadingScreen() {
   return (
@@ -93,7 +122,7 @@ function LayoutWithNav() {
     <div className="min-h-screen relative">
       <RetroRadio />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="pb-32"><Outlet /></div>
+      <div className="pb-32"><Suspense fallback={<PageLoader />}><Outlet /></Suspense></div>
       <BottomNav />
 
       {showSuggestionModal && (
@@ -106,7 +135,7 @@ function LayoutWithNav() {
             </div>
             <p className="text-gray-400 text-sm mb-4">¿Tenés una idea, encontraste un error o querés pedir una función? ¡Tu opinión nos ayuda a mejorar SANAT!</p>
             <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="Escribí tu sugerencia aquí..." className="w-full h-32 p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 resize-none mb-4 placeholder:text-gray-600" />
-            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-500 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:bg-[#2a2a2a] disabled:text-gray-400 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
               {isSendingSuggestion ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />} {isSendingSuggestion ? 'Enviando...' : 'Enviar Sugerencia'}
             </button>
           </div>
@@ -198,11 +227,26 @@ function RequireUser() {
   return <Outlet />
 }
 
+function ProfileRetryScreen({ onRetry }: { onRetry: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0f0f0f] text-center px-6">
+      <p className="text-white font-semibold">No pudimos cargar tu perfil</p>
+      <p className="text-sm text-gray-400 max-w-xs">Parece un problema de conexión. Tus datos están bien guardados.</p>
+      <button onClick={async () => { setBusy(true); await onRetry(); setBusy(false) }} disabled={busy} className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-50">
+        {busy ? 'Reintentando...' : 'Reintentar'}
+      </button>
+    </div>
+  )
+}
+
 function RequireVerified() {
-  const { user, profile, emailConfirmed, loading } = useAuth()
+  const { user, profile, emailConfirmed, loading, profileStatus, refreshProfile } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!emailConfirmed) return <Navigate to="/verificar-email" replace />
+  // Si no se pudo leer el perfil por conexión, NO es una cuenta nueva: reintentar
+  if (!profile && profileStatus === 'error') return <ProfileRetryScreen onRetry={refreshProfile} />
   if (!profile) return <Navigate to="/onboarding" replace />
 
   if (IS_MAINTENANCE_MODE && user.email !== ADMIN_EMAIL) {
@@ -230,6 +274,7 @@ function App() {
       <AnimatedBackground />
       <TestBanner />
       <BanRedirect />
+      <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
@@ -262,6 +307,7 @@ function App() {
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

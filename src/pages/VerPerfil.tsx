@@ -1,5 +1,5 @@
 // src/pages/VerPerfil.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -69,6 +69,8 @@ export default function VerPerfil() {
   // Perfil diseñado: al entrar se ve solo el diseño; lo demás con "Ver más"
   const [showMore, setShowMore] = useState(false)
   useEffect(() => { setShowMore(false) }, [id])
+  // Al entrar a un perfil, arrancar desde arriba (no donde quedó la pantalla anterior)
+  const scrolledForRef = useRef<string | undefined>(undefined)
   const navigate = useNavigate()
   const { user } = useAuth()
   const hiddenIds = useHiddenUsers()
@@ -89,6 +91,12 @@ export default function VerPerfil() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    // Una sola vez por perfil, cuando ya cargó (así no salta al refrescar datos)
+    if (loading || !id || scrolledForRef.current === id) return
+    scrolledForRef.current = id
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [id, loading])
   const [isFriend, setIsFriend] = useState(false)
   const [customLayout, setCustomLayout] = useState<ProfileLayout | null>(null)
   // Diseño libre (estilo MySpace); si existe, tiene prioridad sobre el de módulos
@@ -117,11 +125,21 @@ export default function VerPerfil() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').eq('id', id).single()
+        // Las consultas no dependen entre sí: van todas juntas (antes iban de a una)
+        const [profileRes, layoutRes, postsRes, friendsCountRes, friendRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', id).single(),
+          supabase.from('profile_layouts').select('*').eq('user_id', id).maybeSingle(),
+          supabase.from('posts').select('id, user_id, content, intention, genres, created_at, updated_at').eq('user_id', id).order('updated_at', { ascending: false }),
+          supabase.from('friends').select('*', { count: 'exact', head: true }).or(`user_id.eq.${id},friend_id.eq.${id}`),
+          user && id && user.id !== id
+            ? supabase.from('friends').select('id').eq('user_id', user.id).eq('friend_id', id)
+            : Promise.resolve({ data: null }),
+        ])
+        const { data: profileData, error: profileError } = profileRes
         if (profileError) throw profileError
         setProfile(profileData)
 
-        const { data: layoutData } = await supabase.from('profile_layouts').select('*').eq('user_id', id).maybeSingle()
+        const layoutData = layoutRes.data
         const free = layoutData?.layout_config?.layout === 'free' ? parseFreeLayout(layoutData.layout_config.free) : null
         setFreeLayout(free)
         if (free) {
@@ -135,20 +153,20 @@ export default function VerPerfil() {
           })
         } else { setCustomLayout(null) }
 
-        const { data: postsData, error: postsError } = await supabase.from('posts').select('id, user_id, content, intention, genres, created_at, updated_at').eq('user_id', id).order('updated_at', { ascending: false })
+        const { data: postsData, error: postsError } = postsRes
         if (postsError) throw postsError
         setPosts(postsData || [])
 
-        const { count: friendsCount } = await supabase.from('friends').select('*', { count: 'exact', head: true }).or(`user_id.eq.${id},friend_id.eq.${id}`)
+        const friendsCount = friendsCountRes.count
 
         setProfileStats({
           friends: friendsCount || 0,
           posts: postsData?.length || 0
         })
 
-               if (user && id && user.id !== id) {
-          const { data: friendData } = await supabase.from('friends').select('id').eq('user_id', user.id).eq('friend_id', id)
-          setIsFriend(!!(friendData && friendData.length > 0)) // ✅ Forzamos a booleano
+        if (user && id && user.id !== id) {
+          const friendData = friendRes.data
+          setIsFriend(!!(friendData && friendData.length > 0))
         }
       } catch (error) { console.error('Error al cargar perfil:', error) } finally { setLoading(false) }
     }
@@ -314,9 +332,9 @@ export default function VerPerfil() {
     <div className="min-h-screen relative text-gray-200 font-sans pb-24">
       <AnimatedBackground />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="sticky top-[var(--banner-h,0px)] z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] pl-4 pr-32 py-3 flex items-center justify-between">
+      <div className="sticky top-[var(--banner-h,0px)] z-40 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-[#2a2a2a] pl-4 pr-20 sm:pr-40 py-3 flex items-center justify-between">
         <h1 className="text-white font-bold text-lg truncate pr-2 flex-1">{profile.display_name}</h1>
-        <button onClick={() => setShowShare(true)} className="p-2 mr-2 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-gray-200 hover:text-green-400 flex-shrink-0" title="Compartir perfil" aria-label="Compartir perfil"><FaShareAlt size={15} /></button>
+        <button onClick={() => setShowShare(true)} className="p-2 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-gray-200 hover:text-green-400 flex-shrink-0" title="Compartir perfil" aria-label="Compartir perfil"><FaShareAlt size={15} /></button>
         {isMyProfile && adminAlerts.isAdmin && (
           <button onClick={() => navigate('/admin')} className="relative flex items-center gap-2 p-2 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-400 hover:bg-purple-900/50 hover:text-purple-300 transition-all flex-shrink-0" title="Panel de Administrador">
             <FaUserShield size={18} />

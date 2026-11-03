@@ -1,5 +1,5 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { unsubscribePush } from '../lib/pwa'
 import { type User } from '@supabase/supabase-js'
@@ -18,11 +18,15 @@ interface AuthContextType {
   closeHelpModal: () => void
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  // 'error' = no se pudo leer el perfil (conexión). NO significa que no exista.
+  profileStatus: ProfileStatus
 }
+
+type ProfileStatus = 'ok' | 'missing' | 'error'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const isProfileComplete = (data: any) => {
+export const isProfileComplete = (data: any) => {
   if (!data) return false
   const tieneNombre = !!data.username && !!data.display_name
   const tieneDatosOnboarding =
@@ -38,6 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [emailConfirmed, setEmailConfirmed] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('ok')
+  // Perfil ya cargado: si una lectura falla, se conserva en vez de mandar al onboarding
+  const profileRef = useRef<Profile | null>(null)
 
   const [showSuggestionModal, setShowSuggestionModal] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
@@ -51,22 +58,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false
   }
 
+  // Lee el perfil distinguiendo "no existe" de "falló la conexión" (reintenta 3 veces).
+  // Antes, cualquier falla momentánea (por ejemplo al volver a una pestaña dormida)
+  // se tomaba como "no tiene perfil" y mandaba al onboarding, que pisaba los datos.
+  const loadProfile = async (userId: string) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+        if (!error) {
+          if (data && (await applyBannedCheck(data))) { profileRef.current = null; setProfile(null); setProfileStatus('missing'); return }
+          const complete = isProfileComplete(data) ? (data as Profile) : null
+          profileRef.current = complete
+          setProfile(complete)
+          setProfileStatus(complete ? 'ok' : 'missing')
+          return
+        }
+        console.warn('No se pudo leer el perfil (intento ' + (attempt + 1) + '):', error.message)
+      } catch (e) {
+        console.warn('No se pudo leer el perfil (intento ' + (attempt + 1) + '):', e)
+      }
+      await new Promise(r => setTimeout(r, 1200 * (attempt + 1)))
+    }
+    // Falló de verdad: si ya teníamos el perfil, lo conservamos
+    if (profileRef.current) { setProfile(profileRef.current); setProfileStatus('ok') }
+    else setProfileStatus('error')
+  }
+
   const refreshProfile = async () => {
     if (!user) return
-    try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data && (await applyBannedCheck(data))) return
-      setProfile(isProfileComplete(data) ? data : null)
-    } catch (e) {
-      console.error("Error refrescando perfil:", e)
-      setProfile(null)
-    }
+    await loadProfile(user.id)
   }
 
   const signOut = async () => {
     await unsubscribePush()
     await supabase.auth.signOut()
     setUser(null)
+    profileRef.current = null
     setProfile(null)
     setEmailConfirmed(false)
   }
@@ -115,21 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           setEmailConfirmed(!!session.user.email_confirmed_at)
-          const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-          if (!error && data) {
-            const banned = await applyBannedCheck(data)
-            setProfile(!banned && isProfileComplete(data) ? data : null)
-          } else {
-            setProfile(null)
-          }
+          await loadProfile(session.user.id)
         } else {
+          profileRef.current = null
           setProfile(null)
           setEmailConfirmed(false)
         }
       } catch (error) {
         console.error("Error verificando sesión:", error)
-        setProfile(null)
-        setEmailConfirmed(false)
+        if (!profileRef.current) setProfileStatus('error')
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -139,28 +160,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return
-      if (event === 'SIGNED_IN') setLoading(true)
-
       setUser(session?.user ?? null)
       setEmailConfirmed(!!session?.user?.email_confirmed_at)
 
-      if (session?.user) {
-        try {
-          const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-          if (!error && data) {
-            const banned = await applyBannedCheck(data)
-            setProfile(!banned && isProfileComplete(data) ? data : null)
-          } else {
-            setProfile(null)
-          }
-        } catch (error) {
-          console.error("Error en onAuthStateChange:", error)
-          setProfile(null)
-        }
-      } else {
+      if (!session?.user) {
+        profileRef.current = null
         setProfile(null)
+        setProfileStatus('ok')
+        if (isMounted) setLoading(false)
+        return
       }
 
+      // Renovación de la sesión (pasa sola, por ejemplo al volver a una pestaña dormida):
+      // la persona es la misma, no hace falta volver a leer el perfil
+      const sameUser = profileRef.current?.id === session.user.id
+      if (sameUser && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
+        if (isMounted) setLoading(false)
+        return
+      }
+
+      if (event === 'SIGNED_IN') setLoading(true)
+      await loadProfile(session.user.id)
       if (isMounted) setLoading(false)
     })
 
@@ -183,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openHelpModal,
       closeHelpModal,
       signOut,
+      profileStatus,
       refreshProfile
     }}>
       {children}

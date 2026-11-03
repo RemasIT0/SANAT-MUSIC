@@ -301,10 +301,12 @@ export default function Home() {
       const start = isLoadMore ? offsetRef.current : 0;
       let query = supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, start + POSTS_PER_PAGE - 1);
       if (user) query = query.neq('user_id', user.id);
-      const { data: postsData, error: postsError } = await query;
+      // Mi publicación y la página del feed se piden juntas (antes, una después de la otra)
+      const [{ data: postsData, error: postsError }] = await Promise.all([
+        query,
+        isLoadMore ? Promise.resolve() : fetchMyPost(),
+      ]);
       if (postsError) throw postsError;
-
-      if (!isLoadMore) await fetchMyPost();
 
       const combined = await enrichPosts(postsData || []);
       offsetRef.current = start + (postsData?.length || 0);
