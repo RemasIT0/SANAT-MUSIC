@@ -24,6 +24,15 @@ type Tab = 'add' | 'element' | 'background' | 'designs'
 const SOCIAL_PLATFORMS = ['Instagram', 'YouTube', 'Spotify', 'TikTok', 'Twitter/X']
 const TEXT_TYPES: FreeElementType[] = ['name', 'bio', 'instruments', 'genres', 'location', 'friends', 'social', 'text', 'marquee']
 const WARNING_KEY = 'sanat_free_editor_warning_seen'
+// Borrador automático: se guarda en este dispositivo mientras se edita, para no perder nada
+const draftKey = (userId: string) => `sanat_profile_draft_${userId}`
+const readDraft = (userId: string): { layout: any; savedAt: number } | null => {
+  try { const raw = localStorage.getItem(draftKey(userId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+const writeDraft = (userId: string, layout: FreeLayout) => {
+  try { localStorage.setItem(draftKey(userId), JSON.stringify({ layout, savedAt: Date.now() })); return true } catch { return false }
+}
+const clearDraft = (userId: string) => { try { localStorage.removeItem(draftKey(userId)) } catch {} }
 
 interface SavedDesign { id: string; name: string; data: FreeLayout; created_at: string }
 
@@ -44,6 +53,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
   const [zoom, setZoom] = useState(1)
   const [showWarning, setShowWarning] = useState(false)
   const [newLink, setNewLink] = useState({ platform: 'Instagram', url: '' })
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null)
 
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -65,12 +75,56 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
       ])
       const existing = layoutRow?.layout_config?.layout === 'free' ? parseFreeLayout(layoutRow.layout_config.free) : null
       setLayout(existing || defaultFreeLayout(!!profile?.audio_url))
+
+      // ¿Quedó un borrador sin publicar (se cerró la página, se cortó internet...)?
+      const draft = readDraft(user.id)
+      const draftLayout = draft ? parseFreeLayout(draft.layout) : null
+      if (draft && draftLayout && JSON.stringify(draftLayout) !== JSON.stringify(existing)) {
+        const when = new Date(draft.savedAt).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        const recover = await confirm({
+          title: '¿Recuperar tu diseño sin publicar?',
+          message: `Encontramos cambios guardados automáticamente el ${when} que no llegaste a publicar.`,
+          confirmLabel: 'Recuperar',
+        })
+        if (recover) {
+          setLayout(draftLayout)
+          setDirty(true)
+          setDraftSavedAt(draft.savedAt)
+          setToast({ message: 'Recuperamos tu diseño. Tocá Publicar cuando quieras usarlo.', type: 'success' })
+        } else {
+          clearDraft(user.id)
+        }
+      } else if (draft) {
+        clearDraft(user.id)
+      }
       setFriendsCount(count || 0)
       setDesigns((savedDesigns as SavedDesign[]) || [])
     }
     load()
     try { if (!sessionStorage.getItem(WARNING_KEY) && window.innerWidth < 1024) setShowWarning(true) } catch {}
   }, [user])
+
+  // ---------- Autoguardado del borrador ----------
+  // Cada cambio se guarda en este dispositivo (un instante después de dejar de editar)
+  useEffect(() => {
+    if (!user || !layout || !dirty) return
+    const timer = window.setTimeout(() => {
+      if (writeDraft(user.id, layout)) setDraftSavedAt(Date.now())
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [layout, dirty, user])
+
+  // Si se cierra o recarga la pestaña: guardar ya y avisar que hay cambios sin publicar
+  useEffect(() => {
+    if (!user || !dirty || !layout) return
+    const onLeave = (e: BeforeUnloadEvent) => {
+      writeDraft(user.id, layout)
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onLeave)
+    return () => window.removeEventListener('beforeunload', onLeave)
+  }, [layout, dirty, user])
 
   // ---------- Escala del lienzo ----------
   useEffect(() => {
@@ -253,6 +307,8 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     setSaving(false)
     if (error) { setToast({ message: 'Error al guardar: ' + error.message, type: 'error' }); return }
     setDirty(false)
+    clearDraft(user.id)
+    setDraftSavedAt(null)
     setToast({ message: '¡Perfil publicado!', type: 'success' })
     setTimeout(onClose, 350)
   }
@@ -293,7 +349,10 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
   }
 
   const handleClose = async () => {
-    if (dirty && !(await confirm({ title: '¿Salir sin publicar?', message: 'Tenés cambios que todavía no publicaste. Si salís, se pierden.', confirmLabel: 'Salir igual', danger: true }))) return
+    if (dirty) {
+      if (user && layout) writeDraft(user.id, layout)
+      if (!(await confirm({ title: '¿Salir sin publicar?', message: 'Tus cambios quedan guardados como borrador en este dispositivo: la próxima vez que entres a Diseñar perfil te vamos a ofrecer recuperarlos.', confirmLabel: 'Salir' }))) return
+    }
     onClose()
   }
 
@@ -340,6 +399,11 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
           <button onClick={() => setZoom(1)} className="p-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a]" aria-label="Ajustar"><FaExpand size={12} /></button>
         </div>
         <button onClick={restartFromDefault} className={`${smallBtn} bg-[#2a2a2a] text-gray-200 hover:bg-[#333]`} title="Empezar de nuevo"><FaUndo size={11} /> <span className="hidden sm:inline">Empezar de nuevo</span></button>
+        {dirty && draftSavedAt && (
+          <span className="hidden sm:inline text-[11px] text-gray-400" title="Se guarda solo en este dispositivo mientras editás">
+            Borrador guardado {new Date(draftSavedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
         <button onClick={save} disabled={saving} className={`${smallBtn} bg-purple-700 hover:bg-purple-600 text-white disabled:opacity-50`}>{saving ? <FaSpinner className="animate-spin" /> : <FaSave size={12} />} Publicar</button>
       </div>
 

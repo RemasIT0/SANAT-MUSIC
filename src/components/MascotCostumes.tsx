@@ -13,7 +13,7 @@ export type MascotExpression =
   | 'turro' | 'zombie' | 'esqueleto' | 'otaku' | 'blackmetal' | 'fantasma'
   | 'timido' | 'cerdito' | 'pollito'
   | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro' | 'payaso'
-  | 'bufon' | 'verdugo' | 'sombra' | 'infectado' | 'penitente'
+  | 'bufon' | 'verdugo' | 'sombra' | 'infectado' | 'penitente' | 'lord'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -51,6 +51,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'sombra', label: 'Sombra' },
   { id: 'infectado', label: 'Infectado' },
   { id: 'penitente', label: 'Penitente' },
+  { id: 'lord', label: 'Lord' },
 ]
 
 interface CostumeCtx {
@@ -1115,6 +1116,63 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         </Layer>
       </>
     ),
+    face: () => null,
+  },
+
+  lord: {
+    // Penacho carmesí que cae hacia atrás desde la cresta del yelmo
+    back: () => (
+      <Layer top={-58} left={-30} w={120} h={110}>
+        <path d="M86 40 Q70 0 34 6 Q8 12 2 44 Q16 26 30 30 Q12 44 10 74 Q26 52 40 52 Q30 70 34 98 Q46 70 60 62 Q60 50 86 40 Z" fill="#9f1239" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M70 26 Q48 18 26 32 M64 44 Q42 44 24 62 M58 56 Q46 66 40 84" fill="none" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: ({ eye }) => (
+      <>
+        {/* Hombreras */}
+        {[-24, 96].map(left => (
+          <Layer key={left} top={52} left={left} w={30} h={24} className="z-20">
+            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill="url(#lord-steel)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M6 14 L24 14" stroke="#64748b" strokeWidth="2" />
+          </Layer>
+        ))}
+        {/* Yelmo cerrado, un poco más grande que el cuerpo */}
+        <Layer top={-30} left={-14} w={128} h={132} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
+          <defs>
+            <linearGradient id="lord-steel" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#94a3b8" />
+              <stop offset="0.35" stopColor="#e2e8f0" />
+              <stop offset="0.6" stopColor="#cbd5e1" />
+              <stop offset="1" stopColor="#64748b" />
+            </linearGradient>
+          </defs>
+          {/* Cuerpo del yelmo: cúpula y mejillas que bajan */}
+          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill="url(#lord-steel)" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          {/* Cresta central */}
+          <path d="M64 4 L64 44" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          <path d="M60 6 L60 44 M68 6 L68 44" stroke="#64748b" strokeWidth="1.5" />
+          {/* Banda de la frente con remaches */}
+          <path d="M9 40 Q64 30 119 40 L119 48 Q64 38 9 48 Z" fill="#475569" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          {[18, 40, 64, 88, 110].map(x => <circle key={x} cx={x} cy={x === 64 ? 37 : 41} r="2.4" fill="#e2e8f0" stroke={INK} strokeWidth="1" />)}
+          {/* Ranura de la visera con ojos que brillan */}
+          <path d="M14 56 Q64 50 114 56 L114 68 Q64 62 14 68 Z" fill="#0b0b0f" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <circle cx={42 + eye.x * 0.9} cy={61 + eye.y * 0.4} r="3.2" fill="#fbbf24" style={{ filter: 'drop-shadow(0 0 4px #f59e0b)' }} />
+          <circle cx={86 + eye.x * 0.9} cy={61 + eye.y * 0.4} r="3.2" fill="#fbbf24" style={{ filter: 'drop-shadow(0 0 4px #f59e0b)' }} />
+          {/* Arista de la visera */}
+          <path d="M64 68 L64 122" stroke="#f8fafc" strokeWidth="2.5" strokeLinecap="round" opacity="0.85" />
+          {/* Agujeros para respirar, en cruz a cada lado */}
+          {[[30, 82], [38, 82], [30, 92], [38, 92], [30, 102], [90, 82], [98, 82], [90, 92], [98, 92], [98, 102]].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="2.6" fill="#0b0b0f" />
+          ))}
+          {/* Borde inferior con remaches */}
+          <path d="M11 116 Q64 124 117 116" fill="none" stroke="#475569" strokeWidth="4" />
+          {[22, 44, 64, 84, 106].map(x => <circle key={x} cx={x} cy={x === 64 ? 120 : 118} r="2.2" fill="#e2e8f0" stroke={INK} strokeWidth="1" />)}
+          {/* Brillo del metal */}
+          <path d="M24 22 Q34 12 50 9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+        </Layer>
+      </>
+    ),
+    // La cara la tapa el yelmo
     face: () => null,
   },
 }

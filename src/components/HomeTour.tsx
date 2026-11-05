@@ -6,10 +6,20 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import Mascot from './Mascot'
-import { FaBullhorn, FaLock, FaHandRock } from 'react-icons/fa'
+import { FaBullhorn, FaLock, FaHandRock, FaHandHoldingHeart, FaUserEdit, FaMicrophoneAlt, FaPalette } from 'react-icons/fa'
+import { useAppSettings } from '../hooks/useAppSettings'
+import DonationModal from './DonationModal'
 
 // Sin "target": la burbuja aparece centrada (saludo inicial)
-interface Step { target?: string; title: string; text: string; rules?: boolean }
+interface Step {
+  target?: string
+  title: string
+  text: string
+  rules?: boolean
+  image?: string      // captura de ejemplo dentro de la burbuja
+  profileTips?: boolean
+  donate?: boolean    // paso final: panel de colaboración
+}
 
 const STEPS: Step[] = [
   { title: '¡Bienvenido a SANAT!', text: 'Soy tu personaje y te voy a mostrar cómo funciona todo. Antes, tres reglas de la casa:', rules: true },
@@ -17,9 +27,18 @@ const STEPS: Step[] = [
   { target: 'publicacion', title: 'Tu publicación', text: 'Contá qué buscás. Si elegís "Busco músicos", SANAT les avisa a los que tocan eso cerca tuyo.' },
   { target: 'filtros', title: 'Filtrá el feed', text: 'Mostrá solo publicaciones de tu zona, de un género o con una intención.' },
   { target: 'nav-mensajes', title: 'Mensajes', text: 'Tus chats, tus amigos y los avisos de la administración.' },
-  { target: 'nav-perfil', title: 'Tu perfil', text: 'Editá tus datos, subí tu audio y diseñá tu perfil como quieras.' },
+  { target: 'nav-perfil', title: 'Tu perfil', text: 'Acá está tu perfil: lo que ven los demás cuando te buscan. Desde ahí lo editás y lo diseñás.' },
+  { title: 'Editar datos', text: 'En tu perfil, el botón "Editar datos" es para lo básico:', profileTips: true },
+  { title: 'Diseñá tu perfil', text: 'Con "Diseñar perfil" armás tu página como quieras: fondos, letras, stickers, luces y animaciones. Hay plantillas listas y se guarda sola mientras editás. Por ejemplo, así puede quedar:', image: '/tour-diseno.jpg' },
   { target: 'nav-asistente', title: '¿Dudas?', text: 'Preguntale a Sani, el asistente. También te recomienda canciones.' },
   { target: 'radio', title: 'Radio SANAT', text: 'Escuchá radios de rock nacional mientras navegás.' },
+  { title: 'Apoyá SANAT', text: 'SANAT es gratis y sin publicidad. Si te sirve y querés que siga creciendo, podés colaborar con lo que quieras para mantener los servidores. Siempre lo encontrás en Opciones.', donate: true },
+]
+
+const PROFILE_TIPS = [
+  { icon: FaUserEdit, text: 'Foto, nombre, bio, instrumentos, géneros y zona' },
+  { icon: FaPalette, text: 'Color y estilo de tu mascota' },
+  { icon: FaMicrophoneAlt, text: 'Un audio de 30 segundos para que escuchen cómo sonás' },
 ]
 
 const RULES = [
@@ -33,6 +52,8 @@ const seenKey = (userId: string) => `sanat_welcome_seen_${userId}`
 
 export default function HomeTour() {
   const { user, profile } = useAuth()
+  const { settings } = useAppSettings()
+  const [showDonation, setShowDonation] = useState(false)
   const [step, setStep] = useState<number | null>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
 
@@ -95,8 +116,9 @@ export default function HomeTour() {
     setStep(index)
   }
 
-  if (step === null) return null
+  if (step === null) return showDonation && settings ? <DonationModal settings={settings} onClose={() => setShowDonation(false)} /> : null
   const current = STEPS[step]
+  const canDonate = !!settings?.donation_enabled
   const centered = !current.target
   if (!centered && !rect) return null
 
@@ -128,11 +150,29 @@ export default function HomeTour() {
       {/* Burbuja con la mascota */}
       <div className={`absolute flex gap-2 animate-[fadeIn_0.25s_ease-out] ${centered ? 'flex-col items-center' : 'items-end'}`} style={{ width: bubbleWidth, ...position }}>
         <div className={`flex-shrink-0 ${centered ? 'mascot-wiggle' : 'mb-1'}`}>
-          <Mascot color={profile?.avatar_color || '#a855f7'} size={centered ? 84 : 44} expression="feliz" />
+          <Mascot color={profile?.avatar_color || '#a855f7'} size={centered ? (current.image ? 56 : 84) : 44} expression="feliz" />
         </div>
-        <div className={`relative flex-1 w-full bg-[#1c1030] border border-purple-500/50 text-white rounded-2xl p-3.5 shadow-2xl shadow-purple-950/60 ${centered ? '' : 'rounded-bl-sm'}`}>
+        <div className={`relative flex-1 w-full bg-[#1c1030] border border-purple-500/50 text-white rounded-2xl p-3.5 shadow-2xl shadow-purple-950/60 max-h-[72vh] overflow-y-auto ${centered ? '' : 'rounded-bl-sm'}`}>
           <p id="tour-title" className={`font-bold mb-1 ${centered ? 'text-lg text-center' : 'text-sm'}`}>{current.title}</p>
           <p className={`text-sm leading-snug text-purple-100/90 ${centered ? 'text-center' : ''}`}>{current.text}</p>
+          {current.profileTips && (
+            <ul className="mt-3 space-y-2">
+              {PROFILE_TIPS.map(tip => (
+                <li key={tip.text} className="flex items-center gap-2.5 bg-black/30 border border-purple-500/20 rounded-xl p-2.5">
+                  <span className="w-8 h-8 rounded-lg bg-purple-700/40 flex items-center justify-center flex-shrink-0"><tip.icon className="text-purple-200" size={13} /></span>
+                  <span className="text-sm">{tip.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {current.image && (
+            <img src={current.image} alt="Ejemplo de un perfil diseñado en SANAT" className="mt-3 w-full rounded-xl border border-purple-500/30" loading="lazy" />
+          )}
+          {current.donate && canDonate && (
+            <button onClick={() => { finish(); setShowDonation(true) }} className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-sm font-semibold">
+              <FaHandHoldingHeart size={14} /> Quiero colaborar
+            </button>
+          )}
           {current.rules && (
             <ul className="mt-3 space-y-2">
               {RULES.map(rule => (
