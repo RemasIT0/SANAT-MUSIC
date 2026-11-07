@@ -46,8 +46,8 @@ const GENEROS_FIJOS = [
   { name: 'Jazz', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' },
   { name: 'Electrónica', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' },
   { name: 'Indie', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' },
-  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },       
-  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }   
+  { name: 'Metal', color: 'bg-gray-800/40 text-gray-300 border-gray-600' },
+  { name: 'Grunge', color: 'bg-stone-700/40 text-stone-300 border-stone-500' }
 ]
 
 const PALETA_COMPLETA = [
@@ -65,17 +65,18 @@ export default function EditarPerfil() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-  
+
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(profile?.avatar_url || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   const isInitialized = useRef(false)
-  
+
   const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || coloresMascota[0])
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme_color || '#a855f7')
   const [selectedExpression, setSelectedExpression] = useState<MascotExpression>((profile?.expression as any) || 'normal')
-  
+  const [mascotNote, setMascotNote] = useState(profile?.mascot_note || '')
+
   // ✅ Estado para leer tu last_seen en tiempo real en esta pantalla
   const [liveLastSeen, setLiveLastSeen] = useState<string | null>(null)
 
@@ -92,7 +93,7 @@ export default function EditarPerfil() {
     }
   }, [user])
 
-  const initialGenres = Array.isArray(profile?.genres) 
+  const initialGenres = Array.isArray(profile?.genres)
     ? profile.genres.map(g => String(g).toLowerCase().trim())
     : (profile?.genres ? [String(profile.genres).toLowerCase().trim()] : [])
 
@@ -126,11 +127,11 @@ export default function EditarPerfil() {
   useEffect(() => {
     if (profile && !isInitialized.current) {
       isInitialized.current = true
-      
-      const safeGenres = Array.isArray(profile.genres) 
+
+      const safeGenres = Array.isArray(profile.genres)
         ? profile.genres.map(g => String(g).toLowerCase().trim())
         : (profile.genres ? [String(profile.genres).toLowerCase().trim()] : [])
-      
+
       const initialData = {
         username: profile.username || '',
         display_name: profile.display_name || '',
@@ -157,6 +158,7 @@ export default function EditarPerfil() {
       setSelectedColor(initialData.avatar_color)
       setSelectedTheme(initialData.theme_color)
       setSelectedExpression(initialData.expression)
+      setMascotNote(profile.mascot_note || '')
       setImagePreview(initialData.avatar_url)
     }
   }, [profile])
@@ -197,7 +199,7 @@ export default function EditarPerfil() {
     })
   }
 
-  const isFormValid = 
+  const isFormValid =
     formData.username.trim().length > 0 &&
     formData.display_name.trim().length > 0 &&
     cleanInstruments(instruments).length > 0 &&
@@ -206,8 +208,8 @@ export default function EditarPerfil() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !isFormValid) return
-    
-    const hasChanges = 
+
+    const hasChanges =
       formData.username !== originalData.username ||
       formData.display_name !== originalData.display_name ||
       formData.bio !== originalData.bio ||
@@ -218,6 +220,7 @@ export default function EditarPerfil() {
       selectedColor !== originalData.avatar_color ||
       selectedTheme !== originalData.theme_color ||
       selectedExpression !== originalData.expression ||
+      mascotNote.trim() !== (profile?.mascot_note || '').trim() ||
       imageFile !== null
 
     if (!hasChanges) {
@@ -263,13 +266,12 @@ export default function EditarPerfil() {
         const { data: urlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath)
-        
+
         finalAvatarUrl = urlData.publicUrl
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      const noteChanged = mascotNote.trim() !== (profile?.mascot_note || '').trim()
+      const payload: Record<string, unknown> = {
           username: formData.username,
           display_name: formData.display_name,
           bio: formData.bio,
@@ -282,18 +284,25 @@ export default function EditarPerfil() {
           departamento: formData.departamento,
           localidad: formData.localidad,
           updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      }
+      // La notita solo se manda si cambió (así no falla si todavía no se corrió el SQL de notitas)
+      if (noteChanged) payload.mascot_note = mascotNote.trim() || null
+      let { error } = await supabase.from('profiles').update(payload).eq('id', user.id)
+      if (error && noteChanged && /mascot_note/.test(error.message)) {
+        delete payload.mascot_note
+        ;({ error } = await supabase.from('profiles').update(payload).eq('id', user.id))
+        if (!error) setToast({ message: 'Se guardó tu perfil, pero la notita todavía no está activada (falta el SQL de notitas).', type: 'info' })
+      }
 
       if (error) throw error
-      
+
       setToast({ message: 'Perfil actualizado correctamente', type: 'success' })
       await refreshProfile()
-      
+
       setTimeout(() => {
         navigate(`/perfil/${user.id}`, { replace: true })
       }, 1500)
-      
+
     } catch (error: any) {
       setToast({ message: 'Error al guardar: ' + error.message, type: 'error' })
     } finally {
@@ -317,14 +326,14 @@ export default function EditarPerfil() {
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full">
           <div className="flex flex-col items-center bg-[#111] p-4 rounded-xl border border-[#2a2a2a] w-full md:w-auto">
-            
+
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <Avatar 
-                url={imagePreview} 
-                name={formData.display_name || 'Usuario'} 
-                color={selectedColor} 
-                size={100} 
-                isOnline={isUserOnline(liveLastSeen)} 
+              <Avatar
+                url={imagePreview}
+                name={formData.display_name || 'Usuario'}
+                color={selectedColor}
+                size={100}
+                isOnline={isUserOnline(liveLastSeen)}
               />
               <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <FaCamera className="text-white text-2xl" />
@@ -333,7 +342,7 @@ export default function EditarPerfil() {
 
             <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
             <p className="text-xs text-gray-500 mt-2">Toca para cambiar foto</p>
-            
+
             <div className="mt-4 w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">Color de tu Mascota</label>
               <div className="flex gap-2 flex-wrap justify-center">
@@ -342,26 +351,26 @@ export default function EditarPerfil() {
                     className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedColor === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                     style={{ backgroundColor: color }} />
                 ))}
-                <label 
+                <label
                   htmlFor="custom-mascot-color"
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
                     !coloresMascota.includes(selectedColor) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
                   }`}
                   style={{
-                    background: !coloresMascota.includes(selectedColor) 
-                      ? selectedColor 
+                    background: !coloresMascota.includes(selectedColor)
+                      ? selectedColor
                       : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
                   }}
                   title="Elegir color personalizado"
                 >
                   <FaPalette className="text-white drop-shadow-md" size={12} />
                 </label>
-                <input 
-                  type="color" 
-                  id="custom-mascot-color" 
-                  value={selectedColor} 
-                  onChange={(e) => setSelectedColor(e.target.value)} 
-                  className="hidden" 
+                <input
+                  type="color"
+                  id="custom-mascot-color"
+                  value={selectedColor}
+                  onChange={(e) => setSelectedColor(e.target.value)}
+                  className="hidden"
                 />
               </div>
             </div>
@@ -374,26 +383,26 @@ export default function EditarPerfil() {
                     className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedTheme === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                     style={{ backgroundColor: color }} />
                 ))}
-                <label 
+                <label
                   htmlFor="custom-theme-color"
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ${
                     !coloresTema.includes(selectedTheme) ? 'border-white scale-110' : 'border-transparent hover:scale-105'
                   }`}
                   style={{
-                    background: !coloresTema.includes(selectedTheme) 
-                      ? selectedTheme 
+                    background: !coloresTema.includes(selectedTheme)
+                      ? selectedTheme
                       : 'conic-gradient(from 180deg, red, yellow, lime, aqua, blue, magenta, red)'
                   }}
                   title="Elegir color personalizado"
                 >
                   <FaPalette className="text-white drop-shadow-md" size={12} />
                 </label>
-                <input 
-                  type="color" 
-                  id="custom-theme-color" 
-                  value={selectedTheme} 
-                  onChange={(e) => setSelectedTheme(e.target.value)} 
-                  className="hidden" 
+                <input
+                  type="color"
+                  id="custom-theme-color"
+                  value={selectedTheme}
+                  onChange={(e) => setSelectedTheme(e.target.value)}
+                  className="hidden"
                 />
               </div>
             </div>
@@ -403,6 +412,20 @@ export default function EditarPerfil() {
             <div className="mt-6 w-full">
               <label className="block text-xs font-medium text-gray-400 mb-2 text-center">¿Cómo se siente tu mascota hoy?</label>
               <MascotPicker color={selectedColor} value={selectedExpression} onChange={setSelectedExpression} />
+            </div>
+
+            {/* Notita: la dice la mascota en tu perfil, en un globito que aparece y se va */}
+            <div className="mt-5 w-full">
+              <label htmlFor="mascot-note" className="block text-xs font-medium text-gray-400 mb-2 text-center">Notita de tu mascota (opcional)</label>
+              <input
+                id="mascot-note"
+                value={mascotNote}
+                onChange={e => setMascotNote(e.target.value.slice(0, 60))}
+                maxLength={60}
+                placeholder="Ej: ¡Busco baterista para los findes!"
+                className="w-full p-2.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-sm text-white text-center focus:outline-none focus:border-purple-500 placeholder:text-gray-500"
+              />
+              <p className="text-[11px] text-gray-500 mt-1 text-center">{mascotNote.length}/60 · Aparece en un globito que sale de tu mascota en tu perfil, unos segundos y se va.</p>
             </div>
           </div>
 
@@ -450,11 +473,11 @@ export default function EditarPerfil() {
                 const normalizedGenre = genero.name.toLowerCase().trim()
                 const currentNormalized = formData.genres.map(g => String(g).toLowerCase().trim())
                 const isSelected = currentNormalized.includes(normalizedGenre)
-                
+
                 return (
-                  <button 
-                    key={genero.name} 
-                    type="button" 
+                  <button
+                    key={genero.name}
+                    type="button"
                     onClick={() => toggleGenre(genero.name)}
                     className={`px-4 py-2 rounded-full border text-sm font-semibold transition-all duration-200 ${
                       isSelected ? `${genero.color} scale-105 shadow-lg` : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-500 hover:border-gray-500'
@@ -466,7 +489,7 @@ export default function EditarPerfil() {
               })}
             </div>
           </div>
-           
+
 
            <button
   type="button"
@@ -477,8 +500,8 @@ export default function EditarPerfil() {
 </button>
 
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading || !isFormValid}
             className={`w-full py-3 font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
               loading || !isFormValid
@@ -488,7 +511,7 @@ export default function EditarPerfil() {
           >
             {loading ? <><FaSpinner className="animate-spin" /> Guardando cambios...</> : 'Guardar Cambios'}
           </button>
-          
+
           {!isFormValid && !loading && (
             <p className="text-center text-xs text-red-400 mt-2 font-medium">
               * Debes tener al menos 1 género seleccionado para poder guardar.

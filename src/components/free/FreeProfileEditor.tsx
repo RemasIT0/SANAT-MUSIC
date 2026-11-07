@@ -401,7 +401,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
         <button onClick={restartFromDefault} className={`${smallBtn} bg-[#2a2a2a] text-gray-200 hover:bg-[#333]`} title="Empezar de nuevo"><FaUndo size={11} /> <span className="hidden sm:inline">Empezar de nuevo</span></button>
         {dirty && draftSavedAt && (
           <span className="hidden sm:inline text-[11px] text-gray-400" title="Se guarda solo en este dispositivo mientras editás">
-            Borrador guardado {new Date(draftSavedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+            Borrador guardado {new Date(draftSavedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}
           </span>
         )}
         <button onClick={save} disabled={saving} className={`${smallBtn} bg-purple-700 hover:bg-purple-600 text-white disabled:opacity-50`}>{saving ? <FaSpinner className="animate-spin" /> : <FaSave size={12} />} Publicar</button>

@@ -10,10 +10,11 @@ export interface Profile {
   username: string;
   display_name: string;
   bio: string;
-  avatar_url?: string;       
+  avatar_url?: string;
   avatar_color?: string;
   theme_color: string
   expression?: MascotExpression;
+  mascot_note?: string | null;  // notita que dice la mascota en el perfil
   last_seen?: string | null;
   audio_url?: string | null;
   instruments: Instrument[];

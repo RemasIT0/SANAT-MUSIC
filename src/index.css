@@ -172,3 +172,17 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .tv-flicker, .tv-roll, .tv-noise { animation: none !important; }
 }
+
+/* Mascota "Sombra": aparece y se desvanece despacio */
+.mascot-fade { animation: mascot-fade 6s ease-in-out infinite; }
+@keyframes mascot-fade { 0%, 100% { opacity: 0.55; } 45%, 60% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mascot-fade { animation: none; opacity: 0.85; } }
+
+/* Dark King: aura de fuego suave que sube desde los ojos */
+.darkking-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: darkking-flame 1.6s ease-in-out infinite; }
+@keyframes darkking-flame {
+  0%, 100% { transform: scaleY(0.85) scaleX(1); opacity: 0.55; }
+  35% { transform: scaleY(1.15) scaleX(0.92); opacity: 0.85; }
+  70% { transform: scaleY(0.95) scaleX(1.05); opacity: 0.65; }
+}
+@media (prefers-reduced-motion: reduce) { .darkking-flame { animation: none; opacity: 0.6; } }

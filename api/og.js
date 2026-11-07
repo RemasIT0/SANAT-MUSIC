@@ -1,11 +1,12 @@
 // api/og.js (función de Vercel)
-// Link para compartir un perfil: /p/<id>
+// Links para compartir: /p/<id> (perfil), /b/<id> (banda), /e/<id> (evento).
 // WhatsApp, Instagram, etc. leen estas etiquetas para armar la vista previa con
-// nombre, descripción e imagen. Las personas son redirigidas al perfil en la app.
-// Usa solo la función pública "public_profile_card" (nombre, instrumento, zona, foto).
+// título, descripción e imagen. Las personas son redirigidas a la página en la app.
+// Usa solo funciones públicas de Supabase que devuelven datos resumidos.
 
 const SITE_NAME = 'SANAT'
 const DEFAULT_IMAGE = '/og-image.jpg'
+const TIME_ZONE = 'America/Argentina/Tucuman'
 
 const escapeHtml = (text) => String(text ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -13,12 +14,21 @@ const escapeHtml = (text) => String(text ?? '')
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-async function loadCard(id) {
+const EVENT_LABELS = { show: 'Show', jam: 'Jam', ensayo: 'Ensayo abierto', otro: 'Evento' }
+
+// Qué función pública consultar, a dónde llevar a la persona y cómo se ve cada tipo
+const TYPES = {
+  profile: { rpc: 'public_profile_card', path: 'p', target: (id) => `/perfil/${id}`, ogType: 'profile' },
+  band: { rpc: 'public_band_card', path: 'b', target: (id) => `/banda/${id}`, ogType: 'website' },
+  event: { rpc: 'public_event_card', path: 'e', target: (id) => `/home?seccion=eventos&evento=${id}`, ogType: 'website' },
+}
+
+async function loadCard(rpc, id) {
   const url = process.env.VITE_SUPABASE_URL
   const key = process.env.VITE_SUPABASE_ANON_KEY
   if (!url || !key || !UUID.test(id)) return null
   try {
-    const res = await fetch(`${url}/rest/v1/rpc/public_profile_card`, {
+    const res = await fetch(`${url}/rest/v1/rpc/${rpc}`, {
       method: 'POST',
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_id: id }),
@@ -31,21 +41,50 @@ async function loadCard(id) {
   }
 }
 
+// WhatsApp no muestra imágenes WebP: en ese caso se usa la imagen de SANAT
+const usableImage = (url) => (url && !/\.webp(\?|$)/i.test(url) ? url : null)
+
+export function describe(type, card) {
+  if (!card) {
+    return { title: `${SITE_NAME} · Comunidad de músicos de Tucumán`, description: 'Encontrá banda, sumá integrantes y enterate de shows y jams en Tucumán.', image: null }
+  }
+  if (type === 'band') {
+    const details = [card.genres, card.localidad, card.members ? `${card.members} integrante${card.members === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')
+    const looking = card.looking ? `Buscan: ${card.looking}` : ''
+    return {
+      title: `${card.name} · Banda en ${SITE_NAME}`,
+      description: [details, looking, card.bio].filter(Boolean).join(' — ') || 'Conocé la banda, escuchá a sus integrantes y postulate.',
+      image: usableImage(card.logo_url),
+    }
+  }
+  if (type === 'event') {
+    const when = card.starts_at
+      ? new Date(card.starts_at).toLocaleString('es-AR', { timeZone: TIME_ZONE, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false })
+      : ''
+    const place = [card.place, card.departamento].filter(Boolean).join(', ')
+    return {
+      title: `${EVENT_LABELS[card.event_type] || 'Evento'}: ${card.title}`,
+      description: [when && `${when} hs`, place, card.band_name && `con ${card.band_name}`, card.description].filter(Boolean).join(' — '),
+      image: null,
+    }
+  }
+  const details = [card.instrument, card.localidad].filter(Boolean).join(' · ')
+  return {
+    title: `${card.display_name} en ${SITE_NAME}`,
+    description: [details, card.bio ? card.bio.slice(0, 140) : ''].filter(Boolean).join(' — ') || 'Mirá su perfil, escuchá cómo suena y escribile.',
+    image: usableImage(card.avatar_url),
+  }
+}
+
 export default async function handler(req, res) {
   const id = String(req.query.id || '')
+  const type = TYPES[String(req.query.type || 'profile')] ? String(req.query.type || 'profile') : 'profile'
+  const conf = TYPES[type]
   const origin = `https://${req.headers['x-forwarded-host'] || req.headers.host}`
-  const target = UUID.test(id) ? `/perfil/${id}` : '/home'
-  const card = await loadCard(id)
-
-  const title = card ? `${card.display_name} en ${SITE_NAME}` : `${SITE_NAME} · Comunidad de músicos de Tucumán`
-  const details = card ? [card.instrument, card.localidad].filter(Boolean).join(' · ') : ''
-  const bio = card?.bio ? card.bio.slice(0, 140) : ''
-  const description = card
-    ? [details, bio].filter(Boolean).join(' — ') || 'Mirá su perfil, escuchá cómo suena y escribile.'
-    : 'Encontrá banda, sumá integrantes y enterate de shows y jams en Tucumán.'
-  // WhatsApp no muestra imágenes WebP: en ese caso usamos la imagen de SANAT
-  const avatar = card?.avatar_url && !/\.webp(\?|$)/i.test(card.avatar_url) ? card.avatar_url : null
-  const image = avatar || `${origin}${DEFAULT_IMAGE}`
+  const target = UUID.test(id) ? conf.target(id) : '/home'
+  const card = await loadCard(conf.rpc, id)
+  const { title, description, image: ownImage } = describe(type, card)
+  const image = ownImage || `${origin}${DEFAULT_IMAGE}`
 
   const html = `<!doctype html>
 <html lang="es">
@@ -53,15 +92,15 @@ export default async function handler(req, res) {
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
-<meta property="og:type" content="profile">
+<meta property="og:type" content="${conf.ogType}">
 <meta property="og:site_name" content="${SITE_NAME}">
 <meta property="og:locale" content="es_AR">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
-<meta property="og:url" content="${escapeHtml(origin + '/p/' + id)}">
+<meta property="og:url" content="${escapeHtml(`${origin}/${conf.path}/${id}`)}">
 <meta property="og:image" content="${escapeHtml(image)}">
-${avatar ? '' : '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">'}
-<meta name="twitter:card" content="${avatar ? 'summary' : 'summary_large_image'}">
+${ownImage ? '' : '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">'}
+<meta name="twitter:card" content="${ownImage ? 'summary' : 'summary_large_image'}">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">

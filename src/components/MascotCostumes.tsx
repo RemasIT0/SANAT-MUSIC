@@ -14,6 +14,8 @@ export type MascotExpression =
   | 'timido' | 'cerdito' | 'pollito'
   | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro' | 'payaso'
   | 'bufon' | 'verdugo' | 'sombra' | 'infectado' | 'penitente' | 'lord'
+  | 'darkking' | 'mago' | 'princesa'
+  | 'gaucha' | 'rapera' | 'turra' | 'grungera' | 'dama' | 'maga'
 
 // Lista para los selectores (Editar perfil / Onboarding)
 export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
@@ -25,11 +27,15 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'blackmetal', label: 'Black metal' },
   { id: 'gotico', label: 'Gótico' },
   { id: 'emo', label: 'Emo' },
-  { id: 'grunge', label: 'Grunge' },
+  { id: 'grunge', label: 'Grunge m' },
+  { id: 'grungera', label: 'Grunge f' },
   { id: 'punk', label: 'Punk' },
   { id: 'gaucho', label: 'Gaucho' },
+  { id: 'gaucha', label: 'Gaucha' },
   { id: 'rapero', label: 'Rapero' },
+  { id: 'rapera', label: 'Rapera' },
   { id: 'turro', label: 'Turro' },
+  { id: 'turra', label: 'Turra' },
   { id: 'dj', label: 'DJ' },
   { id: 'otaku', label: 'Otaku' },
   { id: 'nerd', label: 'Nerd' },
@@ -52,7 +58,15 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'infectado', label: 'Infectado' },
   { id: 'penitente', label: 'Penitente' },
   { id: 'lord', label: 'Lord' },
+  { id: 'dama', label: 'Dama de armadura' },
+  { id: 'mago', label: 'Mago sabio' },
+  { id: 'maga', label: 'Maga' },
+  { id: 'princesa', label: 'Princesa guerrera' },
+  { id: 'darkking', label: 'Dark King' },
 ]
+
+// Solo la cuenta admin puede elegirlas (la base de datos también lo controla)
+export const ADMIN_ONLY_EXPRESSIONS: MascotExpression[] = ['darkking']
 
 interface CostumeCtx {
   color: string
@@ -63,6 +77,8 @@ interface Costume {
   back?: (c: CostumeCtx) => ReactNode
   face: (c: CostumeCtx) => ReactNode
   front?: (c: CostumeCtx) => ReactNode
+  hideBody?: boolean   // sin la caja del cuerpo: el disfraz es toda la cabeza
+  hideLimbs?: boolean  // sin brazos ni pies (por ejemplo, una sombra)
 }
 
 const INK = '#000'
@@ -89,6 +105,59 @@ function SquareEyes({ eye, lids = false }: { eye: CostumeCtx['eye']; lids?: bool
         </div>
       ))}
     </div>
+  )
+}
+
+// Ojos cuadrados con pestañas (versiones femeninas)
+function LashEyes({ eye, lids = false }: { eye: CostumeCtx['eye']; lids?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      {[0, 1].map(i => (
+        <div key={i} className="relative">
+          {/* Tres pestañas hacia el lado de afuera */}
+          {[0, 1, 2].map(j => (
+            <div key={j} className="absolute w-[3px] h-2 bg-black rounded-full" style={{
+              top: -6 + j * 2,
+              [i === 0 ? 'left' : 'right']: -1 + j * 4,
+              transform: `rotate(${(i === 0 ? -1 : 1) * (35 - j * 15)}deg)`,
+            }} />
+          ))}
+          <div className="relative w-7 h-7 bg-white border-[3px] border-black rounded-sm flex items-center justify-center overflow-hidden">
+            <div className="w-4 h-4 bg-black rounded-sm" style={{ transform: `translate(${eye.x}px, ${eye.y}px)` }} />
+            {lids && <div className="absolute top-0 left-0 right-0 h-[40%] bg-black" />}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ThinBrows({ tilt = 0 }: { tilt?: number }) {
+  return (
+    <div className="flex gap-5 w-full justify-center">
+      <div className="w-6 h-1 bg-black rounded-full" style={{ transform: `rotate(${tilt}deg)` }} />
+      <div className="w-6 h-1 bg-black rounded-full" style={{ transform: `rotate(${-tilt}deg)` }} />
+    </div>
+  )
+}
+
+function Cheeks() {
+  return (
+    <div className="flex gap-12 -mt-1" aria-hidden="true">
+      <div className="w-4 h-2 rounded-full bg-pink-400/70" />
+      <div className="w-4 h-2 rounded-full bg-pink-400/70" />
+    </div>
+  )
+}
+
+function Lips({ color, smirk = false }: { color: string; smirk?: boolean }) {
+  return (
+    <svg width="32" height="14" viewBox="0 0 32 14" className="mt-1">
+      {smirk
+        ? <path d="M4 8 Q16 12 28 4 Q20 13 10 12 Z" fill={color} stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        : <path d="M5 5 Q11 2 16 5 Q21 2 27 5 Q22 13 16 13 Q10 13 5 5 Z" fill={color} stroke={INK} strokeWidth="2" strokeLinejoin="round" />}
+      <path d="M11 6 L14 6" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" opacity="0.7" />
+    </svg>
   )
 }
 
@@ -740,26 +809,29 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
   },
 
   emo: {
-    // Pelo negro detrás
+    // Pelo de fondo: capas desfiladas y en punta, negro azabache
     back: () => (
-      <Layer top={-12} left={-14} w={128} h={92}>
-        <path d="M14 32 Q20 0 64 0 Q108 0 114 32 L120 74 L106 66 L102 42 L28 42 L24 82 L10 76 Z" fill="#0a0a0a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+      <Layer top={-18} left={-18} w={136} h={104}>
+        <path d="M16 44 Q22 4 68 2 Q114 4 120 44 L130 76 L114 66 L122 98 L104 78 L100 52 L36 52 L32 78 L14 98 L22 66 L6 76 Z" fill="#0b0b0f" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M16 60 L10 72 M120 60 L126 72 M28 70 L22 88 M108 70 L114 88" stroke="#2a2a33" strokeWidth="2.5" strokeLinecap="round" />
       </Layer>
     ),
-    // Flequillo de costado que tapa un ojo, con mecha fucsia
+    // Flequillo largo de costado: mechones en punta que tapan un ojo, con mechita de color
     front: () => (
-      <Layer top={-10} left={-6} w={104} h={72} className="z-20">
-        <path d="M8 16 Q50 -4 96 12 L92 24 Q70 30 60 58 L50 68 Q32 58 14 66 L6 42 Z" fill="#0a0a0a" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-        <path d="M30 8 Q58 14 66 40" fill="none" stroke="#ec4899" strokeWidth="5" strokeLinecap="round" />
-        <path d="M20 30 Q30 44 26 60" fill="none" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" />
+      <Layer top={-16} left={-8} w={118} h={88} className="z-20">
+        <path d="M2 26 Q26 2 70 2 Q104 2 116 24 L108 32 L100 22 L96 36 L86 26 L70 54 L74 36 L54 62 L58 42 L38 72 L42 50 L20 76 L26 52 L4 66 Z" fill="#0b0b0f" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        {/* Mechita de color */}
+        <path d="M78 6 Q66 22 56 58 L60 42 Q68 22 86 8 Z" fill="#22d3ee" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+        {/* Brillos del pelo */}
+        <path d="M24 22 Q40 10 58 8 M30 34 L44 26 M16 46 L28 38" fill="none" stroke="#3f3f4a" strokeWidth="2.2" strokeLinecap="round" />
       </Layer>
     ),
     face: ({ eye }) => (
       <svg width="84" height="70" viewBox="0 0 84 70" className="mt-2">
-        {/* Ojo visible con delineado y lágrima */}
-        <rect x="47" y="12" width="26" height="22" rx="3" fill="#fff" stroke={INK} strokeWidth="3" />
-        <rect x={55 + eye.x} y={18 + eye.y} width="10" height="10" rx="2" fill={INK} />
-        <path d="M73 14 L82 8" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+        {/* Ojo visible con delineado grueso y lágrima */}
+        <rect x="47" y="14" width="26" height="20" rx="3" fill="#fff" stroke={INK} strokeWidth="3" />
+        <rect x={55 + eye.x} y={19 + eye.y} width="10" height="10" rx="2" fill={INK} />
+        <path d="M44 13 L74 12 L82 6" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M60 38 Q58 44 60 46 Q62 44 60 38 Z" fill="#93c5fd" stroke={INK} strokeWidth="1.2" />
         {/* Boca triste con piercing */}
         <path d="M30 58 Q42 50 54 58" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
@@ -922,30 +994,41 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
   },
 
   siniestro: {
-    front: ({ eye }) => (
+    // Pelo corto detrás de los costados (no pasa de la mitad de las patas)
+    back: () => (
+      <Layer top={-8} left={-12} w={124} h={94}>
+        <path d="M12 30 Q16 0 62 0 Q108 0 112 30 L116 88 L104 80 L100 92 L92 78 L92 40 L32 40 L32 78 L24 92 L20 80 L8 88 Z" fill="#0a0a0c" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+      </Layer>
+    ),
+    front: () => (
       <>
-        {/* Capucha: un arco oscuro que enmarca la máscara y cae a los costados */}
-        <Layer top={-18} left={-12} w={124} h={110} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
-          <path fillRule="evenodd" d="M62 2 Q118 2 120 56 L122 108 L102 108 Q104 62 98 44 Q88 20 62 20 Q36 20 26 44 Q20 62 22 108 L2 108 L4 56 Q6 2 62 2 Z" fill="#18181b" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-          <path d="M14 58 Q12 82 14 104 M110 58 Q112 82 110 104" fill="none" stroke="#3f3f46" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M30 30 Q62 8 94 30" fill="none" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" />
+        {/* Casquete de pelo que cubre TODO el borde de arriba del cuadrado, esquinas incluidas */}
+        <Layer top={-12} left={-8} w={116} h={58} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M0 52 L0 22 Q4 0 58 0 Q112 0 116 22 L116 52 L106 40 L100 54 L90 38 L82 50 L72 36 L64 48 L56 34 L48 48 L40 36 L30 50 L22 38 L14 54 L8 40 Z" fill="#0a0a0c" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M20 14 Q40 6 58 6 M70 8 Q88 10 100 18" fill="none" stroke="#2c2c33" strokeWidth="2.2" strokeLinecap="round" />
         </Layer>
-        {/* Máscara de porcelana rajada con sonrisa cosida */}
-        <Layer top={16} left={14} w={72} h={76} className="z-20" style={{ filter: 'drop-shadow(2px 2px 0 #000)' }}>
-          <path d="M8 6 Q36 -3 64 6 Q72 36 63 58 Q36 78 9 58 Q0 36 8 6 Z" fill="#f1ede4" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-          <path d="M55 8 L48 20 L53 27 L46 36" fill="none" stroke="#6b6b6b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M13 48 L20 43 L18 36" fill="none" stroke="#6b6b6b" strokeWidth="1.5" strokeLinecap="round" />
-          <ellipse cx="23" cy="26" rx="8" ry="10" fill="#050505" />
-          <ellipse cx="49" cy="26" rx="8" ry="10" fill="#050505" />
-          <circle cx={23 + eye.x * 0.6} cy={26 + eye.y * 0.6} r="1.7" fill="#e5e7eb" />
-          <circle cx={49 + eye.x * 0.6} cy={26 + eye.y * 0.6} r="1.7" fill="#e5e7eb" />
-          <path d="M12 49 Q36 64 60 49" fill="none" stroke="#7f1d1d" strokeWidth="3.5" strokeLinecap="round" />
-          <path d="M18 49 L16 56 M25 53 L24 60 M32 55 L32 62 M40 55 L41 62 M47 53 L49 60 M54 49 L57 56" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+        {/* Mechones a los costados, sobre los bordes de la caja */}
+        <Layer top={28} left={-8} w={20} h={50} className="z-20">
+          <path d="M2 0 L18 0 L16 40 L10 30 L4 48 Z" fill="#0a0a0c" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+        <Layer top={28} left={88} w={20} h={50} className="z-20">
+          <path d="M2 0 L18 0 L16 48 L10 32 L4 40 Z" fill="#0a0a0c" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
         </Layer>
       </>
     ),
-    // La cara la tapa la máscara
-    face: () => null,
+    // Máscara de porcelana grande, que ocupa casi toda la cara
+    face: ({ eye }) => (
+      <svg width="86" height="80" viewBox="0 0 86 80" className="mt-1">
+        <path d="M6 6 Q43 -3 80 6 Q87 40 76 62 Q43 84 10 62 Q-1 40 6 6 Z" fill="#f1ede4" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M66 10 L58 24 L64 33 L56 45" fill="none" stroke="#6b6b6b" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <ellipse cx="27" cy="34" rx="8.5" ry="10.5" fill="#050505" />
+        <ellipse cx="59" cy="34" rx="8.5" ry="10.5" fill="#050505" />
+        <circle cx={27 + eye.x * 0.6} cy={34 + eye.y * 0.6} r="2" fill="#e5e7eb" />
+        <circle cx={59 + eye.x * 0.6} cy={34 + eye.y * 0.6} r="2" fill="#e5e7eb" />
+        <path d="M15 56 Q43 72 71 56" fill="none" stroke="#7f1d1d" strokeWidth="3.6" strokeLinecap="round" />
+        <path d="M22 56 L21 63 M30 61 L29.5 68 M39 63 L39 70 M47 63 L47.5 70 M56 61 L57 68 M64 56 L65.5 63" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
   },
 
   payaso: {
@@ -1026,28 +1109,57 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
   },
 
   verdugo: {
-    // Capucha de verdugo que cubre toda la cabeza, con dos agujeros
+    // Capucha negra en punta que tapa la cabeza y la nariz; la boca y el mentón quedan al aire
     front: ({ eye }) => (
-      <Layer top={-16} left={-6} w={112} h={108} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
-        <path fillRule="evenodd" d="M56 2 Q104 4 108 48 L110 106 L2 106 L4 48 Q8 4 56 2 Z M22 50 Q34 40 46 50 Q34 58 22 50 Z M66 50 Q78 40 90 50 Q78 58 66 50 Z" fill="#1c1917" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-        <path d="M56 6 L56 30" stroke="#44403c" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M14 84 Q56 96 98 84" fill="none" stroke="#44403c" strokeWidth="2.5" strokeLinecap="round" />
-        {/* Ojos rojos que brillan desde adentro */}
-        <circle cx={34 + eye.x * 0.5} cy={50 + eye.y * 0.3} r="3.5" fill="#ef4444" style={{ filter: 'drop-shadow(0 0 4px #ef4444)' }} />
-        <circle cx={78 + eye.x * 0.5} cy={50 + eye.y * 0.3} r="3.5" fill="#ef4444" style={{ filter: 'drop-shadow(0 0 4px #ef4444)' }} />
+      <Layer top={-24} left={-10} w={120} h={134} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+        <path d="M60 0 Q102 8 110 46 L112 124 L100 114 L92 128 L84 110 L80 74 Q60 82 40 74 L36 110 L28 128 L20 114 L8 124 L10 46 Q18 8 60 0 Z" fill="#111114" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+        <path d="M60 4 Q56 18 58 30" fill="none" stroke="#2c2c33" strokeWidth="2.2" strokeLinecap="round" />
+        {/* Agujeros de los ojos, con mirada enojada */}
+        {[40, 80].map((cx, i) => (
+          <g key={cx}>
+            <path d={`M${cx - 13} 48 Q${cx} 38 ${cx + 13} 48 Q${cx} 58 ${cx - 13} 48 Z`} fill="#f4f1ea" stroke={INK} strokeWidth="2.5" />
+            <circle cx={cx + eye.x * 0.6} cy={48 + eye.y * 0.4} r="3.4" fill={INK} />
+            <path d={i === 0 ? `M${cx - 14} 39 L${cx + 13} 46 L${cx + 13} 40 Z` : `M${cx + 14} 39 L${cx - 13} 46 L${cx - 13} 40 Z`} fill="#111114" />
+          </g>
+        ))}
       </Layer>
     ),
-    face: () => null,
+    // Boca seria y mentón (en el color de la mascota, debajo de la capucha)
+    face: () => (
+      <svg width="40" height="26" viewBox="0 0 40 26" className="mt-[58px]">
+        <path d="M6 10 Q20 4 34 10" fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M14 20 Q20 23 26 20" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      </svg>
+    ),
   },
 
   sombra: {
-    // Cuerpo cubierto de oscuridad, con bordes como humo
-    front: ({ eye }) => (
-      <Layer top={-8} left={-8} w={116} h={116} className="z-20">
-        <path d="M14 20 Q20 2 40 8 Q58 -2 76 8 Q98 2 104 22 Q116 40 106 58 Q114 78 100 92 Q92 112 70 106 Q56 116 40 106 Q18 112 12 92 Q0 76 8 58 Q-2 40 14 20 Z" fill="#050508" opacity="0.92" />
-        {/* Ojos que brillan, sin boca ni rostro */}
-        <path d={`M${30 + eye.x} ${50 + eye.y} Q${40 + eye.x} ${42 + eye.y} ${50 + eye.x} ${50 + eye.y} Q${40 + eye.x} ${54 + eye.y} ${30 + eye.x} ${50 + eye.y} Z`} fill="#e0f2fe" style={{ filter: 'drop-shadow(0 0 5px #7dd3fc)' }} />
-        <path d={`M${66 + eye.x} ${50 + eye.y} Q${76 + eye.x} ${42 + eye.y} ${86 + eye.x} ${50 + eye.y} Q${76 + eye.x} ${54 + eye.y} ${66 + eye.x} ${50 + eye.y} Z`} fill="#e0f2fe" style={{ filter: 'drop-shadow(0 0 5px #7dd3fc)' }} />
+    // Sin caja ni brazos: una sombra con aura del color de la mascota, que aparece y se desvanece
+    hideBody: true,
+    hideLimbs: true,
+    front: ({ color, eye }) => (
+      <Layer top={-18} left={-18} w={136} h={140} className="z-20 mascot-fade">
+        <defs>
+          <radialGradient id="sombra-aura" cx="50%" cy="45%" r="55%">
+            <stop offset="0.45" stopColor={color} stopOpacity="0.55" />
+            <stop offset="1" stopColor={color} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="sombra-cuerpo" cx="50%" cy="42%" r="55%">
+            <stop offset="0" stopColor="#000" stopOpacity="0.95" />
+            <stop offset="0.65" stopColor="#0b0716" stopOpacity="0.9" />
+            <stop offset="1" stopColor={color} stopOpacity="0.35" />
+          </radialGradient>
+          <filter id="sombra-difusa" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="4" />
+          </filter>
+        </defs>
+        {/* Aura de color alrededor */}
+        <ellipse cx="68" cy="66" rx="64" ry="62" fill="url(#sombra-aura)" filter="url(#sombra-difusa)" />
+        {/* Cuerpo de humo */}
+        <path d="M68 10 Q112 12 118 58 Q122 88 110 108 L114 130 L98 116 L90 134 L78 118 L68 136 L58 118 L46 134 L38 116 L22 130 L26 108 Q14 88 18 58 Q24 12 68 10 Z" fill="url(#sombra-cuerpo)" filter="url(#sombra-difusa)" />
+        {/* Ojos que brillan */}
+        <path d={`M${42 + eye.x} ${62 + eye.y} Q${52 + eye.x} ${53 + eye.y} ${62 + eye.x} ${62 + eye.y} Q${52 + eye.x} ${66 + eye.y} ${42 + eye.x} ${62 + eye.y} Z`} fill="#f0f9ff" style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
+        <path d={`M${74 + eye.x} ${62 + eye.y} Q${84 + eye.x} ${53 + eye.y} ${94 + eye.x} ${62 + eye.y} Q${84 + eye.x} ${66 + eye.y} ${74 + eye.x} ${62 + eye.y} Z`} fill="#f0f9ff" style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
       </Layer>
     ),
     face: () => null,
@@ -1174,5 +1286,494 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
     ),
     // La cara la tapa el yelmo
     face: () => null,
+  },
+
+  darkking: {
+    // Exclusivo del admin: rey hechicero de túnica gris raída, guantelete de armadura y corona sobre la capucha
+    hideBody: true,
+    hideLimbs: true,
+    back: () => (
+      <Layer top={20} left={-40} w={180} h={116}>
+        {/* Túnica gris, gastada y rasgada */}
+        <path d="M90 0 Q142 6 170 42 L176 112 L164 102 L158 116 L148 96 L140 112 L128 98 L118 114 L108 96 L98 112 L90 98 L82 114 L72 96 L62 112 L52 98 L42 116 L32 96 L22 114 L16 102 L4 112 L10 42 Q38 6 90 0 Z" fill="#4a4a50" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        {/* Rasgaduras y pliegues */}
+        <path d="M40 70 L46 104 L36 92 Z M122 64 L128 100 L118 88 Z M78 80 L82 108 L74 98 Z" fill="#1f1f23" />
+        <path d="M28 46 L22 96 M152 46 L158 96 M56 36 L52 90 M124 36 L128 90 M90 30 L90 86" stroke="#35353a" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M14 46 Q90 20 166 46" fill="none" stroke="#5c5c63" strokeWidth="2" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: ({ eye }) => (
+      <>
+        {/* Capucha gris oscura con el rostro en sombra */}
+        <Layer top={0} left={-6} w={112} h={108} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
+          <defs>
+            <linearGradient id="darkking-llama" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#ff3b3b" stopOpacity="0.85" />
+              <stop offset="0.55" stopColor="#fb923c" stopOpacity="0.55" />
+              <stop offset="1" stopColor="#fde68a" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="darkking-vacio" cx="50%" cy="50%" r="55%">
+              <stop offset="0" stopColor="#000" />
+              <stop offset="1" stopColor="#141416" />
+            </radialGradient>
+          </defs>
+          <path d="M56 2 Q100 4 106 50 L108 104 Q56 112 4 104 L6 50 Q12 4 56 2 Z" fill="#323238" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          <path d="M56 18 Q90 22 92 56 Q90 90 56 98 Q22 90 20 56 Q22 22 56 18 Z" fill="url(#darkking-vacio)" />
+          <path d="M14 64 Q12 84 14 100 M98 64 Q100 84 98 100" fill="none" stroke="#45454c" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Ojos rojos horizontales, como dos rendijas encendidas */}
+          {[40, 72].map(cx => (
+            <g key={cx}>
+              <ellipse cx={cx + eye.x * 0.6} cy={54 + eye.y * 0.3} rx="11" ry="4.5" fill="#ef4444" opacity="0.3" className="animate-pulse" />
+              <ellipse cx={cx + eye.x * 0.6} cy={54 + eye.y * 0.3} rx="8" ry="2.2" fill="#ff3b3b" style={{ filter: 'drop-shadow(0 0 5px #ef4444)' }} />
+              <ellipse cx={cx + eye.x * 0.6} cy={54 + eye.y * 0.3} rx="4" ry="0.9" fill="#ffe4e6" />
+              {/* Aura de fuego que sube desde el ojo, suave */}
+              <path d={`M${cx - 7 + eye.x * 0.6} ${53 + eye.y * 0.3} Q${cx - 6 + eye.x * 0.6} ${44 + eye.y * 0.3} ${cx - 1 + eye.x * 0.6} ${38 + eye.y * 0.3} Q${cx + 1 + eye.x * 0.6} ${44 + eye.y * 0.3} ${cx + 4 + eye.x * 0.6} ${42 + eye.y * 0.3} Q${cx + 7 + eye.x * 0.6} ${47 + eye.y * 0.3} ${cx + 7 + eye.x * 0.6} ${53 + eye.y * 0.3} Z`}
+                fill="url(#darkking-llama)" className="darkking-flame" style={{ animationDelay: cx === 40 ? '0s' : '0.35s' }} />
+            </g>
+          ))}
+        </Layer>
+        {/* Corona de hierro oscuro: púas altas, finas y desparejas, fundida con la capucha (no tapa los ojos) */}
+        <Layer top={-60} left={2} w={96} h={74} className="z-30" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <defs>
+            <linearGradient id="darkking-hierro" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#141416" />
+              <stop offset="0.5" stopColor="#3b3a3f" />
+              <stop offset="1" stopColor="#141416" />
+            </linearGradient>
+          </defs>
+          <path d="M8 72 L6 38 L12 46 L14 10 L20 44 L27 22 L32 46 L38 2 L44 44 L48 18 L52 44 L58 2 L64 46 L69 22 L76 44 L82 10 L84 46 L90 38 L88 72 Q48 64 8 72 Z" fill="url(#darkking-hierro)" stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+          {/* Filos que reflejan la luz */}
+          <path d="M15 14 L17 42 M39 8 L41 42 M59 8 L61 42 M81 14 L81 42" stroke="#a8a29e" strokeWidth="1.4" strokeLinecap="round" opacity="0.8" />
+          {/* Aro de la corona y cresta que baja hacia la cara */}
+          <path d="M8 62 Q48 54 88 62" fill="none" stroke="#57534e" strokeWidth="3" />
+          <path d="M44 56 L48 74 L52 56 Z" fill="#2c2b30" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
+        </Layer>
+        {/* Cresta central que separa los ojos, sobre el rostro en sombra */}
+        <Layer top={12} left={45} w={10} h={56} className="z-30">
+          <path d="M5 0 L9 10 L7 54 L3 54 L1 10 Z" fill="#2c2b30" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+          <path d="M5 4 L5 50" stroke="#6b6873" strokeWidth="1" />
+        </Layer>
+        {/* Brazo con guantelete de armadura oscura, con garras */}
+        <Layer top={64} left={100} w={44} h={62} className="z-30" style={{ filter: 'drop-shadow(3px 3px 0 #000)', rotate: '-10deg' }}>
+          <defs>
+            <linearGradient id="darkking-acero" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#3a3d45" />
+              <stop offset="0.45" stopColor="#7c818c" />
+              <stop offset="1" stopColor="#2a2c32" />
+            </linearGradient>
+          </defs>
+          {/* Antebrazo en placas */}
+          <path d="M6 4 L30 2 L32 30 L8 32 Z" fill="url(#darkking-acero)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M7 12 L31 10 M7 21 L31 19" stroke="#1f2126" strokeWidth="2" />
+          <path d="M30 4 L40 0 L33 12 Z" fill="#7c818c" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
+          {/* Mano en garra */}
+          <path d="M6 32 L34 30 L36 42 L4 44 Z" fill="url(#darkking-acero)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M6 44 L4 58 L10 48 Z M14 44 L13 60 L18 46 Z M22 44 L23 60 L26 45 Z M30 43 L34 56 L35 42 Z" fill="#2a2c32" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
+        </Layer>
+        {/* Broche con forma de ojo en el pecho */}
+        <Layer top={104} left={34} w={32} h={20} className="z-30">
+          <path d="M2 10 Q16 -2 30 10 Q16 22 2 10 Z" fill="#f59e0b" stroke={INK} strokeWidth="2" />
+          <ellipse cx="16" cy="10" rx="2" ry="6" fill={INK} />
+        </Layer>
+      </>
+    ),
+    face: () => null,
+  },
+
+  mago: {
+    // Mago sabio: sombrero puntiagudo con estrellas, barba larga y bastón con orbe
+    front: () => (
+      <>
+        {/* Sombrero: el ala tapa todo el borde de arriba de la caja */}
+        <Layer top={-64} left={-16} w={132} h={84} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M30 66 Q46 34 60 10 Q68 -2 84 4 L78 12 Q76 30 100 66 Z" fill="#1e1b4b" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M34 58 Q66 50 96 58 L98 66 Q66 58 32 66 Z" fill="#6d28d9" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          <path d="M2 70 Q66 54 130 70 Q66 86 2 70 Z" fill="#1e1b4b" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          {/* Estrellas y luna */}
+          <path d="M58 30 L60 35 L65 35 L61 38 L62 43 L58 40 L54 43 L55 38 L51 35 L56 35 Z" fill="#fde047" />
+          <path d="M76 44 L77 47 L80 47 L78 49 L79 52 L76 50 L73 52 L74 49 L72 47 L75 47 Z" fill="#fde047" />
+          <path d="M48 50 A5 5 0 1 0 52 42 A4 4 0 1 1 48 50 Z" fill="#fde047" />
+        </Layer>
+        {/* Barba larga y bigote */}
+        <Layer top={48} left={6} w={88} h={78} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M4 8 Q44 -4 84 8 Q82 44 68 60 L62 76 L54 62 L46 78 L38 62 L30 76 L24 60 Q6 44 4 8 Z" fill="#f1f5f9" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M28 26 Q30 46 36 58 M48 26 Q46 48 46 66 M64 26 Q60 46 56 58" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+          <path d="M14 10 Q30 2 44 12 Q58 2 74 10 Q64 22 44 17 Q24 22 14 10 Z" fill="#e2e8f0" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+        {/* Bastón con orbe que brilla */}
+        <Layer top={-18} left={98} w={28} h={132} className="z-30">
+          <path d="M14 26 L12 130" stroke={INK} strokeWidth="7" strokeLinecap="round" />
+          <path d="M14 26 L12 130" stroke="#92400e" strokeWidth="4" strokeLinecap="round" />
+          <path d="M6 28 Q14 18 22 28" fill="none" stroke="#92400e" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="14" cy="14" r="10" fill="#67e8f9" stroke={INK} strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 7px #22d3ee)' }} />
+          <circle cx="11" cy="11" r="3" fill="#fff" opacity="0.85" />
+        </Layer>
+      </>
+    ),
+    // Ojos tranquilos y cejas blancas y tupidas
+    face: ({ eye }) => (
+      <svg width="70" height="30" viewBox="0 0 70 30" className="mb-11">
+        <path d="M4 8 L10 4 L14 8 L20 3 L26 7 L30 5 M40 5 L44 7 L50 3 L56 8 L60 4 L66 8" fill="none" stroke="#f1f5f9" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        {[17, 53].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="19" rx="9" ry="7" fill="#fff" stroke={INK} strokeWidth="2.5" />
+            <circle cx={cx + eye.x * 0.6} cy={20 + eye.y * 0.4} r="3.6" fill={INK} />
+            <path d={`M${cx - 10} 16 Q${cx} 11 ${cx + 10} 16 L${cx + 10} 13 Q${cx} 8 ${cx - 10} 13 Z`} fill={INK} />
+          </g>
+        ))}
+      </svg>
+    ),
+  },
+
+  princesa: {
+    // Princesa guerrera: pelo cobrizo con trenza, diadema, hombrera y espada
+    back: () => (
+      <Layer top={-12} left={-16} w={132} h={112}>
+        <path d="M16 40 Q20 2 66 2 Q112 2 116 40 L122 100 L108 92 L104 104 L96 90 L94 44 L38 44 L36 90 L28 104 L24 92 L10 100 Z" fill="#9a3412" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Pelo: casquete con flequillo de costado que cubre el borde de arriba */}
+        <Layer top={-14} left={-8} w={116} h={50} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M0 46 L0 22 Q4 0 58 0 Q112 0 116 22 L116 46 Q104 34 92 40 Q80 22 62 30 Q44 18 26 34 Q14 30 0 46 Z" fill="#9a3412" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M22 14 Q44 6 64 8 M74 10 Q94 12 104 22" fill="none" stroke="#c2410c" strokeWidth="2.5" strokeLinecap="round" />
+        </Layer>
+        {/* Diadema de plata con gema */}
+        <Layer top={-12} left={18} w={64} h={24} className="z-30">
+          <path d="M4 18 Q32 6 60 18" fill="none" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+          <path d="M4 18 Q32 6 60 18" fill="none" stroke="#e2e8f0" strokeWidth="3" strokeLinecap="round" />
+          <path d="M32 2 L39 12 L32 20 L25 12 Z" fill="#3b82f6" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          <path d="M31 6 L33 10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+        </Layer>
+        {/* Trenza que cae por delante del hombro */}
+        <Layer top={26} left={-10} w={24} h={92} className="z-20">
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <ellipse key={i} cx={i % 2 ? 13 : 11} cy={8 + i * 12} rx="8" ry="8" fill="#9a3412" stroke={INK} strokeWidth="2.2" />
+          ))}
+          <rect x="6" y="76" width="12" height="5" rx="2" fill="#facc15" stroke={INK} strokeWidth="1.5" />
+          <path d="M8 81 L6 90 L12 84 L18 90 L16 81 Z" fill="#9a3412" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+        </Layer>
+        {/* Hombrera de armadura */}
+        <Layer top={48} left={90} w={32} h={28} className="z-30">
+          <path d="M3 24 Q2 4 16 2 Q30 4 29 24 Z" fill="#cbd5e1" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M5 15 L27 15" stroke="#64748b" strokeWidth="2" />
+          <circle cx="16" cy="9" r="2" fill="#facc15" stroke={INK} strokeWidth="1" />
+        </Layer>
+        {/* Espada al costado */}
+        <Layer top={34} left={-34} w={26} h={92} className="z-10">
+          <path d="M13 2 L18 10 L17 64 L9 64 L8 10 Z" fill="#e2e8f0" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M13 8 L13 60" stroke="#94a3b8" strokeWidth="1.5" />
+          <rect x="1" y="64" width="24" height="6" rx="2" fill="#facc15" stroke={INK} strokeWidth="2" />
+          <rect x="10" y="70" width="6" height="14" rx="1.5" fill="#7c2d12" stroke={INK} strokeWidth="1.8" />
+          <circle cx="13" cy="87" r="3.5" fill="#facc15" stroke={INK} strokeWidth="1.8" />
+        </Layer>
+      </>
+    ),
+    // Mirada decidida, pintura de guerra y sonrisa confiada
+    face: ({ eye }) => (
+      <svg width="74" height="54" viewBox="0 0 74 54" className="mt-7">
+        <path d="M8 6 L28 10 M66 6 L46 10" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+        {[18, 56].map(cx => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="20" rx="9" ry="9.5" fill="#fff" stroke={INK} strokeWidth="2.5" />
+            <circle cx={cx + eye.x * 0.6} cy={21 + eye.y * 0.5} r="5" fill="#1e3a8a" />
+            <circle cx={cx + eye.x * 0.6} cy={21 + eye.y * 0.5} r="2.4" fill={INK} />
+            <circle cx={cx - 2 + eye.x * 0.6} cy={18 + eye.y * 0.5} r="1.5" fill="#fff" />
+            <path d={`M${cx - 10} 14 Q${cx} 6 ${cx + 10} 14`} fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+          </g>
+        ))}
+        {/* Pintura de guerra en las mejillas */}
+        <path d="M4 34 L16 32 M5 39 L17 37 M70 34 L58 32 M69 39 L57 37" stroke="#dc2626" strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M26 42 Q38 50 50 41" fill="none" stroke={INK} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+
+  gaucha: {
+    // Trenzas largas que salen de abajo del sombrero
+    back: () => (
+      <Layer top={6} left={-16} w={132} h={116}>
+        {[10, 122].map(x => (
+          <g key={x}>
+            {[0, 1, 2, 3, 4, 5, 6].map(i => <ellipse key={i} cx={x + (i % 2 ? 2 : -2)} cy={8 + i * 12} rx="8" ry="8" fill="#3b2314" stroke={INK} strokeWidth="2.2" />)}
+            <path d={`M${x - 6} 92 L${x + 6} 92 L${x + 8} 104 L${x} 98 L${x - 8} 104 Z`} fill="#dc2626" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
+          </g>
+        ))}
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Sombrero de ala ancha con una flor */}
+        <Layer top={-28} left={-16} w={132} h={34} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M38 26 L40 6 Q66 0 92 6 L94 26 Z" fill="#1f1f1f" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <rect x="39" y="17" width="54" height="7" fill="#b91c1c" stroke={INK} strokeWidth="2" />
+          <rect x="2" y="24" width="128" height="8" rx="3" fill="#1f1f1f" stroke={INK} strokeWidth="3" />
+          {[0, 72, 144, 216, 288].map(a => <ellipse key={a} cx="88" cy="16" rx="4" ry="7" fill="#f472b6" stroke={INK} strokeWidth="1.2" transform={`rotate(${a} 88 20)`} />)}
+          <circle cx="88" cy="20" r="3" fill="#facc15" stroke={INK} strokeWidth="1" />
+        </Layer>
+        {/* Pañuelo al cuello */}
+        <Layer top={84} left={28} w={44} h={28} className="z-20">
+          <path d="M2 2 L42 2 L22 26 Z" fill="#dc2626" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <circle cx="22" cy="5" r="5" fill="#b91c1c" stroke={INK} strokeWidth="2" />
+          <circle cx="14" cy="11" r="1.5" fill="#fff" />
+          <circle cx="28" cy="11" r="1.5" fill="#fff" />
+          <circle cx="21" cy="18" r="1.5" fill="#fff" />
+        </Layer>
+        {/* Mate con bombilla */}
+        <Layer top={54} left={102} w={30} h={40} className="z-20">
+          <line x1="19" y1="2" x2="14" y2="18" stroke={INK} strokeWidth="5" strokeLinecap="round" />
+          <line x1="19" y1="2" x2="14" y2="18" stroke="#d1d5db" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M4 16 Q2 34 15 38 Q28 34 26 16 Z" fill="#92400e" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <rect x="3" y="13" width="24" height="5" rx="2" fill="#d6d3d1" stroke={INK} strokeWidth="2" />
+          <circle cx="11" cy="26" r="2" fill="#65a30d" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <>
+        <div className="mt-3"><LashEyes eye={eye} /></div>
+        <Cheeks />
+        <Lips color="#dc2626" />
+      </>
+    ),
+  },
+
+  rapera: {
+    // Pelo largo y lacio que cae debajo de la gorra
+    back: () => (
+      <Layer top={-6} left={-26} w={152} h={114}>
+        <path d="M18 30 Q24 2 76 2 Q128 2 134 30 L142 108 L124 100 L118 40 L34 40 L28 100 L10 108 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M16 50 L14 98 M136 50 L138 98" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Gorra con visera de costado */}
+        <Layer top={-24} left={2} w={124} h={34} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M8 30 Q10 2 50 2 Q90 2 92 30 Z" fill="#db2777" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M80 26 L120 21 Q124 29 118 32 L84 32 Z" fill="#9d174d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <circle cx="50" cy="5" r="3" fill={INK} />
+        </Layer>
+        {/* Aros grandes de oro */}
+        {[-12, 98].map(left => (
+          <Layer key={left} top={48} left={left} w={16} h={22} className="z-20">
+            <circle cx="8" cy="12" r="7" fill="none" stroke={INK} strokeWidth="4.5" />
+            <circle cx="8" cy="12" r="7" fill="none" stroke="#fbbf24" strokeWidth="2.4" />
+          </Layer>
+        ))}
+        {/* Cadena de oro con medalla */}
+        <Layer top={72} left={18} w={64} h={40} className="z-20">
+          <path d="M4 2 Q32 30 60 2" fill="none" stroke={INK} strokeWidth="6" />
+          <path d="M4 2 Q32 30 60 2" fill="none" stroke="#fbbf24" strokeWidth="3.5" strokeDasharray="4 2" />
+          <circle cx="32" cy="27" r="10" fill="#fbbf24" stroke={INK} strokeWidth="2.5" />
+          <path d="M28 33 L28 22 L37 20 L37 31" fill="none" stroke={INK} strokeWidth="2" />
+          <circle cx="26" cy="33" r="2.4" fill={INK} />
+          <circle cx="35" cy="31" r="2.4" fill={INK} />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <div className="flex flex-col items-center -mt-2">
+        <ThinBrows tilt={-6} />
+        <div className="mt-1"><LashEyes eye={eye} lids /></div>
+        <Lips color="#be185d" smirk />
+      </div>
+    ),
+  },
+
+  turra: {
+    // Pelo largo y planchado, atado bien atrás
+    back: () => (
+      <Layer top={-4} left={-24} w={148} h={112}>
+        <path d="M16 28 Q22 2 74 2 Q126 2 132 28 L138 106 L122 98 L116 36 L32 36 L26 98 L10 106 Z" fill="#3b2314" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M14 46 L12 96 M134 46 L136 96" stroke="#5a3a22" strokeWidth="2.2" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Gorra plana con la visera levantada, torcida */}
+        <Layer top={-33} left={6} w={96} h={36} className="z-20" style={{ transform: 'rotate(-7deg)', filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M12 30 Q14 4 48 4 Q82 4 84 30 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <rect x="38" y="12" width="20" height="9" rx="2" fill="#fff" stroke={INK} strokeWidth="1.5" />
+          <path d="M4 26 L92 21 L94 30 L6 34 Z" fill="#111" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M8 31 L91 27" stroke="#ec4899" strokeWidth="2" />
+          <circle cx="70" cy="26" r="3" fill="#fbbf24" stroke={INK} strokeWidth="1" />
+        </Layer>
+        {/* Aros de plata */}
+        {[-11, 97].map(left => (
+          <Layer key={left} top={48} left={left} w={14} h={20} className="z-20">
+            <circle cx="7" cy="11" r="6" fill="none" stroke={INK} strokeWidth="4" />
+            <circle cx="7" cy="11" r="6" fill="none" stroke="#e5e7eb" strokeWidth="2" />
+          </Layer>
+        ))}
+        {/* Cadenita de plata con corazón */}
+        <Layer top={74} left={26} w={48} h={30} className="z-20">
+          <path d="M2 2 Q24 20 46 2" fill="none" stroke={INK} strokeWidth="4.5" />
+          <path d="M2 2 Q24 20 46 2" fill="none" stroke="#e5e7eb" strokeWidth="2.5" strokeDasharray="3 2" />
+          <path d="M24 26 L17 19 Q14 14 19 12 Q22 11 24 15 Q26 11 29 12 Q34 14 31 19 Z" fill="#e5e7eb" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <div className="flex flex-col items-center -mt-2">
+        {/* Ceja con corte y otra levantada */}
+        <div className="flex gap-4 w-full justify-center">
+          <div className="flex gap-[3px]" style={{ transform: 'rotate(8deg)' }}>
+            <div className="w-3 h-1 bg-black rounded-full" />
+            <div className="w-2 h-1 bg-black rounded-full" />
+          </div>
+          <div className="w-6 h-1 bg-black rounded-full" style={{ transform: 'rotate(-14deg) translateY(-2px)' }} />
+        </div>
+        <div className="mt-1"><LashEyes eye={eye} lids /></div>
+        <Lips color="#9d174d" smirk />
+      </div>
+    ),
+  },
+
+  grungera: {
+    // Pelo largo y desprolijo, con raíces oscuras
+    back: () => (
+      <Layer top={-6} left={-30} w={160} h={124}>
+        <path d="M26 26 Q40 0 80 2 Q120 0 134 26 L146 104 L132 96 L130 118 L116 98 L112 50 L48 50 L44 98 L30 118 L28 96 L14 104 Z" fill="#ca8a04" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M22 50 L18 96 M138 50 L142 96 M32 60 L30 104 M128 60 L130 104" stroke="#a16207" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Gorro de lana */}
+        <Layer top={-30} left={-6} w={112} h={46} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M8 34 Q8 2 56 2 Q104 2 104 34 Z" fill="#7f1d1d" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <rect x="4" y="30" width="104" height="12" rx="3" fill="#991b1b" stroke={INK} strokeWidth="3" />
+          <path d="M20 31 L20 41 M32 31 L32 41 M44 31 L44 41 M56 31 L56 41 M68 31 L68 41 M80 31 L80 41 M92 31 L92 41" stroke="#7f1d1d" strokeWidth="2" />
+        </Layer>
+        {/* Mechones que caen sobre la cara */}
+        <Layer top={10} left={-4} w={108} h={36} className="z-20">
+          <path d="M2 0 L12 34 L20 4 Z M88 4 L96 34 L106 0 Z" fill="#ca8a04" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <>
+        {/* Delineado corrido y párpados caídos */}
+        <div className="mt-5 relative">
+          <LashEyes eye={eye} lids />
+          <div className="absolute -bottom-1.5 left-0 right-0 flex gap-3 justify-center opacity-60" aria-hidden="true">
+            <div className="w-7 h-1.5 bg-black rounded-full blur-[1px]" />
+            <div className="w-7 h-1.5 bg-black rounded-full blur-[1px]" />
+          </div>
+        </div>
+        {/* Arito en la nariz y boca apática oscura */}
+        <svg width="40" height="22" viewBox="0 0 40 22" className="mt-1">
+          <circle cx="26" cy="5" r="3" fill="none" stroke="#d1d5db" strokeWidth="2" />
+          <path d="M10 15 Q20 13 30 15 Q20 19 10 15 Z" fill="#4c0519" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      </>
+    ),
+  },
+
+  dama: {
+    // Penacho carmesí que cae hacia atrás desde la cresta del yelmo
+    back: () => (
+      <>
+      {/* Trenza rubia que asoma por debajo del yelmo */}
+      <Layer top={70} left={86} w={30} h={66}>
+        {[0, 1, 2, 3, 4].map(i => <ellipse key={i} cx={i % 2 ? 16 : 13} cy={8 + i * 11} rx="8" ry="7.5" fill="#facc15" stroke={INK} strokeWidth="2.2" />)}
+        <rect x="8" y="56" width="12" height="5" rx="2" fill="#86198f" stroke={INK} strokeWidth="1.5" />
+      </Layer>
+      <Layer top={-58} left={-30} w={120} h={110}>
+        <path d="M86 40 Q70 0 34 6 Q8 12 2 44 Q16 26 30 30 Q12 44 10 74 Q26 52 40 52 Q30 70 34 98 Q46 70 60 62 Q60 50 86 40 Z" fill="#86198f" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M70 26 Q48 18 26 32 M64 44 Q42 44 24 62 M58 56 Q46 66 40 84" fill="none" stroke="#e879f9" strokeWidth="2.5" strokeLinecap="round" />
+      </Layer>
+      </>
+    ),
+    front: ({ eye }) => (
+      <>
+        {/* Hombreras */}
+        {[-24, 96].map(left => (
+          <Layer key={left} top={52} left={left} w={30} h={24} className="z-20">
+            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill="url(#dama-steel)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M6 14 L24 14" stroke="#64748b" strokeWidth="2" />
+          </Layer>
+        ))}
+        {/* Yelmo cerrado, un poco más grande que el cuerpo */}
+        <Layer top={-30} left={-14} w={128} h={132} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
+          <defs>
+            <linearGradient id="dama-steel" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#94a3b8" />
+              <stop offset="0.35" stopColor="#e2e8f0" />
+              <stop offset="0.6" stopColor="#cbd5e1" />
+              <stop offset="1" stopColor="#64748b" />
+            </linearGradient>
+          </defs>
+          {/* Cuerpo del yelmo: cúpula y mejillas que bajan */}
+          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill="url(#dama-steel)" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          {/* Cresta central */}
+          <path d="M64 4 L64 44" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          <path d="M60 6 L60 44 M68 6 L68 44" stroke="#64748b" strokeWidth="1.5" />
+          {/* Banda de la frente con remaches */}
+          <path d="M9 40 Q64 30 119 40 L119 48 Q64 38 9 48 Z" fill="#475569" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          {[18, 40, 64, 88, 110].map(x => <circle key={x} cx={x} cy={x === 64 ? 37 : 41} r="2.4" fill="#e2e8f0" stroke={INK} strokeWidth="1" />)}
+          {/* Ranura de la visera con ojos que brillan */}
+          <path d="M14 56 Q64 50 114 56 L114 68 Q64 62 14 68 Z" fill="#0b0b0f" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <ellipse cx={42 + eye.x * 0.9} cy={61 + eye.y * 0.4} rx="4" ry="3" fill="#f0abfc" style={{ filter: 'drop-shadow(0 0 4px #d946ef)' }} /><path d={`M${35 + eye.x * 0.9} 57 L${32 + eye.x * 0.9} 54 M${38 + eye.x * 0.9} 56 L${37 + eye.x * 0.9} 53`} stroke="#f0abfc" strokeWidth="1.4" strokeLinecap="round" />
+          <ellipse cx={86 + eye.x * 0.9} cy={61 + eye.y * 0.4} rx="4" ry="3" fill="#f0abfc" style={{ filter: 'drop-shadow(0 0 4px #d946ef)' }} /><path d={`M${93 + eye.x * 0.9} 57 L${96 + eye.x * 0.9} 54 M${90 + eye.x * 0.9} 56 L${91 + eye.x * 0.9} 53`} stroke="#f0abfc" strokeWidth="1.4" strokeLinecap="round" />
+          {/* Arista de la visera */}
+          <path d="M64 68 L64 122" stroke="#f8fafc" strokeWidth="2.5" strokeLinecap="round" opacity="0.85" />
+          {/* Agujeros para respirar, en cruz a cada lado */}
+          {[[30, 82], [38, 82], [30, 92], [38, 92], [30, 102], [90, 82], [98, 82], [90, 92], [98, 92], [98, 102]].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="2.6" fill="#0b0b0f" />
+          ))}
+          {/* Borde inferior con remaches */}
+          <path d="M11 116 Q64 124 117 116" fill="none" stroke="#475569" strokeWidth="4" />
+          {[22, 44, 64, 84, 106].map(x => <circle key={x} cx={x} cy={x === 64 ? 120 : 118} r="2.2" fill="#e2e8f0" stroke={INK} strokeWidth="1" />)}
+          {/* Brillo del metal */}
+          <path d="M24 22 Q34 12 50 9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+        </Layer>
+      </>
+    ),
+    // La cara la tapa el yelmo
+    face: () => null,
+  },
+
+  maga: {
+    // Maga: sombrero puntiagudo con estrellas, pelo plateado largo y bastón con orbe
+    back: () => (
+      <Layer top={-4} left={-22} w={144} h={128}>
+        <path d="M20 30 Q26 2 72 2 Q118 2 124 30 L134 124 L118 112 L112 126 L102 106 L98 44 L46 44 L42 106 L32 126 L26 112 L10 124 Z" fill="#e2e8f0" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+        <path d="M22 54 L18 112 M122 54 L126 112 M34 64 L32 116 M110 64 L112 116" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" />
+      </Layer>
+    ),
+    front: () => (
+      <>
+        {/* Sombrero: el ala tapa todo el borde de arriba de la caja */}
+        <Layer top={-64} left={-16} w={132} h={84} className="z-20" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
+          <path d="M30 66 Q46 34 60 10 Q68 -2 84 4 L78 12 Q76 30 100 66 Z" fill="#312e81" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <path d="M34 58 Q66 50 96 58 L98 66 Q66 58 32 66 Z" fill="#db2777" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          <path d="M2 70 Q66 54 130 70 Q66 86 2 70 Z" fill="#312e81" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          {/* Estrellas y luna */}
+          <path d="M58 30 L60 35 L65 35 L61 38 L62 43 L58 40 L54 43 L55 38 L51 35 L56 35 Z" fill="#fde047" />
+          <path d="M76 44 L77 47 L80 47 L78 49 L79 52 L76 50 L73 52 L74 49 L72 47 L75 47 Z" fill="#fde047" />
+          <path d="M48 50 A5 5 0 1 0 52 42 A4 4 0 1 1 48 50 Z" fill="#fde047" />
+        </Layer>
+        {/* Bastón con orbe que brilla */}
+        <Layer top={-18} left={98} w={28} h={132} className="z-30">
+          <path d="M14 26 L12 130" stroke={INK} strokeWidth="7" strokeLinecap="round" />
+          <path d="M14 26 L12 130" stroke="#92400e" strokeWidth="4" strokeLinecap="round" />
+          <path d="M6 28 Q14 18 22 28" fill="none" stroke="#92400e" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="14" cy="14" r="10" fill="#f0abfc" stroke={INK} strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 7px #e879f9)' }} />
+          <circle cx="11" cy="11" r="3" fill="#fff" opacity="0.85" />
+        </Layer>
+      </>
+    ),
+    // Mirada tranquila con pestañas, rubor y sonrisa sabia
+    face: ({ eye }) => (
+      <div className="flex flex-col items-center mt-2">
+        <ThinBrows tilt={-4} />
+        <div className="mt-1"><LashEyes eye={eye} lids /></div>
+        <Cheeks />
+        <Lips color="#be185d" />
+      </div>
+    ),
   },
 }

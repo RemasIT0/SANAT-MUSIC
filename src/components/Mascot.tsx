@@ -143,18 +143,26 @@ export default function Mascot({ color, size = 140, expression = 'normal' }: Mas
         {costume?.back?.(costumeCtx)}
 
         {/* Brazos */}
+        {!costume?.hideLimbs && <>
         <div className="absolute top-[60%] -left-4 w-4 h-8 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000", transform: expression === 'rockero' ? "rotate(-20deg)" : "rotate(10deg)" }} />
         <div className="absolute top-[60%] -right-4 w-4 h-8 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000", transform: expression === 'rockero' ? "rotate(20deg)" : "rotate(-10deg)" }} />
 
+        </>}
+
         {/* Pies */}
+        {!costume?.hideLimbs && <>
         <div className="absolute -bottom-4 left-3 w-6 h-3 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000" }} />
         <div className="absolute -bottom-4 right-3 w-6 h-3 border-[3px] border-black rounded-sm z-0" style={{ backgroundColor: color, boxShadow: "3px 3px 0px 0px #000000" }} />
 
-        {/* Cara (Cuerpo principal) */}
+        </>}
+
+        {/* Cara (Cuerpo principal). Algunos disfraces esconden la caja y son toda la cabeza */}
         <div
           ref={boxRef}
           className="absolute top-0 left-0 w-[100px] h-[100px] border-[4px] border-black rounded-sm flex flex-col items-center justify-center cursor-pointer z-10 transition-transform duration-200 ease-out hover:-translate-y-1"
-          style={{ backgroundColor: color, boxShadow: "6px 6px 0px 0px #000000" }}
+          style={costume?.hideBody
+            ? { backgroundColor: 'transparent', borderColor: 'transparent', boxShadow: 'none' }
+            : { backgroundColor: color, boxShadow: "6px 6px 0px 0px #000000" }}
         >
           {renderFace()}
         </div>

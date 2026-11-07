@@ -15,9 +15,9 @@ import { ProfileAudioPlayer } from '../components/ProfileAudio'
 import { ProfileSkeleton } from '../components/Skeleton'
 import { BandLogo, type BandRow } from './Bandas'
 import { friendlySendError } from '../components/ShareModal'
+import { shareLink, bandShareUrl } from '../lib/share'
 import {
-  FaArrowLeft, FaMapMarkerAlt, FaUserPlus, FaPen, FaTrash, FaCheck, FaTimes, FaSpinner,
-  FaCrown, FaSignOutAlt, FaCalendarAlt, FaComment, FaHourglassHalf,
+  FaArrowLeft, FaMapMarkerAlt, FaUserPlus, FaPen, FaTrash, FaCheck, FaTimes, FaSpinner, FaCrown, FaSignOutAlt, FaCalendarAlt, FaComment, FaHourglassHalf, FaShareAlt,
 } from 'react-icons/fa'
 
 interface Member {
@@ -216,6 +216,7 @@ export default function Banda() {
               </button>
             )}
             {me?.status === 'pending' && <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2a2a] text-gray-200 text-sm"><FaHourglassHalf size={11} /> Postulación enviada</span>}
+            <button onClick={() => shareLink({ title: band.name, text: `Conocé a ${band.name} en SANAT${band.looking_for.length ? ` (buscan: ${band.looking_for.join(', ')})` : ''}.`, url: bandShareUrl(band.id) })} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-white text-sm"><FaShareAlt size={12} /> Compartir</button>
             {user?.id !== band.created_by && (
               <button onClick={() => navigate(`/chat/${band.created_by}`)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2a2a2a] hover:bg-[#333] text-white text-sm"><FaComment size={12} /> Escribir a la banda</button>
             )}
@@ -321,7 +322,7 @@ export default function Banda() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm text-white truncate">{ev.title}</p>
-                        <p className="text-xs text-gray-400 truncate flex items-center gap-1"><FaCalendarAlt size={9} /> {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs · {ev.place}</p>
+                        <p className="text-xs text-gray-400 truncate flex items-center gap-1"><FaCalendarAlt size={9} /> {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} hs · {ev.place}</p>
                       </div>
                     </button>
                   </li>

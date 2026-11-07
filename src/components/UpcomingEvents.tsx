@@ -31,7 +31,7 @@ export default function UpcomingEvents() {
           return (
             <button key={ev.id} onClick={() => navigate(`/home?seccion=eventos&evento=${ev.id}`)} className="snap-start flex-shrink-0 w-44 text-left p-2.5 rounded-xl bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-500/60 transition-colors">
               <p className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1" style={{ color: type.color }}>
-                <type.icon size={9} /> {date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} · {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                <type.icon size={9} /> {date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} · {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}
               </p>
               <p className="text-sm text-white font-semibold truncate mt-1">{ev.title}</p>
               <p className="text-xs text-gray-400 truncate">{ev.place}</p>

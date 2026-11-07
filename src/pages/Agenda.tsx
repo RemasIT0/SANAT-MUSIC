@@ -12,10 +12,11 @@ import Avatar from '../components/Avatar'
 import Toast from '../components/Toast'
 import { RowSkeleton } from '../components/Skeleton'
 import { DEPARTAMENTOS } from '../lib/tucuman'
+import { googleCalendarUrl, downloadIcs, type CalendarEvent } from '../lib/calendar'
+import { shareLink, eventShareUrl } from '../lib/share'
 import type { IconType } from 'react-icons'
 import {
-  FaCalendarAlt, FaPlus, FaMapMarkerAlt, FaCheck, FaStar, FaRegStar, FaPen, FaTrash, FaTimes,
-  FaSpinner, FaGuitar, FaMicrophoneAlt, FaDrum, FaMusic, FaClock, FaUsers,
+  FaCalendarAlt, FaPlus, FaMapMarkerAlt, FaCheck, FaStar, FaRegStar, FaPen, FaTrash, FaTimes, FaSpinner, FaGuitar, FaMicrophoneAlt, FaDrum, FaMusic, FaClock, FaUsers, FaCalendarPlus, FaGoogle, FaDownload, FaShareAlt,
 } from 'react-icons/fa'
 
 export const EVENT_TYPES: Record<string, { label: string; icon: IconType; color: string }> = {
@@ -63,6 +64,8 @@ export default function Agenda({ embedded = false }: { embedded?: boolean }) {
   const [formError, setFormError] = useState('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const highlightRef = useRef<HTMLDivElement>(null)
+  // Evento con el menú "Agregar a mi calendario" abierto
+  const [calendarFor, setCalendarFor] = useState<string | null>(null)
   const savingRef = useRef(false)
   const highlight = params.get('evento')
 
@@ -244,7 +247,7 @@ export default function Agenda({ embedded = false }: { embedded?: boolean }) {
                       <div className="min-w-0 flex-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: type.color }}><type.icon size={10} /> {type.label}</span>
                         <h3 className="text-white font-semibold break-words leading-snug">{ev.title}</h3>
-                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5"><FaClock size={10} /> {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs</p>
+                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5"><FaClock size={10} /> {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} hs</p>
                         <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5"><FaMapMarkerAlt size={10} /> {ev.place}{ev.address && ` · ${ev.address}`}{ev.departamento && ` · ${ev.departamento}`}</p>
                         {ev.band && <button onClick={() => navigate(`/banda/${ev.band!.id}`)} className="text-xs text-purple-300 hover:text-purple-200 mt-0.5 flex items-center gap-1.5"><FaUsers size={10} /> {ev.band.name}</button>}
                       </div>
@@ -275,6 +278,37 @@ export default function Agenda({ embedded = false }: { embedded?: boolean }) {
                         </div>
                       )}
                     </div>
+
+                    {/* Calendario y compartir */}
+                    {(() => {
+                      const calEvent: CalendarEvent = {
+                        id: ev.id, title: ev.title, startsAt: ev.starts_at, place: ev.place,
+                        address: [ev.address, ev.departamento].filter(Boolean).join(', '), description: ev.description, url: eventShareUrl(ev.id),
+                      }
+                      const smallBtn = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-200 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-500/60 hover:text-white transition-colors'
+                      return (
+                        <div className="mt-2">
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setCalendarFor(calendarFor === ev.id ? null : ev.id)} aria-expanded={calendarFor === ev.id} className={smallBtn}>
+                              <FaCalendarPlus size={11} /> Agregar a mi calendario
+                            </button>
+                            <button onClick={() => shareLink({ title: ev.title, text: `${type.label}: ${ev.title} — ${date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} en ${ev.place}.`, url: eventShareUrl(ev.id) })} className={smallBtn}>
+                              <FaShareAlt size={11} /> Compartir
+                            </button>
+                          </div>
+                          {calendarFor === ev.id && (
+                            <div className="flex flex-wrap gap-2 mt-2 p-2 rounded-xl bg-[#0f0f0f] border border-[#2a2a2a]">
+                              <a href={googleCalendarUrl(calEvent)} target="_blank" rel="noopener noreferrer" onClick={() => setCalendarFor(null)} className={smallBtn}>
+                                <FaGoogle size={11} /> Google Calendar
+                              </a>
+                              <button onClick={() => { downloadIcs(calEvent); setCalendarFor(null) }} className={smallBtn}>
+                                <FaDownload size={11} /> Calendario del celular (.ics)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                     {ev.creator && <p className="text-[11px] text-gray-500 mt-2">Publicado por <button onClick={() => navigate(`/perfil/${ev.created_by}`)} className="text-gray-300 hover:text-white">{ev.creator.display_name}</button></p>}
                   </div>
                 )

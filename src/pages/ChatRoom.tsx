@@ -546,7 +546,7 @@ export default function ChatRoom() {
                         })()}
                         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{renderWithLinks(msg.content)}</p>
                         <div className="flex items-center justify-end gap-1.5 mt-1">
-                          <span className={`text-[10px] ${isMine ? 'text-purple-200/80' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className={`text-[10px] ${isMine ? 'text-purple-200/80' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                           {isMine && (
                             pending
                               ? <FaSpinner className="animate-spin text-gray-400" size={9} />

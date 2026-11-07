@@ -1,6 +1,8 @@
 {
   "rewrites": [
-    { "source": "/p/:id", "destination": "/api/og?id=:id" },
+    { "source": "/p/:id", "destination": "/api/og?type=profile&id=:id" },
+    { "source": "/b/:id", "destination": "/api/og?type=band&id=:id" },
+    { "source": "/e/:id", "destination": "/api/og?type=event&id=:id" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

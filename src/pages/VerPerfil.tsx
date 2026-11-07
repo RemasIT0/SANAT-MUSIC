@@ -7,6 +7,7 @@ import { type Profile } from '../types'
 import type { ProfileLayout, ProfileModule } from '../types/profileLayout'
 import { LAYOUT_GRID_CLASS, MODULE_ICON_MAP, getModuleSpanClass, getBackgroundStyle } from '../types/profileLayout'
 import Mascot from '../components/Mascot'
+import MascotNote from '../components/MascotNote'
 import { ProfileAudioPlayer, AUDIO_MAX_SECONDS } from '../components/ProfileAudio'
 import FreeProfileView from '../components/free/FreeProfileView'
 import ShareModal from '../components/ShareModal'
@@ -193,7 +194,7 @@ export default function VerPerfil() {
               <div className="flex-1 min-w-0"><p className="font-bold text-xl truncate">{profile.display_name}</p><p className="text-sm opacity-70 truncate">@{profile.username}</p></div>
             </div>
           )}
-          {module.type === 'mascot' && <div className="flex justify-center py-4"><Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={(profile as any).expression || 'normal'} /></div>}
+          {module.type === 'mascot' && <div className="flex justify-center py-4 pt-10"><MascotNote note={profile.mascot_note}><Mascot color={profile.avatar_color || '#a855f7'} size={50} expression={(profile as any).expression || 'normal'} /></MascotNote></div>}
           {module.type === 'bio' && <p className="text-base opacity-90 leading-relaxed break-words whitespace-pre-wrap">{module.config.content || profile.bio || 'Sin biografía'}</p>}
           {module.type === 'instruments' && (
             <div className="flex flex-wrap gap-2">{profile.instruments?.map((inst: any, i: number) => (<span key={i} className="text-sm px-3 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-2 max-w-full"><FaGuitar className="flex-shrink-0" /><span className="truncate">{inst.name}</span><span className="opacity-60 truncate">({inst.level})</span></span>)) || <span className="text-sm opacity-60">Sin instrumentos</span>}</div>
@@ -397,7 +398,7 @@ export default function VerPerfil() {
               <div className="relative flex-shrink-0">
                 <div className="md:hidden"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={84} isOnline={isUserOnline(profile.last_seen)} /></div>
                 <div className="hidden md:block"><Avatar url={profile.avatar_url || null} name={profile.display_name} color={profile.avatar_color || '#333'} size={112} isOnline={isUserOnline(profile.last_seen)} /></div>
-                <div className="absolute -bottom-3 -left-4 pointer-events-none"><Mascot color={profile.avatar_color || '#333'} size={28} expression={profile.expression || 'normal'} /></div>
+                <div className="absolute -bottom-3 -left-4 pointer-events-none"><MascotNote note={profile.mascot_note} align="start"><Mascot color={profile.avatar_color || '#333'} size={28} expression={profile.expression || 'normal'} /></MascotNote></div>
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl md:text-3xl text-white leading-tight break-words">{profile.display_name}</h2>

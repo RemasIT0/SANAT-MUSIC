@@ -26,7 +26,7 @@ const MESSAGES_LIMIT = 500
 const timeLabel = (iso: string) => {
   const date = new Date(iso)
   const now = new Date()
-  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })
   const yesterday = new Date(); yesterday.setDate(now.getDate() - 1)
   if (date.toDateString() === yesterday.toDateString()) return 'Ayer'
   if (now.getTime() - date.getTime() < 6 * 86400000) return date.toLocaleDateString('es-AR', { weekday: 'short' })

@@ -1,7 +1,9 @@
 // src/components/MascotPicker.tsx
 import { useState } from 'react'
 import Mascot from './Mascot'
-import { MASCOT_EXPRESSIONS, type MascotExpression } from './MascotCostumes'
+import { MASCOT_EXPRESSIONS as ALL_EXPRESSIONS, ADMIN_ONLY_EXPRESSIONS, type MascotExpression } from './MascotCostumes'
+import { useAuth } from '../context/AuthContext'
+import { ADMIN_EMAIL } from '../hooks/useAdminAlerts'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 const INITIAL_COUNT = 6
@@ -12,6 +14,10 @@ export default function MascotPicker({ color, value, onChange }: {
   value: MascotExpression
   onChange: (exp: MascotExpression) => void
 }) {
+  // Las mascotas exclusivas (Dark King) solo se muestran a la cuenta admin
+  const { user } = useAuth()
+  const isAdmin = user?.email === ADMIN_EMAIL
+  const MASCOT_EXPRESSIONS = isAdmin ? ALL_EXPRESSIONS : ALL_EXPRESSIONS.filter(e => !ADMIN_ONLY_EXPRESSIONS.includes(e.id))
   const [showAll, setShowAll] = useState(false)
 
   const firstOnes = MASCOT_EXPRESSIONS.slice(0, INITIAL_COUNT)

@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react'
 import type { Profile } from '../../types'
 import { FONTS, STICKERS, patternLayers, type FreeElement } from '../../types/freeLayout'
 import Mascot from '../Mascot'
+import MascotNote from '../MascotNote'
 import { ProfileAudioPlayer } from '../ProfileAudio'
 import {
   FaGuitar, FaMapMarkerAlt, FaUserFriends, FaLink, FaInstagram, FaYoutube, FaSpotify, FaTiktok, FaTwitter, FaImage,
@@ -55,7 +56,8 @@ export function elementBoxStyle(el: FreeElement): CSSProperties {
     fontSize: s.fontSize,
     textAlign: s.align,
     padding: NO_PADDING.includes(el.type) ? 0 : 14,
-    overflow: 'hidden',
+    // La mascota deja salir el globito de su notita por encima de la caja
+    overflow: el.type === 'mascot' ? 'visible' : 'hidden',
     boxSizing: 'border-box',
   }
 }
@@ -85,7 +87,7 @@ export default function FreeElementView({ el, profile, friendsCount, interactive
       const size = Math.max(20, Math.min(el.w * 0.7, (el.h - 20) * 0.75))
       return (
         <div className="w-full h-full flex items-center justify-center pointer-events-none">
-          <Mascot color={profile?.avatar_color || '#a855f7'} size={size} expression={profile?.expression || 'normal'} />
+          <MascotNote note={profile?.mascot_note} large><Mascot color={profile?.avatar_color || '#a855f7'} size={size} expression={profile?.expression || 'normal'} /></MascotNote>
         </div>
       )
     }

@@ -97,7 +97,7 @@ export default function AdminEvents({ onToast }: { onToast: (message: string, ty
             return (
               <div key={ev.id} className={`p-3 sm:p-4 rounded-xl border bg-[#0f0f0f] ${past ? 'border-[#2a2a2a] opacity-60' : 'border-amber-500/30'}`}>
                 <p className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5" style={{ color: type.color }}>
-                  <type.icon size={10} /> {type.label} · {date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs{past && ' · PASADO'}
+                  <type.icon size={10} /> {type.label} · {date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} {date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} hs{past && ' · PASADO'}
                 </p>
                 <h3 className="font-bold text-white break-words mt-0.5">{ev.title}</h3>
                 <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-0.5"><FaMapMarkerAlt size={10} /> {ev.place}{ev.departamento && ` · ${ev.departamento}`}</p>

@@ -103,6 +103,16 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
     setReplySaving(false)
     if (error) { setReplyError(/reply_to_review/.test(error.message) ? 'Falta activar las respuestas en Supabase (SQL de la etapa 4).' : 'No se pudo guardar la respuesta.'); return }
     setReplyingId(null)
+    // Aviso por chat a quien escribió la reseña (solo si hay respuesta y cambió)
+    const clean = text.trim()
+    if (user && clean && clean !== (r.reply || '').trim()) {
+      const short = clean.length > 140 ? clean.slice(0, 140) + '…' : clean
+      await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: r.reviewer_id,
+        content: `Respondí tu reseña: "${short}" — mirala en mi perfil: ${window.location.origin}/perfil/${profileId}`,
+      })
+    }
     load()
   }
 
