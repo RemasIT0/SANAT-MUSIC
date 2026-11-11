@@ -34,6 +34,8 @@ export async function initMonitoring() {
     const mod = await import('@sentry/react')
     mod.init({
       dsn: DSN,
+      // Los avisos salen por el dominio de SANAT (api/aviso.js) para que los bloqueadores no los corten
+      tunnel: '/api/aviso',
       environment: 'production',
       sendDefaultPii: false,
       tracesSampleRate: 0,
