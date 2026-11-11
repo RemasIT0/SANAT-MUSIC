@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { unsubscribePush } from '../lib/pwa'
+import { setMonitoringUser } from '../lib/monitoring'
 import { type User } from '@supabase/supabase-js'
 import { type Profile } from '../types'
 
@@ -43,6 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [emailConfirmed, setEmailConfirmed] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>('ok')
+
+  // Los avisos de error se asocian solo al id de la cuenta (nunca al mail)
+  useEffect(() => { setMonitoringUser(user?.id ?? null) }, [user?.id])
   // Perfil ya cargado: si una lectura falla, se conserva en vez de mandar al onboarding
   const profileRef = useRef<Profile | null>(null)
 

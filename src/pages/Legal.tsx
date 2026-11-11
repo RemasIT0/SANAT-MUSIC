@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { FaArrowLeft, FaFileContract, FaUserShield, FaUsers, FaEnvelope, FaBroadcastTower } from 'react-icons/fa'
 
 const CONTACT_EMAIL = 'remaslove281@gmail.com'
-const LAST_UPDATE = '3 de noviembre de 2026'
+const LAST_UPDATE = '11 de noviembre de 2026'
 
 function Section({ id, title, icon, children }: { id: string; title: string; icon: ReactNode; children: ReactNode }) {
   return (
@@ -115,7 +115,7 @@ export default function Legal() {
             <p><b>Privado:</b> tu email, tus mensajes (solo los ven quienes participan de la conversación), los likes que das, tus bloqueos, tus reportes y tus diseños guardados.</p>
           </Item>
           <Item n="4" title="Proveedores que nos ayudan">
-            <p>Para funcionar usamos servicios de terceros que tratan datos por cuenta nuestra: <b>Supabase</b> (base de datos, autenticación y almacenamiento de archivos), <b>Vercel</b> (alojamiento de la web) y <b>Google / Gmail</b> (envío de emails). Algunos de estos servidores pueden estar ubicados fuera de la Argentina; al usar SANAT prestás tu consentimiento para esa transferencia, que se realiza con proveedores que aplican medidas de seguridad reconocidas.</p>
+            <p>Para funcionar usamos servicios de terceros que tratan datos por cuenta nuestra: <b>Supabase</b> (base de datos, autenticación y almacenamiento de archivos), <b>Vercel</b> (alojamiento de la web), <b>Google / Gmail</b> (envío de emails) y <b>Sentry</b> (avisos de errores técnicos: cuando algo falla se envía el detalle del error, el navegador y un identificador de cuenta, sin tu email ni el contenido de tus mensajes). Algunos de estos servidores pueden estar ubicados fuera de la Argentina; al usar SANAT prestás tu consentimiento para esa transferencia, que se realiza con proveedores que aplican medidas de seguridad reconocidas.</p>
           </Item>
           <Item n="5" title="Acceso del administrador">
             <p>El administrador accede a la información estrictamente necesaria para moderar la plataforma (por ejemplo, reportes y sugerencias). Los mensajes privados no se revisan, salvo que resulte necesario para atender una denuncia concreta o un requerimiento de una autoridad competente.</p>
