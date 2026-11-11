@@ -28,7 +28,7 @@ export default function ProfileBands({ profileId, isMine, themeColor }: { profil
   return (
     <section className="bg-[#1a1a1a] border rounded-2xl p-4 md:p-5" style={{ borderColor: themeColor + '40' }}>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="text-white font-semibold">Integrante de</h3>
+        <h3 className="nota nota--sm font-semibold">Integrante de</h3>
         {isMine && <button onClick={() => navigate('/bandas')} className="text-xs text-gray-300 hover:text-white flex items-center gap-1"><FaPlus size={9} /> {bands.length ? 'Buscar o crear' : 'Crear o unirme a una banda'}</button>}
       </div>
       {bands.length === 0 ? (

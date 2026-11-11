@@ -430,7 +430,7 @@ export default function EditarPerfil() {
           </div>
 
           <div className="flex-1 space-y-4 w-full text-center md:text-left">
-            <h1 className="text-xl md:text-2xl font-bold text-white mb-2">Editar tu Perfil</h1>
+            <h1 className="nota text-xl md:text-2xl mb-3">Editar tu Perfil</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />

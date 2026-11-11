@@ -73,7 +73,7 @@ export default function NearbyMusicians() {
   return (
     <section aria-labelledby="nearby-title">
       <div className="flex items-center justify-between mb-2">
-        <h3 id="nearby-title" className="text-sm font-semibold text-white flex items-center gap-2"><FaMapMarkerAlt className="text-purple-400" /> Músicos cerca tuyo</h3>
+        <h3 id="nearby-title" className="nota nota--sm text-sm font-semibold"><FaMapMarkerAlt /> Músicos cerca tuyo</h3>
         <div className="flex items-center gap-1">
           {!collapsed && <button onClick={() => navigate('/demos')} className="text-xs text-purple-300 hover:text-white flex items-center gap-1.5 px-2 py-1"><FaHeadphones size={11} /> Escuchar demos</button>}
           <button onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls="nearby-list" className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#1a1a1a]/80 border border-[#2a2a2a]">

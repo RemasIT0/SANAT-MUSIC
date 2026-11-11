@@ -1,12 +1,12 @@
 // src/pages/Inicio.tsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   FaMapMarkerAlt, FaMusic, FaFilter, FaSpinner, FaGuitar,
   FaSearch, FaEdit, FaEnvelope, FaPlus, FaBullseye, FaTrash,
-  FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt, FaChevronDown, FaChevronUp,
+  FaExclamationTriangle, FaChevronRight, FaExternalLinkAlt,
   FaRegEnvelope, FaTimes, FaPaperPlane, FaQuestionCircle, FaEnvelopeOpenText,
   FaFlag, FaHeart, FaFire, FaUser, FaUsers, FaCalendarAlt, FaNewspaper
 } from 'react-icons/fa'
@@ -17,6 +17,9 @@ import { IoMegaphone } from "react-icons/io5"
 import { isUserOnline } from '../hooks/useOnlineStatus'
 import Mascot from '../components/Mascot'
 import PostModal from '../components/PostModal'
+import PosterFace from '../components/poster/PosterFace'
+import PosterTile from '../components/poster/PosterTile'
+import PosterFocus, { type PosterAction } from '../components/poster/PosterFocus'
 import Toast from '../components/Toast'
 import AnimatedBackground from '../components/AnimatedBackground'
 import Avatar from '../components/Avatar'
@@ -80,6 +83,7 @@ interface PostWithAuthor {
   last_seen?: string;
   likes_count?: number;
   looking_for?: string[];
+  design?: unknown;
   is_liked_by_me?: boolean;
 }
 
@@ -123,7 +127,8 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [myPostExpanded, setMyPostExpanded] = useState(false)
+  // Póster abierto (muestra las acciones)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
   const [showDonation, setShowDonation] = useState(false)
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
   const { savedIds, toggleSave, available: canSave } = useSavedPosts()
@@ -381,6 +386,28 @@ export default function Home() {
     });
 
   const myLikes = myPost?.likes_count || 0
+
+  const renderPostChips = (post: PostWithAuthor) => (<>
+    {post.intention && (<span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-200 text-[10px] font-bold rounded-full flex items-center gap-1"><FaBullseye size={8} /> {post.intention}</span>)}
+    {(post.looking_for?.length || 0) > 0 && (<span className="px-2.5 py-1 bg-amber-900/30 border border-amber-600/50 text-amber-200 text-[10px] font-bold rounded-full flex items-center gap-1"><FaGuitar size={8} /> Busca: {post.looking_for!.join(', ')}</span>)}
+    {post.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
+  </>)
+
+  const focusedPost = focusedId ? (myPost?.id === focusedId ? myPost : posts.find(p => p.id === focusedId) || null) : null
+  const closeFocus = () => setFocusedId(null)
+  const focusActions = (post: PostWithAuthor): PosterAction[] => post.user_id === user?.id
+    ? [
+        { key: 'likes', label: `${post.likes_count || 0} likes`, icon: FaHeart, className: 'text-red-400', onClick: () => { closeFocus(); handleViewLikers(post.id) } },
+        { key: 'editar', label: 'Editar', icon: FaEdit, onClick: () => { closeFocus(); openEditModal() } },
+        { key: 'compartir', label: 'Compartir', icon: FaShareAlt, onClick: () => { closeFocus(); setShareTarget({ kind: 'post', id: post.id, ownerId: post.user_id, label: post.content.slice(0, 60) }) } },
+      ]
+    : [
+        { key: 'like', label: `${post.likes_count || 0}`, icon: FaHeart, className: post.is_liked_by_me ? 'text-red-400' : 'text-gray-200', onClick: () => handleToggleLike(post.id, post.user_id) },
+        { key: 'mensaje', label: 'Mensaje', icon: FaEnvelope, onClick: () => navigate(`/chat/${post.user_id}?post=${post.id}`) },
+        ...(canSave ? [{ key: 'guardar', label: savedIds.has(post.id) ? 'Guardada' : 'Guardar', icon: savedIds.has(post.id) ? FaBookmark : FaRegBookmark, className: savedIds.has(post.id) ? 'text-amber-300' : 'text-gray-200', onClick: async () => { const result = await toggleSave(post.id); if (result !== null) setToast({ message: result ? 'Guardada en "Guardados"' : 'Quitada de guardados', type: 'success' }) } }] : []),
+        { key: 'compartir', label: 'Compartir', icon: FaShareAlt, onClick: () => { closeFocus(); setShareTarget({ kind: 'post', id: post.id, ownerId: post.user_id, label: post.content.slice(0, 60) }) } },
+        { key: 'reportar', label: 'Reportar', icon: FaFlag, className: 'text-gray-400', onClick: () => { closeFocus(); handleOpenReport('post', post.id, post.user_id) } },
+      ]
   const hasNewLikes = myLikes > seenLikes
 
   // Si alguien quitó su like, bajar el contador visto para detectar likes nuevos después
@@ -545,47 +572,30 @@ export default function Home() {
         {loading ? (
           <PostSkeleton />
         ) : myPost ? (
-          // Mi publicación: tarjeta compacta con el color del perfil
-          <div className="bg-[#1a1a1a] border rounded-2xl overflow-hidden" style={{ borderColor: myTheme + '70' }}>
-            <div className="h-1" style={{ backgroundColor: myTheme }} />
-            <div className="p-3 md:p-4">
-              <div className="flex items-start gap-3">
-                <Avatar url={myPost.avatar_url || null} name={myPost.display_name} color={myPost.avatar_color || '#333'} size={40} isOnline={isUserOnline(myPost.last_seen)} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: myTheme }} /> Mi publicación
-                    <span className="font-normal normal-case tracking-normal text-gray-500">· {new Date(myPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-                  </p>
-                  <p className={`text-gray-200 text-sm leading-relaxed break-words mt-1 ${myPostExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{renderContentWithLinks(myPost.content)}</p>
-                </div>
-              </div>
-
-              {myPostExpanded && (
-                <div className="flex flex-wrap gap-2 mt-3 animate-[fadeIn_0.2s_ease-out]">
-                  {myPost.intention && (<span className="px-2.5 py-1 text-[10px] font-bold rounded-full flex items-center gap-1 border" style={{ backgroundColor: myTheme + '22', borderColor: myTheme + '66', color: '#e5e7eb' }}><FaBullseye size={8} /> {myPost.intention}</span>)}
-                  {myPost.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 mt-3">
+          // Mi publicación: el póster tal como lo armé, con sus datos al lado
+          <div className="poster-card mt-3 flex gap-3 p-3 md:p-4 max-w-xl" style={{ borderColor: myTheme + '70', '--poster-tilt': '-0.6deg' } as CSSProperties}>
+            <button type="button" onClick={() => setFocusedId(myPost.id)} className="w-32 sm:w-40 shrink-0 block text-left shadow-[0_8px_16px_-8px_rgba(0,0,0,0.9)]" aria-label="Abrir mi publicación">
+              <PosterFace post={myPost} />
+            </button>
+            <div className="flex-1 min-w-0 flex flex-col">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: myTheme }} /> Mi publicación
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">{new Date(myPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">{renderPostChips(myPost)}</div>
+              <div className="flex items-center gap-1.5 mt-auto pt-3">
                 <button
                   onClick={() => handleViewLikers(myPost.id)}
                   className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-red-400 hover:border-red-900/50 transition-all"
                 >
                   <FaHeart size={12} className="text-red-500" />
                   <span className="text-xs font-bold">{myPost.likes_count || 0}</span>
-                  <span className="text-xs hidden sm:inline">likes</span>
                   {hasNewLikes && (
-                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#1a1a1a] animate-pulse"></span>
                   )}
                 </button>
-                <button onClick={() => setMyPostExpanded(!myPostExpanded)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-white text-xs transition-all">
-                  {myPostExpanded ? <><FaChevronUp size={10} /> Ver menos</> : <><FaChevronDown size={10} /> Ver más</>}
-                </button>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <button onClick={openEditModal} className="p-2 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-white transition-all" title="Editar publicación" aria-label="Editar publicación" style={{ borderColor: myTheme + '55' }}><FaEdit size={13} /></button>
-                  <button onClick={() => setShowDeleteModal(true)} className="p-2 rounded-lg border bg-red-900/20 border-red-800/50 text-red-400 hover:bg-red-900/40 transition-all" title="Eliminar publicación" aria-label="Eliminar publicación"><FaTrash size={12} /></button>
-                </div>
+                <button onClick={openEditModal} className="p-2 rounded-lg border bg-[#0f0f0f] border-[#2a2a2a] text-gray-300 hover:text-white transition-all" title="Editar publicación" aria-label="Editar publicación" style={{ borderColor: myTheme + '55' }}><FaEdit size={13} /></button>
+                <button onClick={() => setShowDeleteModal(true)} className="p-2 rounded-lg border bg-red-900/20 border-red-800/50 text-red-400 hover:bg-red-900/40 transition-all" title="Eliminar publicación" aria-label="Eliminar publicación"><FaTrash size={12} /></button>
               </div>
             </div>
           </div>
@@ -602,7 +612,7 @@ export default function Home() {
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center animate-pulse"><FaPlus className="text-white text-xs" /></div>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">¡Creá tu primera publicación!</h3>
+                <h3 className="nota text-xl font-bold mb-3">¡Creá tu primera publicación!</h3>
                 <p className="text-gray-400 text-sm max-w-md">Contá a la comunidad qué buscás. <span className="text-purple-400 font-semibold">Solo podés tener una publicación</span>.</p>
               </div>
               <button onClick={openCreateModal} className="mt-2 flex items-center gap-2 px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-900/30 hover:scale-105"><FaPlus size={14} /> Crear mi publicación</button>
@@ -670,63 +680,24 @@ export default function Home() {
               <FaHeart className="text-lg" /> Más me gusta
             </button>
           </div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2"><FaMusic className="text-purple-500" /> Feed de la comunidad <span className="text-sm text-gray-500 font-normal">({otherPosts.length})</span></h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h3 className="nota text-lg font-semibold self-start"><FaMusic /> <span>Feed de la comunidad</span> <span className="text-sm text-stone-600 font-normal whitespace-nowrap">({otherPosts.length})</span></h3>
+            <p className="text-[11px] text-gray-400 sm:text-right">Tocá un póster para abrirlo. Dos toques: me gusta.</p>
           </div>
-          {loading ? (<div className="grid grid-cols-1 md:grid-cols-2 gap-4"><PostSkeleton /><PostSkeleton /><PostSkeleton /><PostSkeleton /></div>) : otherPosts.length === 0 ? (
+          {loading ? (<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" aria-hidden="true">{[0, 1, 2, 3].map(i => <div key={i} className="aspect-[4/5] bg-[#1a1a1a] border border-[#262626] animate-pulse" />)}</div>) : otherPosts.length === 0 ? (
             <div className="text-center py-16 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl"><FaSearch className="text-gray-600 text-4xl mx-auto mb-3" /><p className="text-gray-400">No hay publicaciones con estos filtros.</p></div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {otherPosts.map((post) => (
-                  <div key={post.id || post.user_id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-5 hover:border-purple-600/30 transition-colors flex flex-col">
-                    <div className="flex items-start gap-3 mb-3 cursor-pointer" onClick={() => navigate(`/perfil/${post.user_id}`)}>
-                      <div className="flex items-end gap-1">
-                        <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={45} isOnline={isUserOnline(post.last_seen)} />
-                        <Mascot color={post.avatar_color || '#333'} size={20} expression={(post.expression as any) || 'normal'} />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-white font-bold text-sm hover:text-purple-400 transition-colors">{post.display_name}</h4>
-                        <p className="text-gray-500 text-xs">@{post.username}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-400">
-                          <span className="flex items-center gap-1"><FaGuitar className="text-purple-500" size={10} /> {post.instruments?.[0]?.name || 'Músico'}</span>
-                          <span className="text-gray-700">•</span>
-                          <span className="flex items-center gap-1"><FaMapMarkerAlt className="text-purple-500" size={10} /> {post.localidad}</span>
-                        </div>
-                      </div>
-                      <span className="text-gray-600 text-xs">{new Date(post.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-                    </div>
-                    <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap break-words mb-3 flex-1">{renderContentWithLinks(post.content)}</p>
-                    <div className="flex flex-wrap gap-1.5 pt-3 border-t border-[#2a2a2a] mb-3">
-                      {post.intention && (<span className="px-2.5 py-1 bg-purple-900/30 border border-purple-700/40 text-purple-300 text-[10px] font-bold rounded-full flex items-center gap-1"><FaBullseye size={8} /> {post.intention}</span>)}
-                      {(post.looking_for?.length || 0) > 0 && (<span className="px-2.5 py-1 bg-amber-900/30 border border-amber-600/50 text-amber-200 text-[10px] font-bold rounded-full flex items-center gap-1"><FaGuitar size={8} /> Busca: {post.looking_for!.join(', ')}</span>)}
-                      {post.genres?.map((genre, idx) => { const genData = GENEROS_FIJOS.find(g => g.name === genre); return <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${genData?.color || 'bg-gray-800 text-gray-400 border-gray-700'}`}>#{genre}</span> })}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2a]">
-                      <button onClick={() => handleToggleLike(post.id, post.user_id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${post.is_liked_by_me ? 'bg-red-900/20 text-red-500 border border-red-800/50' : 'bg-[#0f0f0f] text-gray-400 border border-[#2a2a2a] hover:text-red-400 hover:border-red-900/50'}`}>
-                        <FaHeart size={14} className={post.is_liked_by_me ? 'animate-pulse' : ''} />
-                        <span className="text-xs font-bold">{post.likes_count || 0}</span>
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => navigate(`/chat/${post.user_id}?post=${post.id}`)} className="flex items-center gap-2 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] hover:border-purple-600/50 rounded-lg text-sm text-gray-300 hover:text-white transition-all">
-                          <FaEnvelope size={12} className="text-purple-400" /> <span className="hidden sm:inline">Enviar mensaje</span>
-                        </button>
-                        {canSave && (
-                          <button onClick={async () => { const result = await toggleSave(post.id); if (result !== null) setToast({ message: result ? 'Guardada en "Guardados"' : 'Quitada de guardados', type: 'success' }) }} className={`flex items-center gap-1 px-3 py-2 text-xs transition-colors ${savedIds.has(post.id) ? 'text-amber-300' : 'text-gray-400 hover:text-amber-300'}`} title={savedIds.has(post.id) ? 'Quitar de guardados' : 'Guardar'} aria-label={savedIds.has(post.id) ? 'Quitar de guardados' : 'Guardar publicación'}>
-                            {savedIds.has(post.id) ? <FaBookmark size={12} /> : <FaRegBookmark size={12} />}
-                          </button>
-                        )}
-                        <button onClick={() => setShareTarget({ kind: 'post', id: post.id, ownerId: post.user_id, label: post.content.slice(0, 60) })} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-400 hover:text-green-400 transition-colors" title="Compartir" aria-label="Compartir publicación">
-                          <FaShareAlt size={12} />
-                        </button>
-                        <button onClick={() => handleOpenReport('post', post.id, post.user_id)} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors">
-                          <FaFlag size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 items-start gap-x-4 gap-y-7 pt-3">
+                {otherPosts.map((post, postIndex) => (
+                  <PosterTile
+                    key={post.id || post.user_id}
+                    post={post}
+                    tilt={[-1.2, 0.9, -0.5, 1.4, 0.6, -1][postIndex % 6]}
+                    isOnline={isUserOnline(post.last_seen)}
+                    onOpen={() => setFocusedId(post.id)}
+                    onLike={() => { if (!post.is_liked_by_me) handleToggleLike(post.id, post.user_id) }}
+                  />
                 ))}
               </div>
             </>
@@ -918,6 +889,25 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+      {focusedPost && (
+        <PosterFocus
+          post={focusedPost}
+          body={renderContentWithLinks(focusedPost.content)}
+          chips={renderPostChips(focusedPost)}
+          actions={focusActions(focusedPost)}
+          onClose={closeFocus}
+          onLike={focusedPost.user_id === user?.id ? undefined : () => { if (!focusedPost.is_liked_by_me) handleToggleLike(focusedPost.id, focusedPost.user_id) }}
+          author={
+            <button type="button" onClick={() => navigate(`/perfil/${focusedPost.user_id}`)} className="flex items-center gap-3 text-left w-full min-w-0">
+              <Avatar url={focusedPost.avatar_url || null} name={focusedPost.display_name} color={focusedPost.avatar_color || '#333'} size={40} isOnline={isUserOnline(focusedPost.last_seen)} />
+              <span className="min-w-0">
+                <span className="block text-white font-bold text-sm truncate">{focusedPost.display_name}</span>
+                <span className="block text-xs text-gray-300 truncate">{focusedPost.instruments?.[0]?.name || 'Músico'}{focusedPost.localidad ? ` · ${focusedPost.localidad}` : ''} · {new Date(focusedPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
+              </span>
+            </button>
+          }
+        />
       )}
       {shareTarget && <ShareModal target={shareTarget} onClose={() => setShareTarget(null)} />}
       <HomeTour />

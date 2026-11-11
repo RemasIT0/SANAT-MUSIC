@@ -1,0 +1,167 @@
+/* src/styles/mural.css
+   Lenguaje "mural" de SANAT (el mismo de la página de bienvenida) usado en toda la app:
+   títulos como notas pegadas con cinta, publicaciones como pósters y mensajes como stickers. */
+
+:root {
+  --mural-paper: #f4efe6;
+  --mural-paper-ink: #1c1917;
+  --mural-paper-soft: #57534e;
+  --mural-ink: #121212;
+  --mural-tape: rgba(233, 213, 255, 0.62);
+}
+
+/* Cinta adhesiva (se usa como pseudo-elemento o como span) */
+.mural-tape,
+.nota::before,
+.poster-card::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  width: 64px;
+  height: 18px;
+  background: var(--mural-tape);
+  background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(255, 255, 255, 0.18) 6px 7px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* Grano de papel */
+.nota::after,
+.poster-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Títulos: notas pegadas con cinta ---------- */
+.nota {
+  --nota-tilt: -1.4deg;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 100%;
+  padding: 0.55rem 1rem 0.45rem;
+  background: var(--mural-paper);
+  color: var(--mural-paper-ink) !important;
+  transform: rotate(var(--nota-tilt));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 18px -8px rgba(0, 0, 0, 0.75);
+  line-height: 1.1;
+  /* Corta una palabra solo si no entra sola en el renglón */
+  overflow-wrap: break-word;
+}
+.nota::before { top: -9px; left: calc(50% - 32px); transform: rotate(-3deg); }
+.nota::after { opacity: 0.2; mix-blend-mode: multiply; }
+.nota svg { color: #7e22ce; flex-shrink: 0; }
+.nota > * { position: relative; z-index: 1; }
+/* Variantes */
+.nota--violet { background: #7e22ce; color: #fff !important; --nota-tilt: 1.2deg; }
+.nota--violet svg { color: #f3e8ff; }
+.nota--violet::after { opacity: 0.25; }
+.nota--sm { padding: 0.3rem 0.7rem 0.25rem; gap: 0.4rem; --nota-tilt: -1deg; font-family: ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.03em; word-spacing: normal; }
+.nota--sm::before { width: 44px; height: 14px; top: -7px; left: calc(50% - 22px); }
+.nota-wrap { padding-top: 10px; }
+
+/* ---------- Publicaciones: pósters pegados ---------- */
+.poster-card {
+  --poster-tilt: 0deg;
+  position: relative;
+  background: var(--mural-ink);
+  color: #fafafa;
+  border: 1px solid #262626;
+  transform: rotate(var(--poster-tilt));
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.35), 0 18px 30px -12px rgba(0, 0, 0, 0.85);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.poster-card::before { top: -9px; left: calc(50% - 32px); transform: rotate(-2deg); }
+.poster-card::after { opacity: 0.07; mix-blend-mode: screen; }
+.poster-card > * { position: relative; z-index: 1; }
+@media (hover: hover) {
+  .poster-card:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.35), 0 26px 36px -14px rgba(0, 0, 0, 0.9); }
+}
+
+/* El lienzo del póster diseñado */
+.poster-canvas { position: relative; overflow: hidden; }
+
+/* ---------- Chat: mensajes como stickers ---------- */
+.chat-sticker {
+  --sticker-tilt: 0deg;
+  position: relative;
+  border-radius: 18px;
+  border: 3px solid #fafafa;
+  transform: rotate(var(--sticker-tilt));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 16px -8px rgba(0, 0, 0, 0.85);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chat-sticker--mine { background: #7e22ce; color: #fff; border-bottom-right-radius: 6px; }
+.chat-sticker--other { background: #1f1f1f; color: #f4f4f5; border-color: #e7e5e4; border-bottom-left-radius: 6px; }
+/* Esquina que se despega al pasar el mouse */
+.chat-sticker::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 0;
+  height: 0;
+  border-top-right-radius: 16px;
+  background: linear-gradient(225deg, #d4d4d8 0 50%, transparent 50%);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .chat-sticker:hover { transform: rotate(0deg) translateY(-1px); }
+  .chat-sticker:hover::after { width: 16px; height: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-card, .chat-sticker, .chat-sticker::after { transition: none; }
+}
+
+/* ---------- Póster compacto del mural ---------- */
+.poster-tile { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.poster-tile:focus-visible { outline: 3px solid #c084fc; outline-offset: 3px; }
+
+/* Póster por defecto: oscuro, letras blancas, siempre 4:5 */
+.poster-default { aspect-ratio: 4 / 5; container-type: inline-size; background: var(--mural-ink); color: #fff; overflow: hidden; }
+.poster-default__in { height: 100%; display: flex; flex-direction: column; padding: max(10px, 6cqw); }
+.poster-default__head { font-family: 'Anton', 'Nirvana', sans-serif; font-size: max(19px, 11.5cqw); line-height: 1.05; text-transform: uppercase; flex-shrink: 0; overflow-wrap: anywhere; }
+.poster-default__busca { font-size: max(11px, 3.8cqw); font-weight: 700; color: #d8b4fe; margin-top: 0.3em; flex-shrink: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.poster-default__body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.6em;
+  font-size: max(12.5px, 5cqw);
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(#000 78%, transparent);
+  mask-image: linear-gradient(#000 78%, transparent);
+}
+.poster-default__body--full { overflow-y: auto; -webkit-mask-image: none; mask-image: none; }
+
+/* Abierto: entra entero en la pantalla junto con la tira de acciones */
+.poster-focus-face { width: min(100%, calc((100dvh - 330px) * 0.8)); min-width: 220px; touch-action: manipulation; }
+
+/* Corazón de los dos toques */
+.poster-heart {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 45%;
+  color: #ef4444;
+  font-size: 64px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  animation: poster-heart 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes poster-heart {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .poster-heart { animation-duration: 0.01s; } }

@@ -135,7 +135,7 @@ export default function ProfileReviews({ profileId, profileName, themeColor }: {
   return (
     <section className="bg-[#1a1a1a] border rounded-2xl p-4 md:p-5" style={{ borderColor: themeColor + '40' }}>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="text-white font-semibold">Reseñas {reviews.length > 0 && <span className="text-gray-400 font-normal text-sm">({reviews.length})</span>}</h3>
+        <h3 className="nota nota--sm font-semibold">Reseñas {reviews.length > 0 && <span className="text-stone-600 font-normal text-sm">({reviews.length})</span>}</h3>
         {!isMine && canReview && (
           <button onClick={openForm} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90" style={{ backgroundColor: themeColor }}>
             <FaPen size={10} /> {myReview ? 'Editar mi reseña' : 'Dejar reseña'}

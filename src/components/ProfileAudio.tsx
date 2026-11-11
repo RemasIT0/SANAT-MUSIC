@@ -246,7 +246,7 @@ export function ProfileAudioUploader() {
 
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-4 md:p-6 w-full mt-4">
-      <h2 className="text-white text-lg mb-1 flex items-center gap-2"><FaMicrophone className="text-purple-400" size={16} /> Tu audio</h2>
+      <h2 className="nota nota--sm text-lg mb-2"><FaMicrophone size={16} /> Tu audio</h2>
       <p className="text-gray-400 text-sm mb-4">Mostrá cómo sonás: un solo audio de hasta {AUDIO_MAX_SECONDS} segundos. Grabalo acá mismo o subí un archivo (MP3, M4A, OGG, hasta 1 MB). Uno nuevo reemplaza al anterior.</p>
 
       {audioUrl && !recorded && <div className="mb-4"><ProfileAudioPlayer url={audioUrl} name={profile?.display_name || 'vos'} color={profile?.theme_color || '#a855f7'} /></div>}

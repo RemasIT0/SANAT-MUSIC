@@ -131,7 +131,7 @@ export default function Notificaciones() {
           >
             <FaArrowLeft /> Volver
           </button>
-          <h1 className="text-2xl font-bold text-white">Notificaciones</h1>
+          <h1 className="nota text-2xl">Notificaciones</h1>
           <div className="w-20"></div>
         </div>
 

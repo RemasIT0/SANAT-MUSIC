@@ -21,7 +21,7 @@ export default function UpcomingEvents() {
   return (
     <section className="bg-[#1a1a1a]/90 border border-[#2a2a2a] rounded-2xl p-3">
       <div className="flex items-center justify-between mb-2 px-1">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2"><FaCalendarAlt className="text-purple-400" size={13} /> Próximos eventos</h2>
+        <h2 className="nota nota--sm text-sm font-semibold"><FaCalendarAlt size={13} /> Próximos eventos</h2>
         <button onClick={() => navigate('/home?seccion=eventos')} className="text-xs text-purple-300 hover:text-purple-200 flex items-center gap-1">Ver agenda <FaChevronRight size={9} /></button>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1 snap-x">

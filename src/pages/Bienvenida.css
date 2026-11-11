@@ -198,6 +198,34 @@
 }
 .firma { transform: rotate(-4deg); transform-origin: right center; }
 
+/* Globo de diálogo de Darkore: oscuro con borde violeta, la colita apunta a su mascota */
+.burbuja-dk {
+  position: relative;
+  padding: 1.4rem 1.6rem 1.1rem;
+  background: #150d1f;
+  border: 2px solid #7e22ce;
+  border-radius: 22px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4), 0 16px 30px -14px rgba(0, 0, 0, 0.9);
+}
+.burbuja-dk::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: #150d1f;
+  border-left: 2px solid #7e22ce;
+  border-bottom: 2px solid #7e22ce;
+  /* Celular: la mascota está arriba, la colita sale del borde superior */
+  top: -12px;
+  left: calc(50% - 11px);
+  transform: rotate(135deg);
+}
+@media (min-width: 768px) {
+  /* Compu: la mascota está a la izquierda */
+  .burbuja-dk::before { top: 46px; left: -12px; transform: rotate(45deg); }
+}
+.burbuja-dk .firma { margin-top: 0.6rem; }
+
 /* Impresión: trama de puntos en los afiches violeta */
 .afiche--violet::after {
   content: '';

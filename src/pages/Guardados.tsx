@@ -101,7 +101,7 @@ export default function Guardados() {
       <AnimatedBackground />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <main className="max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4">
-        <h1 className="text-2xl text-white flex items-center gap-3"><FaBookmark className="text-purple-400" /> Guardados</h1>
+        <h1 className="nota text-2xl"><FaBookmark className="text-purple-400" /> Guardados</h1>
 
         <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#141414] border border-[#2a2a2a]">
           {([['guardadas', 'Publicaciones', saved.length], ['coincidencias', 'Coincidencias', alerts.length]] as const).map(([id, label, count]) => (

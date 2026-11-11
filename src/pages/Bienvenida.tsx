@@ -331,7 +331,7 @@ export default function Bienvenida() {
                 {ONDA.map((h, i) => <i key={i} style={{ height: `${h}%`, animationDelay: `${-i * 0.09}s` }} />)}
               </div>
             </div>
-            <p className="text-xs text-[color:var(--paper-soft)] mt-3">Ejemplo ilustrativo de chat y demo.</p>
+            <p className="text-xs text-[color:var(--paper-soft)] mt-3"></p>
           </Afiche>
         </section>
 
@@ -355,13 +355,13 @@ export default function Bienvenida() {
               <div>
                 <h2 className="relative text-6xl sm:text-8xl text-white leading-none">DARKORE</h2>
                 <p className="mt-2 text-violet-300 font-semibold">Creador de SANAT · el Dark King</p>
-                <figure className="relative mt-6">
+                <figure className="burbuja-dk mt-8">
                   <blockquote className="font-marker text-xl sm:text-2xl text-zinc-100 leading-relaxed">
                     “Armé SANAT para que ningún músico de Tucumán se quede sin banda ni sin escenario. La pared es de todos: pegá tu afiche y hacé ruido.”
                   </blockquote>
                   <figcaption className="firma font-marker text-3xl sm:text-4xl text-violet-400 mt-4 text-right">— Darkore</figcaption>
                 </figure>
-                <p className="relative mt-5 text-sm text-zinc-400">El Dark King es su mascota, y es la única que nadie más puede usar.</p>
+                <p className="relative mt-5 text-sm text-zinc-400">Dark King</p>
               </div>
             </Afiche>
           </div>

@@ -2,8 +2,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { FaTimes, FaSpinner, FaBullseye } from 'react-icons/fa'
+import { FaTimes, FaSpinner, FaBullseye, FaPalette } from 'react-icons/fa'
 import Toast from './Toast'
+import PostPoster from './poster/PostPoster'
+import PostPosterEditor from './poster/PostPosterEditor'
+import { parsePostDesign, type PostDesign } from '../types/postDesign'
 
 const GENEROS_FIJOS = [
   { name: 'Rock', color: 'bg-red-500/20 text-red-400 border-red-500/50' },
@@ -31,7 +34,7 @@ const INTENCIONES = [
 interface PostModalProps {
   isOpen: boolean
   onClose: () => void
-  existingPost?: { id?: string; content: string; intention?: string; genres?: string[]; looking_for?: string[]; match_scope?: string } | null
+  existingPost?: { id?: string; content: string; intention?: string; genres?: string[]; looking_for?: string[]; match_scope?: string; design?: unknown } | null
   onPostSaved: () => void
 }
 
@@ -44,6 +47,9 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
   const [lookingFor, setLookingFor] = useState<string[]>([])
   const [matchScope, setMatchScope] = useState<'departamento' | 'provincia'>('departamento')
   const [customInstrument, setCustomInstrument] = useState('')
+  // Póster personalizado (null = póster oscuro por defecto)
+  const [design, setDesign] = useState<PostDesign | null>(null)
+  const [editingDesign, setEditingDesign] = useState(false)
   const [loading, setLoading] = useState(false)
   // Después de guardar, el botón queda bloqueado hasta que el modal se cierra
   const [saved, setSaved] = useState(false)
@@ -65,6 +71,8 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
       setLookingFor(Array.isArray(existingPost?.looking_for) ? existingPost!.looking_for! : [])
       setMatchScope(existingPost?.match_scope === 'provincia' ? 'provincia' : 'departamento')
       setCustomInstrument('')
+      setDesign(parsePostDesign(existingPost?.design))
+      setEditingDesign(false)
       setToast(null)
       setSaved(false)
     }
@@ -100,7 +108,8 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
       intention !== originalData.intention ||
       JSON.stringify(lookingFor) !== JSON.stringify(existingPost?.looking_for || []) ||
       matchScope !== (existingPost?.match_scope === 'provincia' ? 'provincia' : 'departamento') ||
-      JSON.stringify(selectedGenres) !== JSON.stringify(originalData.genres)
+      JSON.stringify(selectedGenres) !== JSON.stringify(originalData.genres) ||
+      JSON.stringify(design) !== JSON.stringify(parsePostDesign(existingPost?.design))
 
     if (!hasChanges && existingPost) {
       setToast({ message: 'No realizaste ningún cambio', type: 'info' })
@@ -124,10 +133,19 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
         ? supabase.from('posts').update(fields).eq('id', existingPost.id)
         : supabase.from('posts').insert({ user_id: user.id, ...fields })
 
-      let { error } = await save({ ...base, ...matching })
+      let { error } = await save({ ...base, ...matching, design })
+      // Si la base todavía no tiene la columna del diseño, guardar igual sin él
+      let designSkipped = false
+      if (error && /design/.test(error.message)) { designSkipped = true; ({ error } = await save({ ...base, ...matching })) }
       // Si la base todavía no tiene las columnas de coincidencias, guardar igual sin ellas
       if (error && /looking_for|match_scope/.test(error.message)) ({ error } = await save(base))
       if (error) throw new Error('Error en la base de datos: ' + error.message)
+      if (designSkipped && design) {
+        setToast({ message: 'Se guardó la publicación, pero el diseño todavía no se puede guardar (falta actualizar la base).', type: 'info' })
+        setSaved(true)
+        setTimeout(() => { onPostSaved(); onClose() }, 2500)
+        return
+      }
 
       const successMessage = existingPost ? 'Publicación actualizada correctamente' : 'Publicación creada correctamente'
       setToast({ message: successMessage, type: 'success' })
@@ -242,6 +260,21 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
             </div>
           </div>
 
+          <div className="rounded-xl border border-[#2a2a2a] bg-[#0f0f0f] p-3 flex items-center gap-3">
+            <div className="w-16 shrink-0">
+              {design
+                ? <PostPoster design={design} content={content || ' '} />
+                : <div className="w-full aspect-[4/5] bg-[#121212] border border-[#2a2a2a] flex items-center justify-center text-[9px] text-gray-300 px-1 text-center leading-tight">póster oscuro</div>}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white font-semibold">Tu publicación como póster</p>
+              <p className="text-[11px] text-gray-400">{design ? 'Con tu diseño.' : 'Sin diseño se ve como un póster oscuro con letras blancas.'}</p>
+              <button type="button" onClick={() => setEditingDesign(true)} className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1f1f1f] border border-purple-700/60 text-xs text-purple-200 hover:text-white hover:border-purple-500">
+                <FaPalette size={11} /> Personalizar publicación
+              </button>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading || saved || !isFormValid}
@@ -261,6 +294,16 @@ export default function PostModal({ isOpen, onClose, existingPost, onPostSaved }
           )}
         </form>
       </div>
+
+      {editingDesign && (
+        <PostPosterEditor
+          initial={design}
+          content={content}
+          onCancel={() => setEditingDesign(false)}
+          onSave={d => { setDesign(d); setEditingDesign(false) }}
+          onRemove={design ? () => { setDesign(null); setEditingDesign(false) } : undefined}
+        />
+      )}
     </div>
   )
 }

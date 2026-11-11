@@ -429,13 +429,13 @@ export default function VerPerfil() {
             {/* Información */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 pt-5 border-t border-[#2a2a2a]">
               <div>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Sobre mí</h3>
+                <h3 className="nota nota--sm text-xs font-semibold uppercase tracking-wider mt-1 mb-3">Sobre mí</h3>
                 <p className="text-gray-300 text-sm leading-relaxed break-words">{profile.bio || 'Este usuario aún no escribió su biografía.'}</p>
               </div>
               <div className="space-y-4">
                 {profile.instruments?.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Instrumentos</h3>
+                    <h3 className="nota nota--sm text-xs font-semibold uppercase tracking-wider mt-1 mb-3">Instrumentos</h3>
                     <div className="flex flex-wrap gap-2">
                       {profile.instruments.map((inst, idx) => (
                         <span key={`${inst.name}-${idx}`} className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg bg-[#0f0f0f] border text-gray-300" style={{ borderColor: themeColor + '40' }}>
@@ -447,7 +447,7 @@ export default function VerPerfil() {
                 )}
                 {profile.genres?.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Géneros</h3>
+                    <h3 className="nota nota--sm text-xs font-semibold uppercase tracking-wider mt-1 mb-3">Géneros</h3>
                     <div className="flex flex-wrap gap-2">{profile.genres.map((genre, idx) => (<span key={`${genre}-${idx}`} className="px-2.5 py-1 text-xs rounded-full border" style={{ backgroundColor: themeColor + '20', borderColor: themeColor + '60', color: themeColor }}>{genre}</span>))}</div>
                   </div>
                 )}

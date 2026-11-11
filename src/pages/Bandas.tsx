@@ -88,7 +88,7 @@ export default function Bandas({ embedded = false }: { embedded?: boolean }) {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <main className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h1 className={`${embedded ? 'text-xl' : 'text-2xl'} text-white flex items-center gap-3`}><FaUsers className="text-purple-400" /> Bandas</h1>
+          <h1 className={`nota ${embedded ? 'text-xl' : 'text-2xl'}`}><FaUsers className="text-purple-400" /> Bandas</h1>
           <button onClick={openCreate} disabled={missing || loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
             <FaPlus size={11} /> Crear banda
           </button>

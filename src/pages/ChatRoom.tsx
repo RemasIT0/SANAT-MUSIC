@@ -1,5 +1,5 @@
 // src/pages/ChatRoom.tsx
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment, type CSSProperties } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -62,6 +62,14 @@ const renderWithLinks = (text: string) =>
       ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline text-cyan-300 break-all inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>{part}<FaExternalLinkAlt size={9} /></a>
       : <Fragment key={i}>{part}</Fragment>
   )
+
+// Cada mensaje es un sticker pegado un poquito torcido (siempre igual para el mismo mensaje)
+function stickerTilt(id: string, mine: boolean) {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
+  const tilt = ((Math.abs(hash) % 13) / 10) + 0.3 // entre 0.3 y 1.5 grados
+  return mine ? tilt : -tilt
+}
 
 export default function ChatRoom() {
   const { userId } = useParams()
@@ -520,7 +528,8 @@ export default function ChatRoom() {
                         onPointerUp={cancelLongPress}
                         onPointerLeave={cancelLongPress}
                         onContextMenu={(e) => { e.preventDefault(); if (!pending) setActiveMessageId(msg.id) }}
-                        className={`px-3.5 py-2.5 rounded-2xl border backdrop-blur-sm cursor-pointer ${isMine ? 'rounded-br-md bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-purple-500/40 text-white' : 'rounded-bl-md bg-[#1a1a1a]/80 border-gray-700/50 text-gray-100'} ${isActive ? 'ring-2 ring-cyan-400/60' : ''}`}
+                        className={`chat-sticker px-3.5 py-2.5 cursor-pointer ${isMine ? 'chat-sticker--mine' : 'chat-sticker--other'} ${isActive ? 'ring-2 ring-cyan-400/70 ring-offset-2 ring-offset-[#0f0f0f]' : ''}`}
+                        style={{ '--sticker-tilt': `${stickerTilt(msg.id, isMine)}deg` } as CSSProperties}
                       >
                         {msg.post_content && (
                           <button
@@ -550,7 +559,7 @@ export default function ChatRoom() {
                           {isMine && (
                             pending
                               ? <FaSpinner className="animate-spin text-gray-400" size={9} />
-                              : <span className={`text-[11px] font-bold ${msg.is_read ? 'text-cyan-400' : 'text-gray-400'}`} title={msg.is_read ? 'Leído' : 'Enviado'}>{msg.is_read ? '✓✓' : '✓'}</span>
+                              : <span className={`text-[11px] font-bold ${msg.is_read ? 'text-cyan-300' : 'text-purple-200'}`} title={msg.is_read ? 'Leído' : 'Enviado'}>{msg.is_read ? '✓✓' : '✓'}</span>
                           )}
                         </div>
                       </div>
@@ -591,7 +600,7 @@ export default function ChatRoom() {
           )}
           {isOtherTyping && (
             <div className="flex justify-start mt-3">
-              <div className="flex gap-1 bg-[#1a1a1a]/80 px-3 py-2.5 rounded-2xl rounded-bl-md border border-gray-700/50">
+              <div className="chat-sticker chat-sticker--other flex gap-1 px-3 py-2.5" style={{ '--sticker-tilt': '-1deg' } as CSSProperties}>
                 {[0, 150, 300].map(d => <span key={d} className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
               </div>
             </div>

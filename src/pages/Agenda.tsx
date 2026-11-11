@@ -203,7 +203,7 @@ export default function Agenda({ embedded = false }: { embedded?: boolean }) {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <main className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h1 className={`${embedded ? 'text-xl' : 'text-2xl'} text-white flex items-center gap-3`}><FaCalendarAlt className="text-purple-400" /> Agenda</h1>
+          <h1 className={`nota ${embedded ? 'text-xl' : 'text-2xl'}`}><FaCalendarAlt className="text-purple-400" /> Agenda</h1>
           <button onClick={() => openNew()} disabled={missing || loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold disabled:opacity-40">
             <FaPlus size={11} /> Publicar evento
           </button>
@@ -228,7 +228,7 @@ export default function Agenda({ embedded = false }: { embedded?: boolean }) {
           </div>
         ) : groups.map(([day, list]) => (
           <section key={day}>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 first-letter:uppercase">{day}</h2>
+            <h2 className="nota nota--sm nota--violet text-xs font-bold uppercase tracking-wider mt-2 mb-3">{day}</h2>
             <div className="space-y-3">
               {list.map(ev => {
                 const type = EVENT_TYPES[ev.event_type] || EVENT_TYPES.otro

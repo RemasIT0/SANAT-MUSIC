@@ -202,7 +202,7 @@ export default function Bandeja() {
         {/* Encabezado */}
         <div className="flex items-start justify-between gap-3 mb-5">
           <div>
-            <h1 className="text-3xl text-white">Mensajes</h1>
+            <h1 className="nota text-3xl">Mensajes</h1>
             <p className="text-sm text-gray-400 mt-1">
               {totalUnread > 0 ? <span className="text-white font-semibold">{totalUnread} sin leer</span> : 'Estás al día'}
               {onlineNow.length > 0 && <> · <span className="text-green-400">{onlineNow.length} en línea</span></>}

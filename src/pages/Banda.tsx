@@ -184,7 +184,7 @@ export default function Banda() {
           <div className="flex items-start gap-4">
             <BandLogo band={band} size={84} />
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl text-white break-words">{band.name}</h1>
+              <h1 className="nota text-2xl break-words">{band.name}</h1>
               <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-1"><FaMapMarkerAlt size={11} /> {[band.localidad, band.departamento].filter(Boolean).join(', ') || 'Tucumán'}</p>
               {band.genres.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">{band.genres.map(g => <span key={g} className="px-2 py-0.5 rounded-full text-[11px] bg-purple-900/30 border border-purple-700/40 text-purple-200">{g}</span>)}</div>
@@ -229,7 +229,7 @@ export default function Banda() {
 
         {amAdmin && invitedList.length > 0 && (
           <section className={card}>
-            <h2 className="text-white font-semibold mb-3">Invitaciones enviadas <span className="text-gray-400 font-normal text-sm">({invitedList.length})</span></h2>
+            <h2 className="nota nota--sm text-base font-semibold mb-3">Invitaciones enviadas <span className="text-stone-600 font-normal text-sm">({invitedList.length})</span></h2>
             <ul className="space-y-2">
               {invitedList.map(m => (
                 <li key={m.user_id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0f0f0f]">
@@ -249,7 +249,7 @@ export default function Banda() {
 
         {amAdmin && pending.length > 0 && (
           <section className={`${card} border-amber-600/40`}>
-            <h2 className="text-white font-semibold mb-3">Postulaciones <span className="text-gray-400 font-normal text-sm">({pending.length})</span></h2>
+            <h2 className="nota nota--sm text-base font-semibold mb-3">Postulaciones <span className="text-stone-600 font-normal text-sm">({pending.length})</span></h2>
             <ul className="space-y-3">
               {pending.map(m => (
                 <li key={m.user_id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-[#0f0f0f]">
@@ -271,7 +271,7 @@ export default function Banda() {
         )}
 
         <section className={card}>
-          <h2 className="text-white font-semibold mb-3">Integrantes <span className="text-gray-400 font-normal text-sm">({active.length})</span></h2>
+          <h2 className="nota nota--sm text-base font-semibold mb-3">Integrantes <span className="text-stone-600 font-normal text-sm">({active.length})</span></h2>
           <ul className="grid sm:grid-cols-2 gap-2">
             {active.map(m => (
               <li key={m.user_id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0f0f0f]">
@@ -295,7 +295,7 @@ export default function Banda() {
 
         {withAudio.length > 0 && (
           <section className={card}>
-            <h2 className="text-white font-semibold mb-3">Cómo suenan</h2>
+            <h2 className="nota nota--sm text-base font-semibold mb-3">Cómo suenan</h2>
             <div className="space-y-2">
               {withAudio.map(m => <ProfileAudioPlayer key={m.user_id} url={m.profile.audio_url} name={m.profile.display_name} />)}
             </div>
@@ -304,7 +304,7 @@ export default function Banda() {
 
         <section className={card}>
           <div className="flex items-center justify-between gap-3 mb-3">
-            <h2 className="text-white font-semibold">Próximas fechas</h2>
+            <h2 className="nota nota--sm text-base font-semibold">Próximas fechas</h2>
             <button onClick={() => navigate(amAdmin ? `/agenda?nuevo=1&banda=${band.id}` : '/agenda')} className="text-xs text-purple-300 hover:text-purple-200">{amAdmin ? '+ Agregar fecha' : 'Ver agenda'}</button>
           </div>
           {events.length === 0 ? (

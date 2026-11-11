@@ -110,7 +110,7 @@ export default function Demos() {
       />
       <main className="max-w-3xl mx-auto px-4 pt-10 pb-4 space-y-4">
         <div>
-          <h1 className="text-3xl text-white flex items-center gap-3"><FaHeadphones style={{ color: theme }} /> Demos</h1>
+          <h1 className="nota text-3xl"><FaHeadphones style={{ color: theme }} /> Demos</h1>
           <p className="text-sm text-gray-400 mt-1">Escuchá cómo suenan los músicos de SANAT. Se reproducen uno detrás del otro.</p>
         </div>
 

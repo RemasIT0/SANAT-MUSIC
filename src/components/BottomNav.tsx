@@ -224,7 +224,7 @@ export default function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0f0f0f]/95 backdrop-blur-lg border-t border-purple-600/20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-[48] bg-[#0f0f0f]/95 backdrop-blur-lg border-t border-purple-600/20 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <span className="absolute bottom-2 left-[15%] text-purple-500/20 text-xl animate-floatNote">♪</span>
           <span className="absolute bottom-4 left-[40%] text-pink-500/20 text-lg animate-floatNote" style={{ animationDelay: '1s' }}>♫</span>
