@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Anton&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:#0f0f0f;color:#fff;font-family:system-ui,sans-serif;position:relative}
+nav{position:absolute;top:26px;left:56px;right:56px;display:flex;justify-content:space-between}
+nav b{font-family:Anton;font-size:26px;letter-spacing:.12em}nav a{color:#c4b5fd;margin-left:22px}
+.disc{position:absolute;left:330px;top:150px;width:580px;height:580px;border-radius:50%;background:repeating-radial-gradient(#111 0 3px,#1c1c1c 3px 5px)}
+.disc:after{content:"";position:absolute;inset:200px;border-radius:50%;background:#7e22ce}
+.cover{position:absolute;left:70px;top:150px;width:580px;height:580px;background:#1a1a1a;border:1px solid #2a2a2a;box-shadow:20px 20px 60px #000;padding:36px;overflow:hidden}
+.cover h1{font-family:Anton;font-size:120px;line-height:.9;letter-spacing:.05em;color:#e9d5ff}
+.cover small{font-family:'Permanent Marker';color:#a855f7;font-size:20px}
+.grid{position:absolute;left:36px;right:36px;bottom:36px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.sq{aspect-ratio:1;border-radius:12px;position:relative}
+.sq:after{content:"• •";position:absolute;inset:0;top:30%;text-align:center;font-weight:900;color:#000;letter-spacing:.3em}
+.dk{grid-column:span 2;grid-row:span 2;background:#2b2b2b;box-shadow:0 0 40px #7e22ce}
+.dk:after{color:#ef4444;text-shadow:0 0 10px #ef4444}
+.tracks{position:absolute;left:990px;top:140px;width:390px}
+.tracks .side{font-family:'Permanent Marker';color:#a855f7;font-size:20px;margin-bottom:10px}
+.t{display:flex;gap:16px;padding:13px 0;border-bottom:1px solid #2a2a2a;font-size:20px}
+.t span{color:#71717a;width:28px}.t.on{color:#d8b4fe}
+.t em{margin-left:auto;color:#52525b;font-style:normal;font-size:15px}
+.tracks a{display:block;margin-top:30px;background:#7e22ce;text-align:center;padding:18px;border-radius:14px;font-weight:700;font-size:20px;box-shadow:0 10px 40px #7e22ce66}
+.prod{margin-top:16px;color:#a1a1aa;font-size:14px}
+</style></head><body>
+<nav><b>SANAT</b><div><a>Shows</a><a>Iniciar sesión</a></div></nav>
+<div class="disc"></div>
+<div class="cover"><small>Lado A · Tucumán</small><h1>SANAT</h1>
+<div class="grid"><div class="sq dk"></div><div class="sq" style="background:#22c55e"></div><div class="sq" style="background:#f97316"></div><div class="sq" style="background:#3b82f6"></div><div class="sq" style="background:#ec4899"></div></div></div>
+<div class="tracks"><p class="side">Lado A</p>
+<div class="t on"><span>01</span>Tu mascota<em>3:12</em></div>
+<div class="t"><span>02</span>Diseñá tu perfil<em>4:05</em></div>
+<div class="t"><span>03</span>Bandas<em>2:58</em></div>
+<p class="side" style="margin-top:22px">Lado B</p>
+<div class="t"><span>04</span>Shows y jams<em>3:40</em></div>
+<div class="t"><span>05</span>Chat entre músicos<em>2:21</em></div>
+<div class="t"><span>06</span>Demos<em>3:33</em></div>
+<a>Poné play: crear cuenta</a><p class="prod">Producido por Darkore</p></div>
+</body></html>

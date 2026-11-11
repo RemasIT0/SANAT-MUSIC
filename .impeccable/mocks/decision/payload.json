@@ -1,0 +1,46 @@
+{
+  "title": "Bienvenida de SANAT: elegí la estructura",
+  "question": "Los colores y el estilo de SANAT se mantienen. Elegí cómo se cuenta la página.",
+  "options": [
+    {
+      "id": "lineup",
+      "kind": "assigned",
+      "label": "Line-up de festival",
+      "kicker": "THE ROLL",
+      "lineage": "Afiches de line-up de festivales de rock",
+      "thesis": "SANAT presentado como un festival: las mascotas son el line-up y Darkore es el cabeza de cartel.",
+      "palette": ["#0f0f0f", "#1a1a1a", "#7e22ce", "#c084fc", "#ffffff"],
+      "materials": ["afiche impreso", "tipografía Nirvana", "cuerdas violetas"],
+      "viewport": "Afiche gigante: DARKORE arriba enorme con el Dark King, debajo filas de mascotas por tamaño como bandas del cartel, y el botón 'Entrada gratis: crear cuenta' como la entrada del festival.",
+      "risk": "Si el cartel tiene demasiadas filas, en el celular hay que achicar mucho.",
+      "html": ".impeccable/mocks/decision/lineup.html"
+    },
+    {
+      "id": "afiches",
+      "kind": "dealt",
+      "label": "Pared de afiches",
+      "lineage": "Paredes de afiches pegados en la calle y en las salas",
+      "thesis": "La página es una pared de sala: cada función de SANAT es un afiche pegado, con mascotas como stickers.",
+      "palette": ["#0f0f0f", "#2a2a2a", "#7e22ce", "#e9d5ff", "#ffffff"],
+      "materials": ["papel pegado", "cinta", "stickers de mascotas"],
+      "viewport": "Pared oscura con un afiche grande torcido 'SANAT' y el botón de crear cuenta, rodeado de afiches más chicos y stickers de mascotas que se despegan al pasar el mouse.",
+      "risk": "Mucho papel torcido puede costar leerlo; hay que cuidar el orden.",
+      "html": ".impeccable/mocks/decision/afiches.html"
+    },
+    {
+      "id": "vinilo",
+      "kind": "dealt",
+      "label": "Disco: Lado A / Lado B",
+      "lineage": "Tapas de disco y listas de temas",
+      "thesis": "SANAT es un disco: la tapa son las mascotas, cada función es un tema y Darkore firma como productor.",
+      "palette": ["#0f0f0f", "#1a1a1a", "#7e22ce", "#a855f7", "#ffffff"],
+      "materials": ["vinilo girando", "lista de temas", "notas del productor"],
+      "viewport": "A la izquierda la tapa con las mascotas y el vinilo asomando y girando; a la derecha la lista de temas (Perfiles, Diseño, Bandas, Eventos, Chat, Demos) y el botón 'Poné play: crear cuenta'.",
+      "risk": "Un disco de un lado y lista del otro se acerca al diseño típico de dos columnas.",
+      "html": ".impeccable/mocks/decision/vinilo.html"
+    }
+  ],
+  "reroll": true,
+  "buildPath": { "value": "code", "toggle": false },
+  "steer": true
+}

@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T00:00:00Z",
+  "title": "Design System: SANAT",
+  "extensions": {
+    "colorMeta": {
+      "violet-primary": { "role": "primary", "displayName": "Rehearsal Violet", "canonical": "#7e22ce", "tonalRamp": ["#3b0764", "#581c87", "#6b21a8", "#7e22ce", "#9333ea", "#a855f7", "#c084fc", "#f3e8ff"] },
+      "violet-hover": { "role": "primary", "displayName": "Lit Violet", "canonical": "#9333ea", "tonalRamp": ["#3b0764", "#581c87", "#6b21a8", "#7e22ce", "#9333ea", "#a855f7", "#c084fc", "#f3e8ff"] },
+      "violet-deep": { "role": "primary", "displayName": "Deep Violet", "canonical": "#581c87", "tonalRamp": ["#2e1065", "#3b0764", "#581c87", "#6b21a8", "#7e22ce", "#a855f7", "#d8b4fe", "#f3e8ff"] },
+      "violet-soft": { "role": "primary", "displayName": "Violet Haze", "canonical": "#f3e8ff", "tonalRamp": ["#581c87", "#7e22ce", "#a855f7", "#c084fc", "#d8b4fe", "#e9d5ff", "#f3e8ff", "#faf5ff"] },
+      "violet-light": { "role": "primary", "displayName": "Focus Violet", "canonical": "#c084fc", "tonalRamp": ["#3b0764", "#581c87", "#7e22ce", "#a855f7", "#c084fc", "#d8b4fe", "#e9d5ff", "#faf5ff"] },
+      "string-violet": { "role": "primary", "displayName": "Guitar String Violet", "canonical": "#7B0099", "tonalRamp": ["#2a0035", "#3f0050", "#5a0070", "#7b0099", "#9a2db8", "#b75fd0", "#d49ae4", "#f0dcf6"] },
+      "ground": { "role": "neutral", "displayName": "Room Black", "canonical": "#0f0f0f", "tonalRamp": ["#0a0a0a", "#0f0f0f", "#141414", "#1a1a1a", "#262626", "#2a2a2a", "#3a3a3a", "#52525b"] },
+      "wall-ground": { "role": "neutral", "displayName": "Wall Black", "canonical": "#0c0c0c", "tonalRamp": ["#0b0b0b", "#0c0c0c", "#141414", "#151515", "#161616", "#181818", "#1a1a1a", "#262626"] },
+      "surface": { "role": "neutral", "displayName": "Amp Grey", "canonical": "#1a1a1a", "tonalRamp": ["#0a0a0a", "#0f0f0f", "#141414", "#1a1a1a", "#262626", "#2a2a2a", "#3a3a3a", "#52525b"] },
+      "surface-low": { "role": "neutral", "displayName": "Low Shelf", "canonical": "#141414", "tonalRamp": ["#0a0a0a", "#0f0f0f", "#141414", "#1a1a1a", "#262626", "#2a2a2a", "#3a3a3a", "#52525b"] },
+      "border": { "role": "neutral", "displayName": "Cable Grey", "canonical": "#2a2a2a", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#2a2a2a", "#3a3a3a", "#52525b", "#71717a", "#a1a1aa"] },
+      "border-strong": { "role": "neutral", "displayName": "Worn Cable", "canonical": "#3a3a3a", "tonalRamp": ["#0f0f0f", "#1a1a1a", "#262626", "#2a2a2a", "#3a3a3a", "#52525b", "#71717a", "#a1a1aa"] },
+      "poster-ink": { "role": "neutral", "displayName": "Poster Ink", "canonical": "#121212", "tonalRamp": ["#0a0a0a", "#121212", "#1a1a1a", "#262626", "#3f3f46", "#52525b", "#a1a1aa", "#fafafa"] },
+      "poster-paper": { "role": "neutral", "displayName": "Poster Paper", "canonical": "#f4efe6", "tonalRamp": ["#1c1917", "#44403c", "#57534e", "#a8a29e", "#d6d3d1", "#e7e0d4", "#f4efe6", "#fbf8f3"] },
+      "paper-ink": { "role": "neutral", "displayName": "Paper Ink", "canonical": "#1c1917", "tonalRamp": ["#0c0a09", "#1c1917", "#292524", "#44403c", "#57534e", "#78716c", "#a8a29e", "#e7e5e4"] },
+      "paper-soft": { "role": "neutral", "displayName": "Pencil Grey", "canonical": "#57534e", "tonalRamp": ["#0c0a09", "#1c1917", "#292524", "#44403c", "#57534e", "#78716c", "#a8a29e", "#e7e5e4"] },
+      "text-primary": { "role": "neutral", "displayName": "Stage White", "canonical": "#fafafa", "tonalRamp": ["#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa"] },
+      "tape-lilac": { "role": "neutral", "displayName": "Lilac Tape", "canonical": "rgba(233, 213, 255, 0.62)", "tonalRamp": ["rgba(233,213,255,0.15)", "rgba(233,213,255,0.25)", "rgba(233,213,255,0.35)", "rgba(233,213,255,0.45)", "rgba(233,213,255,0.55)", "rgba(233,213,255,0.62)", "rgba(233,213,255,0.75)", "rgba(233,213,255,0.9)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The SANAT wordmark on the main poster." },
+      "headline": { "displayName": "Headline", "purpose": "Every h1/h2 in the app; single-word poster callouts and date numerals on the wall." },
+      "poster-headline": { "displayName": "Poster Headline", "purpose": "Section headlines and event titles on wall posters only." },
+      "handwritten": { "displayName": "Handwritten", "purpose": "Band names, captions, the Darkore quote and signature." },
+      "body": { "displayName": "Body", "purpose": "App body copy, mostly 14px; 16-18px relaxed on posters." },
+      "label": { "displayName": "Label", "purpose": "Chips, tabs, metadata." },
+      "retro-osd": { "displayName": "Retro OSD", "purpose": "SANAT TV on-screen display only." }
+    },
+    "shadows": [
+      { "name": "poster-rest", "value": "0 2px 2px rgba(0,0,0,0.35), 0 18px 34px -10px rgba(0,0,0,0.75)", "purpose": "Every wall poster." },
+      { "name": "sticker-rest", "value": "0 2px 3px rgba(0,0,0,0.4), 0 10px 22px -8px rgba(0,0,0,0.8)", "purpose": "Mascot sticker at rest." },
+      { "name": "sticker-lift", "value": "0 4px 6px rgba(0,0,0,0.35), 0 26px 36px -12px rgba(0,0,0,0.85)", "purpose": "Mascot sticker on hover/focus." },
+      { "name": "tape-contact", "value": "0 1px 2px rgba(0,0,0,0.25)", "purpose": "Tape strips." },
+      { "name": "paste-button-drop", "value": "0 10px 22px -10px rgba(0,0,0,0.9)", "purpose": "Wall buttons." },
+      { "name": "bottom-nav", "value": "0 -5px 20px rgba(0,0,0,0.5)", "purpose": "Fixed bottom nav in the app." },
+      { "name": "mascot-line", "value": "6px 6px 0 0 #000000", "purpose": "Part of the mascot drawing inside the Mascot component only; never on UI surfaces." }
+    ],
+    "motion": [
+      { "name": "ease-paste", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Poster paste-in, tape stretch, sticker lift, paste-button hover." },
+      { "name": "paste-in", "value": "0.85s, stagger 130ms", "purpose": "Poster drops 46px with +7deg extra rotation and settles." },
+      { "name": "mascot-wiggle", "value": "3s ease-in-out infinite, ±3deg", "purpose": "Idle mascot." },
+      { "name": "darkore-flame", "value": "2.6s ease-in-out infinite", "purpose": "Glow from the Dark King's eyes on the wall." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce -> animation none", "purpose": "Every loop stops; pending posters become visible." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Inline primary action across the app.",
+      "html": "<button class=\"ds-btn-primary\">Invitar integrantes</button>",
+      "css": ".ds-btn-primary { background: #7e22ce; color: #fff; padding: 8px 16px; border-radius: 12px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; } .ds-btn-primary:hover { background: #9333ea; } .ds-btn-primary:focus-visible { outline: 3px solid #c084fc; outline-offset: 3px; } .ds-btn-primary:disabled { opacity: 0.4; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Agenda and admin filters; violet when active.",
+      "html": "<div style=\"display:flex;gap:8px;background:#0f0f0f;padding:16px\"><button class=\"ds-chip ds-chip--on\">Shows</button><button class=\"ds-chip\">Jams</button></div>",
+      "css": ".ds-chip { padding: 6px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; border: 1px solid #2a2a2a; background: #141414; color: #d1d5db; cursor: pointer; transition: color 0.2s, background-color 0.2s; } .ds-chip:hover { color: #fff; } .ds-chip:focus-visible { outline: 3px solid #c084fc; outline-offset: 2px; } .ds-chip--on { background: #7e22ce; border-color: #a855f7; color: #fff; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Login and form fields.",
+      "html": "<div style=\"background:#1a1a1a;padding:16px\"><input class=\"ds-input\" placeholder=\"Tu email\" /></div>",
+      "css": ".ds-input { width: 100%; padding: 14px; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 15px; outline: none; transition: border-color 0.3s, box-shadow 0.3s; } .ds-input::placeholder { color: #4b5563; } .ds-input:focus { border-color: #9333ea; box-shadow: 0 0 0 1px rgba(147,51,234,0.3); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tonal container on the app ground.",
+      "html": "<div style=\"background:#0f0f0f;padding:16px\"><div class=\"ds-card\"><h3 class=\"ds-card-title\">Los Ruidosos</h3><p class=\"ds-card-body\">Rock · San Miguel de Tucumán</p></div></div>",
+      "css": ".ds-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 16px; } .ds-card-title { margin: 0; color: #fff; font-size: 16px; font-weight: 600; } .ds-card-body { margin: 4px 0 0; color: #9ca3af; font-size: 14px; }"
+    },
+    {
+      "name": "Bottom Nav",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Fixed bottom navigation for logged-in screens.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-item--on\" href=\"#\">Inicio</a><a class=\"ds-nav-item\" href=\"#\">Mensajes</a><a class=\"ds-nav-item\" href=\"#\">Perfil</a></nav>",
+      "css": ".ds-nav { display: flex; justify-content: space-around; padding: 10px 0; background: rgba(15,15,15,0.95); backdrop-filter: blur(16px); border-top: 1px solid rgba(147,51,234,0.2); box-shadow: 0 -5px 20px rgba(0,0,0,0.5); } .ds-nav-item { color: #9ca3af; font-size: 12px; font-weight: 600; text-decoration: none; padding: 6px 10px; } .ds-nav-item:hover { color: #fff; } .ds-nav-item:focus-visible { outline: 3px solid #c084fc; outline-offset: 2px; border-radius: 6px; } .ds-nav-item--on { color: #c084fc; }"
+    },
+    {
+      "name": "Paper Poster",
+      "kind": "card",
+      "refersTo": "poster-paper",
+      "description": "Wall poster in paper tone with tape and tilt; welcome page only.",
+      "html": "<div style=\"background:#0c0c0c;padding:40px\"><div class=\"ds-afiche\"><span class=\"ds-tape\"></span><p class=\"ds-afiche-title\">Hablá y hacete escuchar</p><p class=\"ds-afiche-body\">Chat directo entre músicos para coordinar ensayos y fechas.</p></div></div>",
+      "css": ".ds-afiche { position: relative; background: #f4efe6; color: #1c1917; padding: 28px; transform: rotate(1.4deg); box-shadow: 0 2px 2px rgba(0,0,0,0.35), 0 18px 34px -10px rgba(0,0,0,0.75); transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); } .ds-afiche:hover { transform: rotate(0.4deg); } .ds-tape { position: absolute; top: -12px; left: calc(50% - 48px); width: 96px; height: 26px; background: rgba(233,213,255,0.62); box-shadow: 0 1px 2px rgba(0,0,0,0.25); transform: rotate(-3deg); } .ds-afiche-title { margin: 0; font-family: Anton, Nirvana, sans-serif; font-size: 36px; line-height: 1; } .ds-afiche-body { margin: 16px 0 0; color: #57534e; line-height: 1.6; }"
+    },
+    {
+      "name": "Violet Poster",
+      "kind": "card",
+      "refersTo": "poster-violet",
+      "description": "Main poster tone; carries the dark paste button.",
+      "html": "<div style=\"background:#0c0c0c;padding:40px\"><div class=\"ds-afiche-v\"><p class=\"ds-afiche-v-title\">SANAT</p><p class=\"ds-afiche-v-body\">La pared donde se arma la escena musical de Tucumán.</p><a class=\"ds-btn-paste-dark\" href=\"#\">Crear cuenta gratis</a></div></div>",
+      "css": ".ds-afiche-v { position: relative; background: #7e22ce; color: #fff; padding: 40px 28px; text-align: center; transform: rotate(-1.2deg); box-shadow: 0 2px 2px rgba(0,0,0,0.35), 0 18px 34px -10px rgba(0,0,0,0.75); } .ds-afiche-v-title { margin: 0; font-family: Nirvana, sans-serif; letter-spacing: 0.05em; font-size: 64px; line-height: 0.9; } .ds-afiche-v-body { margin: 16px auto 24px; max-width: 28rem; color: #f3e8ff; font-size: 18px; } .ds-btn-paste-dark { display: inline-flex; padding: 16px 28px; border-radius: 14px; background: #0f0f0f; color: #fff; font-weight: 700; font-size: 17px; text-decoration: none; box-shadow: 0 10px 22px -10px rgba(0,0,0,0.9); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), background-color 0.2s; } .ds-btn-paste-dark:hover { background: #000; transform: translateY(-3px) rotate(-1deg); } .ds-btn-paste-dark:active { transform: scale(0.98); } .ds-btn-paste-dark:focus-visible { outline: 3px solid #c084fc; outline-offset: 3px; }"
+    },
+    {
+      "name": "Violet Paste Button",
+      "kind": "button",
+      "refersTo": "button-paste-violet",
+      "description": "Wall call to action on the dark ground.",
+      "html": "<div style=\"background:#0c0c0c;padding:24px\"><a class=\"ds-btn-paste\" href=\"#\">Crear cuenta gratis</a></div>",
+      "css": ".ds-btn-paste { display: inline-flex; padding: 16px 28px; border-radius: 14px; background: #7e22ce; color: #fff; font-weight: 700; font-size: 17px; text-decoration: none; box-shadow: 0 12px 26px -12px rgba(0,0,0,0.9); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), background-color 0.2s; } .ds-btn-paste:hover { background: #9333ea; transform: translateY(-3px) rotate(-1deg); } .ds-btn-paste:active { transform: scale(0.98); } .ds-btn-paste:focus-visible { outline: 3px solid #c084fc; outline-offset: 3px; }"
+    },
+    {
+      "name": "Mascot Sticker",
+      "kind": "custom",
+      "refersTo": "sticker",
+      "description": "White die-cut sticker holding a mascot; lifts and peels on hover, swaps costume on tap.",
+      "html": "<div style=\"background:#0c0c0c;padding:40px\"><button class=\"ds-sticker\" aria-label=\"Sticker de mascota\"><span class=\"ds-mascot\"></span></button></div>",
+      "css": ".ds-sticker { position: relative; display: inline-flex; padding: 26px 22px 18px; background: #fff; border: none; border-radius: 22px; cursor: pointer; transform: rotate(-10deg); box-shadow: 0 2px 3px rgba(0,0,0,0.4), 0 10px 22px -8px rgba(0,0,0,0.8); transition: transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s cubic-bezier(0.16,1,0.3,1); } .ds-sticker:hover, .ds-sticker:focus-visible { transform: rotate(4deg) translateY(-8px) scale(1.04); box-shadow: 0 4px 6px rgba(0,0,0,0.35), 0 26px 36px -12px rgba(0,0,0,0.85); outline: none; } .ds-mascot { display: block; width: 64px; height: 64px; background: #22c55e; border: 4px solid #000; border-radius: 2px; box-shadow: 6px 6px 0 0 #000; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La pared de la sala de ensayo",
+    "overview": "SANAT is a near-black rehearsal room with one violet light on. Inside the app the room is tidy: tonal dark surfaces stacked a step apart, thin charcoal borders, violet reserved for the action you are meant to take, and the Nirvana brand face on every h1 and h2. Musical nods (guitar strings, equalizer bars, a retro TV) sit at the edges, never in the way of the task.\n\nThe mascots are the brand. They are square cartoon characters drawn with thick black outlines and a cartoon drop of solid black beneath them, wearing one of dozens of costumes. Every surface that introduces SANAT should let them show up and be touched.\n\nThe public welcome page extends the room outward to its wall: a brick ground, paper, violet and ink posters taped up at slight angles, mascots peeled on as white stickers, and Anton for the poster headlines. That extension is where the poster vocabulary lives; the logged-in app keeps its calmer card language.",
+    "keyCharacteristics": [
+      "Near-black tonal grounds (#0f0f0f, #141414, #1a1a1a) separated by #2a2a2a hairlines.",
+      "One violet accent family, purple-700 at rest and purple-600 on hover.",
+      "Nirvana for brand and section titles; Anton only for poster headlines on the wall.",
+      "Mascots are always the real Mascot component; photo and initial avatars are round with a thin grey ring.",
+      "Motion is small, looping and character-driven, and always stops under reduced motion."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Violet is the only accent in the UI. Mascot colors (green, orange, blue, pink, yellow, teal, red, purple) belong to the characters, never to buttons or chrome.", "section": "colors" },
+      { "name": "The Paper Is Only On The Wall Rule", "body": "Poster Paper and Lilac Tape appear on the welcome wall; logged-in screens stay on the graphite grounds.", "section": "colors" },
+      { "name": "The No Fake Bold Rule", "body": "Nirvana has one weight. Headlines set in it keep font-synthesis off and the 0.05em tracking; never add font-bold to it.", "section": "typography" },
+      { "name": "The Anton Stays On Paper Rule", "body": "Anton is scoped to the wall and only for poster headlines; app screens keep Nirvana for titles.", "section": "typography" },
+      { "name": "The Drawing Is Not The Interface Rule", "body": "The solid black offset shadow and 3-4px black outline belong to the mascot illustration. UI cards, buttons and posters use soft shadows or tonal steps, never the mascot's hard line.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** keep violet as the single UI accent: purple-700 at rest, purple-600 on hover.",
+      "**Do** set h1/h2 in Nirvana with font-synthesis off and 0.05em tracking.",
+      "**Do** draw mascots only with the real Mascot component and its costumes, never a redrawn or generic character.",
+      "**Do** stop every loop (wiggle, paste, marquee, flame, equalizer) under prefers-reduced-motion, leaving content fully visible.",
+      "**Do** tilt wall posters within -2.4deg to +4deg and hold them with Lilac Tape."
+    ],
+    "donts": [
+      "**Don't** borrow mascot colors for buttons, links or chrome.",
+      "**Don't** apply the mascot's solid black offset shadow or thick outline to UI surfaces.",
+      "**Don't** bold Nirvana or use it at body sizes.",
+      "**Don't** bring Poster Paper, tape or Anton into logged-in app screens.",
+      "**Don't** give the Dark King costume to any mascot other than Darkore's."
+    ]
+  }
+}

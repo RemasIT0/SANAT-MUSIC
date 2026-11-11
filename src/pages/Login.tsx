@@ -1,7 +1,7 @@
 // src/pages/Login.tsx
 import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { FaEye, FaEyeSlash, FaKey, FaQuestionCircle, FaTimes, FaEnvelopeOpenText, FaRegEnvelope, FaEnvelope } from 'react-icons/fa'
 import Toast from '../components/Toast'
 import MaintenanceScreen from '../components/MaintenanceScreen'
@@ -11,7 +11,9 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [isRegistering, setIsRegistering] = useState(false)
+  // Desde la bienvenida, "Crear cuenta" abre directo el registro
+  const [searchParams] = useSearchParams()
+  const [isRegistering, setIsRegistering] = useState(() => searchParams.get('modo') === 'registro')
   const [loading, setLoading] = useState(false)
   // Cuenta creada: el botón queda bloqueado hasta que cambia la pantalla
   const [registered, setRegistered] = useState(false)
@@ -286,7 +288,7 @@ export default function Login() {
                 </p>
               )}
             </form>
-            <p className="text-center mt-4"><a href="/legal" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Términos y privacidad</a></p>
+            <p className="text-center mt-4 flex justify-center gap-4"><Link to="/bienvenida" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Qué es SANAT</Link><a href="/legal" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Términos y privacidad</a></p>
 
             <div className="text-center text-sm text-gray-400 pt-5 mt-5 sm:pt-6 sm:mt-6 border-t border-[#2a2a2a]">
               {isRegistering ? (

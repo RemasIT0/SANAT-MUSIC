@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Anton&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:#0f0f0f;color:#fff;font-family:system-ui,sans-serif;position:relative}
+.str{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(transparent,#7B0099,transparent);opacity:.35}
+nav{position:absolute;top:28px;left:56px;right:56px;display:flex;justify-content:space-between;align-items:center;z-index:3}
+nav b{font-family:Anton;font-size:26px;letter-spacing:.12em}
+nav a{color:#c4b5fd;font-size:15px;margin-left:24px;text-decoration:none}
+.poster{position:absolute;left:50%;top:84px;transform:translateX(-50%);width:1080px;text-align:center}
+.pres{font-family:'Permanent Marker';color:#c084fc;font-size:22px;letter-spacing:.06em}
+.head{display:flex;align-items:center;justify-content:center;gap:36px;margin-top:6px}
+.dk{width:170px;height:170px;background:#2b2b2b;border-radius:18px;position:relative;box-shadow:0 0 60px #7e22ce88}
+.dk:before{content:"";position:absolute;left:-14px;right:-14px;top:-46px;height:56px;background:#3a3a3a;clip-path:polygon(0 100%,10% 20%,25% 70%,40% 0,50% 60%,60% 0,75% 70%,90% 20%,100% 100%)}
+.dk i{position:absolute;top:70px;width:46px;height:10px;background:#ef4444;box-shadow:0 0 18px #ef4444}
+.dk i:nth-child(1){left:30px}.dk i:nth-child(2){right:30px}
+h1{font-family:Anton;font-size:150px;line-height:.9;letter-spacing:.04em;background:linear-gradient(#fff,#d8b4fe);-webkit-background-clip:text;color:transparent}
+.tag{font-size:15px;letter-spacing:.3em;color:#a1a1aa;margin-top:4px}
+.row{display:flex;justify-content:center;gap:22px;margin-top:30px;align-items:flex-end}
+.m{border-radius:12px;position:relative}
+.m:after{content:"• •";position:absolute;left:0;right:0;top:34%;text-align:center;color:#000;font-weight:900;letter-spacing:.3em}
+.names{font-family:Anton;letter-spacing:.08em;margin-top:12px;color:#e9d5ff}
+.n1{font-size:44px}.n2{font-size:28px;color:#a78bfa}.n3{font-size:19px;color:#71717a}
+.cta{display:inline-flex;gap:14px;margin-top:30px}
+.cta a{padding:18px 34px;border-radius:14px;font-weight:700;font-size:19px;text-decoration:none}
+.p{background:#7e22ce;color:#fff;box-shadow:0 10px 40px #7e22ce66}.s{border:1px solid #3f3f46;color:#e4e4e7}
+.ticket{position:absolute;right:70px;bottom:70px;transform:rotate(-6deg);border:2px dashed #7e22ce;padding:14px 20px;font-family:'Permanent Marker';color:#d8b4fe;font-size:18px}
+</style></head><body>
+<div class="str" style="left:12%"></div><div class="str" style="left:31%"></div><div class="str" style="left:69%"></div><div class="str" style="left:88%"></div>
+<nav><b>SANAT</b><div><a>Eventos</a><a>Mascotas</a><a>Iniciar sesión</a></div></nav>
+<div class="poster">
+  <p class="pres">Darkore presenta</p>
+  <div class="head"><div class="dk"><i></i><i></i></div><h1>SANAT FEST</h1></div>
+  <p class="tag">LA ESCENA MUSICAL DE TUCUMÁN · TODO EL AÑO · ENTRADA GRATIS</p>
+  <div class="row">
+    <div class="m" style="width:96px;height:96px;background:#a855f7"></div>
+    <div class="m" style="width:96px;height:96px;background:#22c55e"></div>
+    <div class="m" style="width:96px;height:96px;background:#f97316"></div>
+    <div class="m" style="width:72px;height:72px;background:#3b82f6"></div>
+    <div class="m" style="width:72px;height:72px;background:#ec4899"></div>
+    <div class="m" style="width:72px;height:72px;background:#eab308"></div>
+    <div class="m" style="width:56px;height:56px;background:#14b8a6"></div>
+    <div class="m" style="width:56px;height:56px;background:#f43f5e"></div>
+  </div>
+  <p class="names n1">PUNK · GAUCHO · METALERO · GÓTICA · MAGO</p>
+  <p class="names n2">BANDAS · JAMS · SHOWS · DEMOS · CHAT</p>
+  <p class="names n3">y tu mascota en el próximo cartel</p>
+  <div class="cta"><a class="p">Entrada gratis: crear cuenta</a><a class="s">Ver próximos shows</a></div>
+</div>
+<div class="ticket">ADMITE 1 · MÚSICO O PÚBLICO</div>
+</body></html>

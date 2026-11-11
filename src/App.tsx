@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useState, useEffect, lazy, Suspense, type ComponentType } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { supabase } from './lib/supabaseClient'
 import { useOnlineStatus } from './hooks/useOnlineStatus' // ✅ NUEVO IMPORT
@@ -44,6 +44,7 @@ function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T
 }
 
 const Login = lazyPage(() => import('./pages/Login'))
+const Bienvenida = lazyPage(() => import('./pages/Bienvenida'))
 const Onboarding = lazyPage(() => import('./pages/Onboarding'))
 const VerificarEmail = lazyPage(() => import('./pages/VerificarEmail'))
 const Home = lazyPage(() => import('./pages/Inicio'))
@@ -242,8 +243,10 @@ function ProfileRetryScreen({ onRetry }: { onRetry: () => Promise<void> }) {
 
 function RequireVerified() {
   const { user, profile, emailConfirmed, loading, profileStatus, refreshProfile } = useAuth()
+  const location = useLocation()
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" replace />
+  // Sin sesión: la dirección principal muestra la bienvenida; el resto pide iniciar sesión
+  if (!user) return <Navigate to={location.pathname === '/' || location.pathname === '/home' ? '/bienvenida' : '/login'} replace />
   if (!emailConfirmed) return <Navigate to="/verificar-email" replace />
   // Si no se pudo leer el perfil por conexión, NO es una cuenta nueva: reintentar
   if (!profile && profileStatus === 'error') return <ProfileRetryScreen onRetry={refreshProfile} />
@@ -277,6 +280,7 @@ function App() {
       <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/bienvenida" element={<Bienvenida />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="/baneado" element={<Baneado />} />
         <Route path="/legal" element={<Legal />} />
