@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { FaEye, FaEyeSlash, FaKey, FaQuestionCircle, FaTimes, FaEnvelopeOpenText, FaRegEnvelope, FaEnvelope } from 'react-icons/fa'
 import Toast from '../components/Toast'
+import ConfirmEmailSteps from '../components/ConfirmEmailSteps'
 import MaintenanceScreen from '../components/MaintenanceScreen'
 import './Login.css'
 
@@ -17,6 +18,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   // Cuenta creada: el botón queda bloqueado hasta que cambia la pantalla
   const [registered, setRegistered] = useState(false)
+  // Email que falta confirmar: en vez del formulario se muestra cómo encontrar el mail
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null)
+  const [confirmSentAt, setConfirmSentAt] = useState(0)
   // Freno inmediato contra dos toques seguidos (el estado tarda un instante en actualizarse)
   const submittingRef = useRef(false)
   const [resetSentAt, setResetSentAt] = useState(0)
@@ -73,9 +77,11 @@ export default function Login() {
 
         if (error) throw error
 
+        // Queda en esta pantalla mostrando cómo confirmar (sin sesión, "Verificar email" no se puede abrir)
         setRegistered(true)
-        setToast({ message: '¡Cuenta creada! Revisa tu email para confirmar.', type: 'success' })
-        setTimeout(() => navigate('/verificar-email'), 4000)
+        setConfirmEmail(email.trim())
+        setConfirmSentAt(Date.now())
+        setToast({ message: '¡Cuenta creada! Ahora confirmá tu email.', type: 'success' })
 
       } else {
         // --- INICIO DE SESIÓN ---
@@ -92,7 +98,11 @@ export default function Login() {
           } else if (error.message.includes('Invalid login credentials')) {
             mensaje = 'Email o contraseña incorrectos. Verificá tus datos.'
           } else if (error.message.includes('Email not confirmed')) {
-            mensaje = 'Tu email no está confirmado. Revisá tu bandeja de entrada (y la carpeta de spam).'
+            // Mostrar los pasos para encontrar el mail (y poder pedir otro)
+            setConfirmEmail(email.trim())
+            setConfirmSentAt(0)
+            setLoading(false)
+            return
           }
 
           setToast({ message: mensaje, type: 'error' })
@@ -105,8 +115,8 @@ export default function Login() {
       }
     } catch (error: any) {
       if (error.message?.toLowerCase().includes('email not confirmed') || error.message?.toLowerCase().includes('no confirmado')) {
-        setToast({ message: 'Debes confirmar tu email antes de entrar.', type: 'info' })
-        setTimeout(() => navigate('/verificar-email'), 4000)
+        setConfirmEmail(email.trim())
+        setConfirmSentAt(0)
       } else {
         setToast({ message: error.message || 'Error inesperado', type: 'error' })
       }
@@ -114,6 +124,25 @@ export default function Login() {
       submittingRef.current = false
       setLoading(false)
     }
+  }
+
+  const resendConfirmation = async () => {
+    if (!confirmEmail) return false
+    const { error } = await supabase.auth.resend({ type: 'signup', email: confirmEmail, options: { emailRedirectTo: window.location.origin } })
+    if (error) {
+      setToast({ message: /rate limit|seconds/i.test(error.message) ? 'Esperá un poquito antes de pedir otro mail.' : 'No se pudo reenviar: ' + error.message, type: 'error' })
+      return false
+    }
+    setToast({ message: 'Te mandamos otro mail. Revisá también Spam y Promociones.', type: 'success' })
+    return true
+  }
+
+  const backToLogin = () => {
+    setConfirmEmail(null)
+    setRegistered(false)
+    setIsRegistering(false)
+    setPassword('')
+    setConfirmPassword('')
   }
 
   const handleForgotPassword = async () => {
@@ -190,10 +219,16 @@ export default function Login() {
             <div className="text-center mb-6 sm:mb-8">
               <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 tracking-wide">SANAT</h1>
               <p className="text-gray-400 text-sm sm:text-base">
-                {isRegistering ? 'Creá tu cuenta para encontrar músicos.' : 'Iniciá sesión para continuar.'}
+                {confirmEmail ? 'Ya casi: confirmá tu email.' : isRegistering ? 'Creá tu cuenta para encontrar músicos.' : 'Iniciá sesión para continuar.'}
               </p>
             </div>
 
+            {confirmEmail ? (
+              <div className="space-y-4">
+                <ConfirmEmailSteps email={confirmEmail} onResend={resendConfirmation} sentAt={confirmSentAt} />
+                <button type="button" onClick={backToLogin} className="w-full py-2.5 text-sm text-purple-300 hover:text-white underline underline-offset-4">Ya confirmé: iniciar sesión</button>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative w-full">
                 <input
@@ -288,6 +323,7 @@ export default function Login() {
                 </p>
               )}
             </form>
+            )}
             <p className="text-center mt-4 flex justify-center gap-4"><Link to="/bienvenida" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Qué es SANAT</Link><a href="/legal" className="text-[11px] text-gray-500 hover:text-gray-300 underline">Términos y privacidad</a></p>
 
             <div className="text-center text-sm text-gray-400 pt-5 mt-5 sm:pt-6 sm:mt-6 border-t border-[#2a2a2a]">
