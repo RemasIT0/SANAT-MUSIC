@@ -71,6 +71,8 @@ export const ADMIN_ONLY_EXPRESSIONS: MascotExpression[] = ['darkking']
 interface CostumeCtx {
   color: string
   eye: { x: number; y: number }
+  // Id único por mascota: los degradados SVG no pueden repetir id en la página
+  uid: string
 }
 
 interface Costume {
@@ -1137,26 +1139,26 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
     // Sin caja ni brazos: una sombra con aura del color de la mascota, que aparece y se desvanece
     hideBody: true,
     hideLimbs: true,
-    front: ({ color, eye }) => (
+    front: ({ color, eye, uid }) => (
       <Layer top={-18} left={-18} w={136} h={140} className="z-20 mascot-fade">
         <defs>
-          <radialGradient id="sombra-aura" cx="50%" cy="45%" r="55%">
+          <radialGradient id={`sombra-aura-${uid}`} cx="50%" cy="45%" r="55%">
             <stop offset="0.45" stopColor={color} stopOpacity="0.55" />
             <stop offset="1" stopColor={color} stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="sombra-cuerpo" cx="50%" cy="42%" r="55%">
+          <radialGradient id={`sombra-cuerpo-${uid}`} cx="50%" cy="42%" r="55%">
             <stop offset="0" stopColor="#000" stopOpacity="0.95" />
             <stop offset="0.65" stopColor="#0b0716" stopOpacity="0.9" />
             <stop offset="1" stopColor={color} stopOpacity="0.35" />
           </radialGradient>
-          <filter id="sombra-difusa" x="-25%" y="-25%" width="150%" height="150%">
+          <filter id={`sombra-difusa-${uid}`} x="-25%" y="-25%" width="150%" height="150%">
             <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
         {/* Aura de color alrededor */}
-        <ellipse cx="68" cy="66" rx="64" ry="62" fill="url(#sombra-aura)" filter="url(#sombra-difusa)" />
+        <ellipse cx="68" cy="66" rx="64" ry="62" fill={`url(#sombra-aura-${uid})`} filter={`url(#sombra-difusa-${uid})`} />
         {/* Cuerpo de humo */}
-        <path d="M68 10 Q112 12 118 58 Q122 88 110 108 L114 130 L98 116 L90 134 L78 118 L68 136 L58 118 L46 134 L38 116 L22 130 L26 108 Q14 88 18 58 Q24 12 68 10 Z" fill="url(#sombra-cuerpo)" filter="url(#sombra-difusa)" />
+        <path d="M68 10 Q112 12 118 58 Q122 88 110 108 L114 130 L98 116 L90 134 L78 118 L68 136 L58 118 L46 134 L38 116 L22 130 L26 108 Q14 88 18 58 Q24 12 68 10 Z" fill={`url(#sombra-cuerpo-${uid})`} filter={`url(#sombra-difusa-${uid})`} />
         {/* Ojos que brillan */}
         <path d={`M${42 + eye.x} ${62 + eye.y} Q${52 + eye.x} ${53 + eye.y} ${62 + eye.x} ${62 + eye.y} Q${52 + eye.x} ${66 + eye.y} ${42 + eye.x} ${62 + eye.y} Z`} fill="#f0f9ff" style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
         <path d={`M${74 + eye.x} ${62 + eye.y} Q${84 + eye.x} ${53 + eye.y} ${94 + eye.x} ${62 + eye.y} Q${84 + eye.x} ${66 + eye.y} ${74 + eye.x} ${62 + eye.y} Z`} fill="#f0f9ff" style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
@@ -1239,19 +1241,19 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         <path d="M70 26 Q48 18 26 32 M64 44 Q42 44 24 62 M58 56 Q46 66 40 84" fill="none" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" />
       </Layer>
     ),
-    front: ({ eye }) => (
+    front: ({ eye, uid }) => (
       <>
         {/* Hombreras */}
         {[-24, 96].map(left => (
           <Layer key={left} top={52} left={left} w={30} h={24} className="z-20">
-            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill="url(#lord-steel)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill={`url(#lord-steel-${uid})`} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
             <path d="M6 14 L24 14" stroke="#64748b" strokeWidth="2" />
           </Layer>
         ))}
         {/* Yelmo cerrado, un poco más grande que el cuerpo */}
         <Layer top={-30} left={-14} w={128} h={132} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
           <defs>
-            <linearGradient id="lord-steel" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={`lord-steel-${uid}`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#94a3b8" />
               <stop offset="0.35" stopColor="#e2e8f0" />
               <stop offset="0.6" stopColor="#cbd5e1" />
@@ -1259,7 +1261,7 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
             </linearGradient>
           </defs>
           {/* Cuerpo del yelmo: cúpula y mejillas que bajan */}
-          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill="url(#lord-steel)" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill={`url(#lord-steel-${uid})`} stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
           {/* Cresta central */}
           <path d="M64 4 L64 44" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
           <path d="M60 6 L60 44 M68 6 L68 44" stroke="#64748b" strokeWidth="1.5" />
@@ -1302,23 +1304,23 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         <path d="M14 46 Q90 20 166 46" fill="none" stroke="#5c5c63" strokeWidth="2" strokeLinecap="round" />
       </Layer>
     ),
-    front: ({ eye }) => (
+    front: ({ eye, uid }) => (
       <>
         {/* Capucha gris oscura con el rostro en sombra */}
         <Layer top={0} left={-6} w={112} h={108} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
           <defs>
-            <linearGradient id="darkking-llama" x1="0" y1="1" x2="0" y2="0">
+            <linearGradient id={`darkking-llama-${uid}`} x1="0" y1="1" x2="0" y2="0">
               <stop offset="0" stopColor="#ff3b3b" stopOpacity="0.85" />
               <stop offset="0.55" stopColor="#fb923c" stopOpacity="0.55" />
               <stop offset="1" stopColor="#fde68a" stopOpacity="0" />
             </linearGradient>
-            <radialGradient id="darkking-vacio" cx="50%" cy="50%" r="55%">
+            <radialGradient id={`darkking-vacio-${uid}`} cx="50%" cy="50%" r="55%">
               <stop offset="0" stopColor="#000" />
               <stop offset="1" stopColor="#141416" />
             </radialGradient>
           </defs>
           <path d="M56 2 Q100 4 106 50 L108 104 Q56 112 4 104 L6 50 Q12 4 56 2 Z" fill="#323238" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
-          <path d="M56 18 Q90 22 92 56 Q90 90 56 98 Q22 90 20 56 Q22 22 56 18 Z" fill="url(#darkking-vacio)" />
+          <path d="M56 18 Q90 22 92 56 Q90 90 56 98 Q22 90 20 56 Q22 22 56 18 Z" fill={`url(#darkking-vacio-${uid})`} />
           <path d="M14 64 Q12 84 14 100 M98 64 Q100 84 98 100" fill="none" stroke="#45454c" strokeWidth="2.5" strokeLinecap="round" />
           {/* Ojos rojos horizontales, como dos rendijas encendidas */}
           {[40, 72].map(cx => (
@@ -1328,20 +1330,20 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
               <ellipse cx={cx + eye.x * 0.6} cy={54 + eye.y * 0.3} rx="4" ry="0.9" fill="#ffe4e6" />
               {/* Aura de fuego que sube desde el ojo, suave */}
               <path d={`M${cx - 7 + eye.x * 0.6} ${53 + eye.y * 0.3} Q${cx - 6 + eye.x * 0.6} ${44 + eye.y * 0.3} ${cx - 1 + eye.x * 0.6} ${38 + eye.y * 0.3} Q${cx + 1 + eye.x * 0.6} ${44 + eye.y * 0.3} ${cx + 4 + eye.x * 0.6} ${42 + eye.y * 0.3} Q${cx + 7 + eye.x * 0.6} ${47 + eye.y * 0.3} ${cx + 7 + eye.x * 0.6} ${53 + eye.y * 0.3} Z`}
-                fill="url(#darkking-llama)" className="darkking-flame" style={{ animationDelay: cx === 40 ? '0s' : '0.35s' }} />
+                fill={`url(#darkking-llama-${uid})`} className="darkking-flame" style={{ animationDelay: cx === 40 ? '0s' : '0.35s' }} />
             </g>
           ))}
         </Layer>
         {/* Corona de hierro oscuro: púas altas, finas y desparejas, fundida con la capucha (no tapa los ojos) */}
         <Layer top={-60} left={2} w={96} h={74} className="z-30" style={{ filter: 'drop-shadow(3px 3px 0 #000)' }}>
           <defs>
-            <linearGradient id="darkking-hierro" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={`darkking-hierro-${uid}`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#141416" />
               <stop offset="0.5" stopColor="#3b3a3f" />
               <stop offset="1" stopColor="#141416" />
             </linearGradient>
           </defs>
-          <path d="M8 72 L6 38 L12 46 L14 10 L20 44 L27 22 L32 46 L38 2 L44 44 L48 18 L52 44 L58 2 L64 46 L69 22 L76 44 L82 10 L84 46 L90 38 L88 72 Q48 64 8 72 Z" fill="url(#darkking-hierro)" stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
+          <path d="M8 72 L6 38 L12 46 L14 10 L20 44 L27 22 L32 46 L38 2 L44 44 L48 18 L52 44 L58 2 L64 46 L69 22 L76 44 L82 10 L84 46 L90 38 L88 72 Q48 64 8 72 Z" fill={`url(#darkking-hierro-${uid})`} stroke={INK} strokeWidth="2.6" strokeLinejoin="round" />
           {/* Filos que reflejan la luz */}
           <path d="M15 14 L17 42 M39 8 L41 42 M59 8 L61 42 M81 14 L81 42" stroke="#a8a29e" strokeWidth="1.4" strokeLinecap="round" opacity="0.8" />
           {/* Aro de la corona y cresta que baja hacia la cara */}
@@ -1356,18 +1358,18 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
         {/* Brazo con guantelete de armadura oscura, con garras */}
         <Layer top={64} left={100} w={44} h={62} className="z-30" style={{ filter: 'drop-shadow(3px 3px 0 #000)', rotate: '-10deg' }}>
           <defs>
-            <linearGradient id="darkking-acero" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={`darkking-acero-${uid}`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#3a3d45" />
               <stop offset="0.45" stopColor="#7c818c" />
               <stop offset="1" stopColor="#2a2c32" />
             </linearGradient>
           </defs>
           {/* Antebrazo en placas */}
-          <path d="M6 4 L30 2 L32 30 L8 32 Z" fill="url(#darkking-acero)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M6 4 L30 2 L32 30 L8 32 Z" fill={`url(#darkking-acero-${uid})`} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
           <path d="M7 12 L31 10 M7 21 L31 19" stroke="#1f2126" strokeWidth="2" />
           <path d="M30 4 L40 0 L33 12 Z" fill="#7c818c" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
           {/* Mano en garra */}
-          <path d="M6 32 L34 30 L36 42 L4 44 Z" fill="url(#darkking-acero)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M6 32 L34 30 L36 42 L4 44 Z" fill={`url(#darkking-acero-${uid})`} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
           <path d="M6 44 L4 58 L10 48 Z M14 44 L13 60 L18 46 Z M22 44 L23 60 L26 45 Z M30 43 L34 56 L35 42 Z" fill="#2a2c32" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
         </Layer>
         {/* Broche con forma de ojo en el pecho */}
@@ -1687,19 +1689,19 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
       </Layer>
       </>
     ),
-    front: ({ eye }) => (
+    front: ({ eye, uid }) => (
       <>
         {/* Hombreras */}
         {[-24, 96].map(left => (
           <Layer key={left} top={52} left={left} w={30} h={24} className="z-20">
-            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill="url(#dama-steel)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+            <path d="M3 22 Q2 4 15 2 Q28 4 27 22 Z" fill={`url(#dama-steel-${uid})`} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
             <path d="M6 14 L24 14" stroke="#64748b" strokeWidth="2" />
           </Layer>
         ))}
         {/* Yelmo cerrado, un poco más grande que el cuerpo */}
         <Layer top={-30} left={-14} w={128} h={132} className="z-20" style={{ filter: 'drop-shadow(4px 4px 0 #000)' }}>
           <defs>
-            <linearGradient id="dama-steel" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={`dama-steel-${uid}`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#94a3b8" />
               <stop offset="0.35" stopColor="#e2e8f0" />
               <stop offset="0.6" stopColor="#cbd5e1" />
@@ -1707,7 +1709,7 @@ export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
             </linearGradient>
           </defs>
           {/* Cuerpo del yelmo: cúpula y mejillas que bajan */}
-          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill="url(#dama-steel)" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          <path d="M10 124 L8 50 Q10 6 64 4 Q118 6 120 50 L118 124 Q64 132 10 124 Z" fill={`url(#dama-steel-${uid})`} stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
           {/* Cresta central */}
           <path d="M64 4 L64 44" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
           <path d="M60 6 L60 44 M68 6 L68 44" stroke="#64748b" strokeWidth="1.5" />

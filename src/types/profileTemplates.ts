@@ -8,6 +8,7 @@ export interface ProfileTemplate {
   name: string
   description: string
   preview: string   // fondo CSS para la miniatura
+  adminOnly?: boolean // solo la ve la cuenta admin
   build: (hasAudio: boolean) => FreeLayout
 }
 
@@ -25,6 +26,66 @@ const make = (
 })
 
 export const PROFILE_TEMPLATES: ProfileTemplate[] = [
+  {
+    key: 'darkore',
+    name: 'Darkore',
+    description: 'El perfil del creador: casi negro, rojo sangre y blanco hueso, con telarañas y colmillos.',
+    preview: 'radial-gradient(circle at 50% 40%, #3b0a14, #050307 70%)',
+    adminOnly: true,
+    build: (hasAudio) => {
+      const bone = '#e7e5e4'
+      const blood = '#dc2626'
+      const wine = '#5b0f26'
+      const night = '#050307'
+      const panelBg = '#0e0b12'
+      const panel: Partial<FreeElementStyle> = { bg: panelBg, color: bone, borderColor: '#3a3340', borderWidth: 2, radius: 0, font: 'sans', fontSize: 17, shadow: true }
+      const header: Partial<FreeElementStyle> = { bg: night, color: blood, borderColor: wine, borderWidth: 2, radius: 0, font: 'impact', fontSize: 26, align: 'center' }
+      const label: Partial<FreeElementStyle> = { bg: wine, color: '#fecaca', borderColor: '#3a3340', borderWidth: 2, radius: 0, font: 'marker', fontSize: 21 }
+      const bottom = hasAudio ? 1250 : 1140
+      const elements = [
+        // Marco y telarañas en las esquinas
+        make('box', 20, 20, 960, bottom + 50, { bg: 'transparent', borderColor: '#2a2230', borderWidth: 2, radius: 0 }),
+        make('sticker', 26, 26, 170, 170, { color: '#e7e5e433' }, { content: 'telarana' }),
+        make('sticker', 804, bottom - 150, 170, 170, { color: '#e7e5e433' }, { content: 'telarana', rotation: 180 }),
+        // Cabecera
+        make('name', 150, 44, 700, 156, { bg: 'transparent', borderWidth: 0, font: 'nirvana', fontSize: 88, color: bone, align: 'center', glow: true, glowColor: blood }),
+        make('sticker', 812, 58, 92, 92, { color: blood, animation: 'flotar' }, { content: 'corona', rotation: 14 }),
+        make('text', 120, 214, 760, 50, { bg: panelBg, color: bone, borderColor: wine, borderWidth: 2, radius: 0, font: 'marker', fontSize: 20, align: 'center' }, { content: 'inicio  ·  bandas  ·  demos  ·  agenda' }),
+        // Columna izquierda
+        make('mascot', 40, 290, 230, 270, { animation: 'flotar' }),
+        make('text', 40, 580, 230, 46, label, { content: 'ahora mismo...' }),
+        make('text', 40, 626, 230, 150, panel, { content: 'armando SANAT para la escena de Tucumán. Si ves algo roto, avisame.' }),
+        make('friends', 40, 796, 230, 62, panel),
+        make('sticker', 46, 884, 104, 104, { color: bone, animation: 'balanceo' }, { content: 'murcielago' }),
+        make('sticker', 170, 900, 84, 84, { color: blood, animation: 'parpadeo' }, { content: 'vela' }),
+        make('equalizer', 40, 1012, 230, 96, { color: blood }),
+        // Columna del medio
+        make('photo', 290, 290, 180, 180, { radius: 0, borderWidth: 3, borderColor: bone, shadow: true }, { rotation: -3 }),
+        make('location', 490, 298, 220, 64, panel),
+        make('text', 490, 380, 220, 92, { bg: 'transparent', borderWidth: 0, color: '#fca5a5', font: 'marker', fontSize: 23, align: 'center' }, { content: '¡bienvenidos a mi rincón!', rotation: 3 }),
+        make('text', 290, 500, 420, 50, header, { content: 'SOBRE MÍ' }),
+        make('bio', 290, 550, 420, 220, panel),
+        make('text', 290, 790, 420, 50, header, { content: 'LO QUE TOCO' }),
+        make('instruments', 290, 840, 420, 140, panel),
+        make('genres', 290, 1000, 420, 110, panel),
+        // Columna derecha
+        make('text', 730, 290, 230, 56, { ...label, color: bone, fontSize: 26, align: 'center' }, { content: 'feels.txt' }),
+        make('text', 730, 346, 230, 170, panel, { content: 'cosas que me gustan:\n- la música en vivo\n- los ensayos que terminan tarde\n- conocer bandas nuevas' }),
+        make('social', 730, 536, 230, 120, panel),
+        make('text', 742, 690, 206, 92, { bg: bone, color: night, borderColor: night, borderWidth: 3, radius: 22, font: 'marker', fontSize: 19, align: 'center', shadow: true }, { content: 'dejame una reseña abajo', rotation: 6 }),
+        make('sticker', 744, 810, 96, 96, { color: blood }, { content: 'vampiro', rotation: -8 }),
+        make('sticker', 850, 822, 100, 100, { color: bone }, { content: 'calavera', rotation: -12 }),
+        // Cartel de abajo
+        make('marquee', 40, bottom, 920, 60, { bg: night, color: blood, borderColor: wine, borderWidth: 3, radius: 0, font: 'pixel', fontSize: 18, glow: true, glowColor: blood }, { content: 'SANAT  *  HECHO EN TUCUMÁN  *  GRACIAS POR PASAR  *  ' }),
+      ]
+      if (hasAudio) elements.push(make('audio', 290, 1130, 420, 100, panel))
+      return {
+        height: bottom + 90,
+        background: { type: 'solid', color: night, color2: night, image: '', pattern: 'lunares', patternColor: '#ffffff0f', patternSize: 40 },
+        elements,
+      }
+    },
+  },
   {
     key: 'grunge',
     name: 'Grunge 90s',

@@ -34,6 +34,9 @@ const isLightColor = (hex: string) => {
   return (0.299 * r + 0.587 * g + 0.114 * b) > 160
 }
 
+// Pide cerrar el panel de la radio (lo usa el recorrido de bienvenida)
+export const COLLAPSE_RADIO_EVENT = 'sanat-collapse-radio'
+
 export default function RetroRadio() {
   const { profile } = useAuth()
   const [isPlaying, setIsPlaying] = useState(false)
@@ -90,6 +93,13 @@ export default function RetroRadio() {
   }
 
   const togglePlay = () => setIsPlaying(prev => !prev)
+
+  // Durante el recorrido de bienvenida el panel se cierra (la música sigue) para no tapar nada
+  useEffect(() => {
+    const collapse = () => setIsExpanded(false)
+    window.addEventListener(COLLAPSE_RADIO_EVENT, collapse)
+    return () => window.removeEventListener(COLLAPSE_RADIO_EVENT, collapse)
+  }, [])
 
   // Si empieza a sonar una demo, la radio se pausa
   useEffect(() => {

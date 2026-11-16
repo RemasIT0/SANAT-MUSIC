@@ -3,6 +3,7 @@
 // y explica cada parte con una burbuja. Aparece una sola vez, solo para cuentas
 // nuevas (queda marcado en profiles.welcome_seen), y se puede repetir desde el asistente.
 import { useState, useEffect, useCallback } from 'react'
+import { COLLAPSE_RADIO_EVENT } from './RetroRadio'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import Mascot from './Mascot'
@@ -72,6 +73,11 @@ export default function HomeTour() {
     window.addEventListener(TOUR_RESTART_EVENT, restart)
     return () => window.removeEventListener(TOUR_RESTART_EVENT, restart)
   }, [])
+
+  // Mientras se explica la página, el panel de la radio se cierra para no tapar los pasos
+  useEffect(() => {
+    if (step !== null) window.dispatchEvent(new Event(COLLAPSE_RADIO_EVENT))
+  }, [step])
 
   // Pasos cuyo elemento no está en pantalla se saltean
   const findTarget = (index: number) => {

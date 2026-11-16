@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { COSTUMES, type MascotExpression } from "./MascotCostumes";
 
 type ExpressionType = MascotExpression;
@@ -39,7 +39,8 @@ export default function Mascot({ color, size = 140, expression = 'normal' }: Mas
 
   // --- RENDERIZADO DE CARA SEGÚN EXPRESIÓN ---
   const costume = COSTUMES[expression];
-  const costumeCtx = { color, eye: eyeOffset };
+  const uid = useId().replace(/:/g, '');
+  const costumeCtx = { color, eye: eyeOffset, uid };
 
   const renderFace = () => {
     if (costume) return costume.face(costumeCtx);

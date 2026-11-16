@@ -113,6 +113,11 @@ export default function Home() {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // Búsqueda por palabra en las publicaciones (se aplica en la base, así encuentra también las que no se cargaron)
+  const [wordInput, setWordInput] = useState('')
+  const [wordFilter, setWordFilter] = useState('')
+  const wordRef = useRef('')
+  const fetchIdRef = useRef(0)
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
@@ -299,13 +304,18 @@ export default function Home() {
   }
 
   const fetchPosts = async (isLoadMore = false) => {
-    if (isFetchingRef.current) return;
+    // Una carga nueva (por ejemplo, cambió la búsqueda) le gana a la que estaba en curso
+    if (isFetchingRef.current && isLoadMore) return;
+    const requestId = ++fetchIdRef.current;
     isFetchingRef.current = true;
     if (isLoadMore) setLoadingMore(true); else setLoading(true);
     try {
       const start = isLoadMore ? offsetRef.current : 0;
       let query = supabase.from('posts').select('*').order('updated_at', { ascending: false }).range(start, start + POSTS_PER_PAGE - 1);
       if (user) query = query.neq('user_id', user.id);
+      // Palabra buscada: en el texto o en la intención (sin comodines ni caracteres que rompan el filtro)
+      const word = wordRef.current.replace(/[%_,()*\\]/g, ' ').trim();
+      if (word) query = query.or(`content.ilike.%${word}%,intention.ilike.%${word}%`);
       // Mi publicación y la página del feed se piden juntas (antes, una después de la otra)
       const [{ data: postsData, error: postsError }] = await Promise.all([
         query,
@@ -314,6 +324,7 @@ export default function Home() {
       if (postsError) throw postsError;
 
       const combined = await enrichPosts(postsData || []);
+      if (requestId !== fetchIdRef.current) return;
       offsetRef.current = start + (postsData?.length || 0);
       // Si una publicación se editó mientras bajabas, cambia de lugar: no la repetimos
       if (isLoadMore) setPosts(prev => [...prev, ...combined.filter(p => !prev.some(x => x.id === p.id))]); else setPosts(combined);
@@ -322,12 +333,28 @@ export default function Home() {
       console.error('Error al cargar feed:', error);
       setToast({ message: 'Error al cargar publicaciones', type: 'error' });
     } finally {
-      isFetchingRef.current = false;
-      setLoading(false); setLoadingMore(false);
+      if (requestId === fetchIdRef.current) {
+        isFetchingRef.current = false;
+        setLoading(false); setLoadingMore(false);
+      }
     }
   }
 
   useEffect(() => { fetchPosts(false); }, [])
+
+  // Se busca un instante después de dejar de escribir
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWordFilter(wordInput.trim()), 350)
+    return () => window.clearTimeout(timer)
+  }, [wordInput])
+  const firstWordRun = useRef(true)
+  useEffect(() => {
+    if (firstWordRun.current) { firstWordRun.current = false; return }
+    wordRef.current = wordFilter
+    offsetRef.current = 0
+    setHasMore(true)
+    fetchPosts(false)
+  }, [wordFilter])
 
   // Scroll infinito: cuando el final del feed entra en pantalla, cargar la siguiente página
   useEffect(() => {
@@ -672,6 +699,21 @@ export default function Home() {
         </div>
 
         <div>
+          <div className="relative mb-3">
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={13} aria-hidden />
+            <input
+              type="search"
+              value={wordInput}
+              onChange={e => setWordInput(e.target.value)}
+              maxLength={40}
+              placeholder="Buscar en publicaciones (ej: bajista, cumbia, Yerba Buena)"
+              aria-label="Buscar en publicaciones por palabra"
+              className="w-full pl-9 pr-10 py-2.5 bg-[#141414] border border-[#2a2a2a] rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500"
+            />
+            {wordInput && (
+              <button type="button" onClick={() => setWordInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-white" aria-label="Borrar búsqueda"><FaTimes size={12} /></button>
+            )}
+          </div>
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
             <button onClick={() => setFilterSort('recientes')} className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all ${filterSort === 'recientes' ? 'bg-purple-600 text-white border-purple-600' : 'bg-[#0f0f0f] border-[#2a2a2a] text-gray-400'}`}>
               <IoIosTime className="text-lg" /> Más Recientes
@@ -685,7 +727,7 @@ export default function Home() {
             <p className="text-[11px] text-gray-400 sm:text-right">Tocá un póster para abrirlo. Dos toques: me gusta.</p>
           </div>
           {loading ? (<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" aria-hidden="true">{[0, 1, 2, 3].map(i => <div key={i} className="aspect-[4/5] bg-[#1a1a1a] border border-[#262626] animate-pulse" />)}</div>) : otherPosts.length === 0 ? (
-            <div className="text-center py-16 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl"><FaSearch className="text-gray-600 text-4xl mx-auto mb-3" /><p className="text-gray-400">No hay publicaciones con estos filtros.</p></div>
+            <div className="text-center py-16 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl"><FaSearch className="text-gray-600 text-4xl mx-auto mb-3" /><p className="text-gray-400">{wordFilter ? <>Ninguna publicación dice "{wordFilter}".</> : "No hay publicaciones con estos filtros."}</p></div>
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 items-start gap-x-4 gap-y-7 pt-3">
@@ -892,21 +934,26 @@ export default function Home() {
       )}
       {focusedPost && (
         <PosterFocus
-          post={focusedPost}
-          body={renderContentWithLinks(focusedPost.content)}
-          chips={renderPostChips(focusedPost)}
-          actions={focusActions(focusedPost)}
+          startId={focusedPost.id}
           onClose={closeFocus}
-          onLike={focusedPost.user_id === user?.id ? undefined : () => { if (!focusedPost.is_liked_by_me) handleToggleLike(focusedPost.id, focusedPost.user_id) }}
-          author={
-            <button type="button" onClick={() => navigate(`/perfil/${focusedPost.user_id}`)} className="flex items-center gap-3 text-left w-full min-w-0">
-              <Avatar url={focusedPost.avatar_url || null} name={focusedPost.display_name} color={focusedPost.avatar_color || '#333'} size={40} isOnline={isUserOnline(focusedPost.last_seen)} />
-              <span className="min-w-0">
-                <span className="block text-white font-bold text-sm truncate">{focusedPost.display_name}</span>
-                <span className="block text-xs text-gray-300 truncate">{focusedPost.instruments?.[0]?.name || 'Músico'}{focusedPost.localidad ? ` · ${focusedPost.localidad}` : ''} · {new Date(focusedPost.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
-              </span>
-            </button>
-          }
+          onReachEnd={focusedPost.user_id === user?.id ? undefined : () => { if (hasMore && !isFetchingRef.current) fetchPosts(true) }}
+          slides={(focusedPost.user_id === user?.id ? [focusedPost] : otherPosts).map(post => ({
+            id: post.id,
+            post,
+            body: renderContentWithLinks(post.content),
+            chips: renderPostChips(post),
+            actions: focusActions(post),
+            onLike: post.user_id === user?.id ? undefined : () => { if (!post.is_liked_by_me) handleToggleLike(post.id, post.user_id) },
+            author: (
+              <button type="button" onClick={() => navigate(`/perfil/${post.user_id}`)} className="flex items-center gap-3 text-left w-full min-w-0">
+                <Avatar url={post.avatar_url || null} name={post.display_name} color={post.avatar_color || '#333'} size={40} isOnline={isUserOnline(post.last_seen)} />
+                <span className="min-w-0">
+                  <span className="block text-white font-bold text-sm truncate">{post.display_name}</span>
+                  <span className="block text-xs text-gray-300 truncate">{post.instruments?.[0]?.name || 'Músico'}{post.localidad ? ` · ${post.localidad}` : ''} · {new Date(post.updated_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>
+                </span>
+              </button>
+            ),
+          }))}
         />
       )}
       {shareTarget && <ShareModal target={shareTarget} onClose={() => setShareTarget(null)} />}

@@ -1,9 +1,10 @@
 // src/components/BandFormModal.tsx
 // Crear o editar una banda.
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { compressImage, imageExtension } from '../lib/imageCompress'
+import { removeOwnFiles } from '../lib/storageCleanup'
 import { TUCUMAN_LOCATIONS, DEPARTAMENTOS, GENRES, COMMON_INSTRUMENTS } from '../lib/tucuman'
 import { FaTimes, FaSpinner, FaUpload, FaUsers } from 'react-icons/fa'
 
@@ -30,6 +31,10 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const savingRef = useRef(false)
+  // Logos subidos en esta ventana: los que no quedan elegidos se borran
+  const uploadedRef = useRef<string[]>([])
+  const savedRef = useRef(false)
+  useEffect(() => () => { if (!savedRef.current && user) removeOwnFiles(uploadedRef.current, user.id) }, [])
 
   const toggle = (key: 'genres' | 'looking_for', value: string) =>
     setForm(prev => ({ ...prev, [key]: prev[key].includes(value) ? prev[key].filter(v => v !== value) : [...prev[key], value] }))
@@ -45,7 +50,9 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
       const path = `${user.id}/band-${Date.now()}.${imageExtension(compressed)}`
       const { error } = await supabase.storage.from('avatars').upload(path, compressed, { contentType: compressed.type })
       if (error) throw error
-      setForm(prev => ({ ...prev, logo_url: supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl }))
+      const url = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+      uploadedRef.current.push(url)
+      setForm(prev => ({ ...prev, logo_url: url }))
     } catch (err: any) {
       setError('No se pudo subir el logo: ' + err.message)
     } finally {
@@ -71,6 +78,9 @@ export default function BandFormModal({ band, onClose, onSaved }: { band?: BandD
       setError(/hasta \d bandas|1 sola banda/.test(error.message) ? 'Llegaste al máximo de 5 bandas creadas.' : /esperá/i.test(error.message) ? error.message : /bands/.test(error.message) && /exist/.test(error.message) ? 'Falta activar las bandas en Supabase (SQL de la etapa 3).' : 'No se pudo guardar: ' + error.message)
       return
     }
+    // Logos que ya no se usan: el anterior de la banda y los que se probaron sin elegir
+    savedRef.current = true
+    if (user) removeOwnFiles([...uploadedRef.current, band?.logo_url].filter(url => url && url !== form.logo_url), user.id)
     onSaved(data.id)
   }
 

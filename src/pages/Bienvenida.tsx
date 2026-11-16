@@ -223,17 +223,17 @@ export default function Bienvenida() {
             </Afiche>
             <span className="hidden lg:block absolute -bottom-12 -right-12 z-10"><Sticker start="otaku" color="#ec4899" size={60} tilt={12} /></span>
             <span className="lg:hidden absolute -left-3 -top-12 z-10">
-              <a href="#darkore" className="sticker !pt-8" style={{ '--tilt': '-10deg' } as CSSProperties} aria-label="Conocé a Darkore, el rey de la pared">
+              <a href="#darkore" className="sticker !pt-8" style={{ '--tilt': '-10deg' } as CSSProperties} aria-label="Saludo de Darkore: cómo funciona SANAT">
                 <span className="pointer-events-none"><Mascot color="#3f3f46" size={46} expression="darkking" /></span>
               </a>
             </span>
             {/* Celular: Darkore asoma debajo del afiche principal */}
-            <a href="#darkore" className="lg:hidden block mt-28 mx-auto max-w-[300px]" aria-label="Conocé a Darkore, el rey de la pared">
+            <a href="#darkore" className="lg:hidden block mt-28 mx-auto max-w-[300px]" aria-label="Saludo de Darkore: cómo funciona SANAT">
               <Afiche tone="ink" tilt={2.5} className="flex items-center gap-10 pl-12 pr-5 py-5">
                 <span className="llama-mini" aria-hidden />
                 <span className="relative shrink-0 pt-4"><Mascot color="#3f3f46" size={64} expression="darkking" /></span>
                 <span>
-                  <span className="block font-anton text-xl leading-none text-white">EL REY DE LA PARED</span>
+                  <span className="block font-anton text-xl leading-none text-white">¡HOLA, BIENVENIDO!</span>
                   <span className="block font-marker text-violet-300 mt-1">Darkore ↓</span>
                 </span>
               </Afiche>
@@ -242,11 +242,11 @@ export default function Bienvenida() {
 
           {/* Afiche derecho: jam */}
           <div className="hidden lg:flex flex-col items-start gap-12 pt-14">
-            <a href="#darkore" className="block group" aria-label="Conocé a Darkore, el rey de la pared">
+            <a href="#darkore" className="block group" aria-label="Saludo de Darkore: cómo funciona SANAT">
               <Afiche tone="ink" tilt={4} className="w-60 px-5 pt-12 pb-5 text-center">
                 <span className="llama-mini" aria-hidden />
                 <span className="relative inline-block"><Mascot color="#3f3f46" size={84} expression="darkking" /></span>
-                <p className="font-anton text-2xl leading-none text-white mt-1">EL REY DE LA PARED</p>
+                <p className="font-anton text-2xl leading-none text-white mt-1">¡HOLA, BIENVENIDO!</p>
                 <p className="font-marker text-violet-300 mt-1 group-hover:text-white transition-colors">Darkore ↓</p>
               </Afiche>
             </a>
@@ -349,16 +349,24 @@ export default function Bienvenida() {
             <Afiche tone="ink" tilt={-0.8} className="px-6 py-10 sm:px-12 sm:py-16 md:grid md:grid-cols-[auto_1fr] md:gap-14 md:items-center" tapes="corners">
               <div className="relative flex justify-center pt-10 pb-6 md:py-0 md:w-[340px]">
                 <span className="llama" aria-hidden />
-                <span className="relative md:hidden"><Mascot color="#3f3f46" size={150} expression="darkking" /></span>
-                <span className="relative hidden md:inline-block"><Mascot color="#3f3f46" size={180} expression="darkking" /></span>
+                <span className="brasas" aria-hidden>{BRASAS.map((b, i) => <i key={i} style={{ left: `${b[0]}%`, animationDelay: `${b[1]}s`, animationDuration: `${b[2]}s` }} />)}</span>
+                <span className="dk-flota relative inline-block md:hidden"><Mascot color="#3f3f46" size={150} expression="darkking" /></span>
+                <span className="dk-flota relative hidden md:inline-block"><Mascot color="#3f3f46" size={180} expression="darkking" /></span>
               </div>
               <div>
-                <h2 className="relative text-6xl sm:text-8xl text-white leading-none">DARKORE</h2>
+                <h2 className="relative text-6xl sm:text-8xl text-white leading-none" aria-label="Darkore">{'DARKORE'.split('').map((l, i) => <span key={i} className="dk-letra" style={{ '--i': i } as CSSProperties} aria-hidden>{l}</span>)}</h2>
                 <p className="mt-2 text-violet-300 font-semibold">Creador de SANAT · el Dark King</p>
                 <figure className="burbuja-dk mt-8">
-                  <blockquote className="font-marker text-xl sm:text-2xl text-zinc-100 leading-relaxed">
-                    “Armé SANAT para que ningún músico de Tucumán se quede sin banda ni sin escenario. La pared es de todos: pegá tu afiche y hacé ruido.”
-                  </blockquote>
+                  <p className="font-marker text-2xl sm:text-3xl text-white">¡Hola, bienvenido!</p>
+                  <p className="text-zinc-300 mt-1">Así funciona SANAT:</p>
+                  <ol className="mt-4 space-y-3">
+                    {PASOS.map((paso, i) => (
+                      <li key={i} className="paso flex items-start gap-3 text-zinc-100 leading-snug" style={{ '--i': i } as CSSProperties}>
+                        <span className="paso-num" aria-hidden>{i + 1}</span>
+                        <span>{paso}</span>
+                      </li>
+                    ))}
+                  </ol>
                   <figcaption className="firma font-marker text-3xl sm:text-4xl text-violet-400 mt-4 text-right">— Darkore</figcaption>
                 </figure>
                 <p className="relative mt-5 text-sm text-zinc-400">Dark King</p>
@@ -391,6 +399,16 @@ export default function Bienvenida() {
     </div>
   )
 }
+
+// Pasos que explica Darkore en su globo
+const PASOS = [
+  'Creá tu cuenta y elegí tu mascota.',
+  'Diseñá tu perfil como quieras: fondos, fuentes, fotos y stickers.',
+  'Publicá lo que buscás (banda, músicos o gente para tocar) y SANAT les avisa a quienes coinciden en tu zona.',
+  'Sumate a una banda o armá la tuya, mirá la agenda de shows, subí tus demos y hablá por chat.',
+]
+// Brasas que suben desde la llama: [posición %, retraso s, duración s]
+const BRASAS: [number, number, number][] = [[18, 0, 3.4], [30, 1.2, 4.1], [42, 0.5, 3.1], [55, 2, 3.8], [64, 0.9, 4.4], [72, 1.6, 3.3], [36, 2.6, 4], [50, 3.1, 3.6], [24, 3.4, 4.2], [80, 2.3, 3.9]]
 
 const CINTA = ['SANAT', 'BANDAS', 'SHOWS', 'JAMS', 'DEMOS', 'MASCOTAS', 'TUCUMÁN', 'SANAT', 'BANDAS', 'SHOWS', 'JAMS', 'DEMOS', 'MASCOTAS', 'TUCUMÁN']
 const CINTA2 = ['SE BUSCA BATERISTA', 'ENSAYO ABIERTO', 'TOCAMOS EL SÁBADO', 'SUMATE A LA BANDA', 'SE BUSCA VOZ', 'JAM DE LOS JUEVES']

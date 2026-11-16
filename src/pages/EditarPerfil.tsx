@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import Mascot from '../components/Mascot'
 import InstrumentsInput, { cleanInstruments, emptyInstrument } from '../components/InstrumentsInput'
 import { compressImage, imageExtension, MAX_INPUT_IMAGE_MB } from '../lib/imageCompress'
+import { removeOwnFiles } from '../lib/storageCleanup'
 import type { Instrument } from '../types'
 import { ProfileAudioUploader } from '../components/ProfileAudio'
 import { type MascotExpression } from '../components/MascotCostumes'
@@ -295,6 +296,9 @@ export default function EditarPerfil() {
       }
 
       if (error) throw error
+
+      // La foto anterior ya no se usa: se borra de Storage
+      if (profile?.avatar_url && finalAvatarUrl !== profile.avatar_url) removeOwnFiles([profile.avatar_url], user.id)
 
       setToast({ message: 'Perfil actualizado correctamente', type: 'success' })
       await refreshProfile()

@@ -165,3 +165,8 @@
   100% { transform: translate(-50%, -60%) scale(1); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .poster-heart { animation-duration: 0.01s; } }
+
+/* Flechita que invita a deslizar al siguiente póster */
+.poster-swipe-hint { animation: poster-swipe 1.6s ease-in-out infinite; }
+@keyframes poster-swipe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .poster-swipe-hint { animation: none; } }

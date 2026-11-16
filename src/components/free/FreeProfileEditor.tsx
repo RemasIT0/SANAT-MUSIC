@@ -8,6 +8,8 @@ import Toast from '../Toast'
 import { useDialog } from '../DialogProvider'
 import { compressImage, imageExtension } from '../../lib/imageCompress'
 import { PROFILE_TEMPLATES, type ProfileTemplate } from '../../types/profileTemplates'
+import { ADMIN_EMAIL } from '../../hooks/useAdminAlerts'
+import { layoutImageUrls, removeOwnFiles, stripLayoutImages } from '../../lib/storageCleanup'
 import FreeElementView, { elementBoxStyle, elementFxClass } from './FreeElementView'
 import {
   CANVAS_WIDTH, MIN_CANVAS_HEIGHT, MAX_CANVAS_HEIGHT, MAX_ELEMENTS, MAX_IMAGES, MAX_SAVED_DESIGNS,
@@ -62,6 +64,9 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
 
   const scale = Math.min(1, fitScale * zoom)
   const scaleRef = useRef(scale)
+  // Imágenes del diseño publicado y las que se subieron ahora: al publicar se borran las que ya no se usan
+  const publishedImagesRef = useRef<string[]>([])
+  const sessionUploadsRef = useRef<string[]>([])
   scaleRef.current = scale
 
   // ---------- Carga inicial ----------
@@ -75,6 +80,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
       ])
       const existing = layoutRow?.layout_config?.layout === 'free' ? parseFreeLayout(layoutRow.layout_config.free) : null
       setLayout(existing || defaultFreeLayout(!!profile?.audio_url))
+      publishedImagesRef.current = layoutImageUrls(existing)
 
       // ¿Quedó un borrador sin publicar (se cerró la página, se cortó internet...)?
       const draft = readDraft(user.id)
@@ -263,7 +269,9 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
       const path = `gallery/${user.id}-${Date.now()}.${imageExtension(toUpload)}`
       const { error } = await supabase.storage.from('avatars').upload(path, toUpload, { contentType: toUpload.type })
       if (error) throw error
-      return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+      const url = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+      sessionUploadsRef.current.push(url)
+      return url
     } catch (error: any) {
       setToast({ message: 'Error al subir la imagen: ' + error.message, type: 'error' })
       return null
@@ -309,6 +317,12 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     setDirty(false)
     clearDraft(user.id)
     setDraftSavedAt(null)
+    // Las imágenes que quedaron afuera del diseño publicado se borran de Storage
+    const inUse = new Set(layoutImageUrls(layout))
+    const unused = [...publishedImagesRef.current, ...sessionUploadsRef.current].filter(url => !inUse.has(url))
+    publishedImagesRef.current = [...inUse]
+    sessionUploadsRef.current = []
+    removeOwnFiles(unused, user.id)
     setToast({ message: '¡Perfil publicado!', type: 'success' })
     setTimeout(onClose, 350)
   }
@@ -317,20 +331,22 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     if (!user || !layout) return
     const name = designName.trim() || `Diseño ${designs.length + 1}`
     if (designs.length >= MAX_SAVED_DESIGNS) { setToast({ message: `Podés guardar hasta ${MAX_SAVED_DESIGNS} diseños. Borrá uno para guardar otro.`, type: 'info' }); return }
-    const { data, error } = await supabase.from('profile_designs').insert({ user_id: user.id, name, data: layout }).select('id, name, data, created_at').single()
+    // Se guarda solo el molde: posiciones, colores, textos y stickers (sin fotos)
+    const { data, error } = await supabase.from('profile_designs').insert({ user_id: user.id, name, data: stripLayoutImages(layout) }).select('id, name, data, created_at').single()
     if (error) { setToast({ message: 'No se pudo guardar el diseño: ' + error.message, type: 'error' }); return }
     setDesigns(prev => [data as SavedDesign, ...prev])
     setDesignName('')
-    setToast({ message: `Diseño "${name}" guardado`, type: 'success' })
+    setToast({ message: `Diseño "${name}" guardado (sin fotos: solo el molde)`, type: 'success' })
   }
 
   const applyDesign = (design: SavedDesign) => {
     const parsed = parseFreeLayout(design.data)
     if (!parsed) { setToast({ message: 'Ese diseño está dañado', type: 'error' }); return }
-    setLayout(parsed)
+    // Los diseños viejos podían tener fotos que ya se borraron: se cargan como molde
+    setLayout(stripLayoutImages(parsed))
     setSelectedId(null)
     setDirty(true)
-    setToast({ message: `Cargaste "${design.name}". Tocá Publicar para usarlo en tu perfil.`, type: 'info' })
+    setToast({ message: `Cargaste "${design.name}". Subí tus fotos de nuevo y tocá Publicar.`, type: 'info' })
   }
 
   const applyTemplate = async (template: ProfileTemplate) => {
@@ -664,7 +680,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
               <>
                 <p className="text-xs font-semibold text-white">Plantillas</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {PROFILE_TEMPLATES.map(template => (
+                  {PROFILE_TEMPLATES.filter(t => !t.adminOnly || user?.email === ADMIN_EMAIL).map(template => (
                     <button key={template.key} onClick={() => applyTemplate(template)} className="text-left rounded-xl overflow-hidden border border-[#2a2a2a] hover:border-purple-500 bg-[#0f0f0f]">
                       <div className="h-14" style={{ background: template.preview }} />
                       <div className="p-2">
@@ -676,6 +692,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                 </div>
                 <p className="text-xs font-semibold text-white pt-2 border-t border-[#2a2a2a]">Mis diseños guardados</p>
                 <p className="text-xs text-gray-400">Guardá versiones de tu diseño para cambiar entre ellas cuando quieras. Son privadas: nadie más las ve ni las puede copiar.</p>
+                <p className="text-xs text-amber-200 bg-amber-950/40 border border-amber-800/50 rounded-lg p-2.5">Ojo: los diseños guardados son solo el molde (posiciones, colores, textos y stickers). <b>Las fotos no se guardan</b>: al cargar un diseño vas a tener que subirlas de nuevo.</p>
                 <div className="flex gap-2">
                   <input value={designName} onChange={e => setDesignName(e.target.value)} maxLength={40} placeholder="Nombre (ej: Halloween)" className={input} />
                   <button onClick={saveDesign} disabled={designs.length >= MAX_SAVED_DESIGNS} className={`${smallBtn} bg-purple-700 hover:bg-purple-600 text-white flex-shrink-0 disabled:opacity-50`}><FaSave size={11} /> Guardar</button>

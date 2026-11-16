@@ -226,6 +226,71 @@
 }
 .burbuja-dk .firma { margin-top: 0.6rem; }
 
+/* Número de cada paso: una notita violeta */
+.paso-num {
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #7e22ce;
+  color: #fff;
+  font-family: 'Anton', 'Nirvana', sans-serif;
+  font-size: 1.05rem;
+  border-radius: 6px;
+  transform: rotate(-6deg);
+}
+.paso:nth-child(even) .paso-num { transform: rotate(5deg); }
+
+/* ---------- Animaciones del afiche de Darkore ---------- */
+/* La mascota flota despacio */
+.dk-flota { animation: dk-flota 4.2s ease-in-out infinite; }
+@keyframes dk-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* Brasas cuadradas que suben desde la llama */
+.brasas { position: absolute; left: 50%; bottom: 18%; width: 260px; height: 70%; transform: translateX(-50%); pointer-events: none; }
+.brasas i {
+  position: absolute;
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  background: #fb923c;
+  opacity: 0;
+}
+.brasas i:nth-child(3n) { background: #ef4444; width: 4px; height: 4px; }
+.brasas i:nth-child(4n) { background: #fde68a; width: 3px; height: 3px; }
+.escenario[data-luz='on'] .brasas i { animation-name: brasa; animation-timing-function: ease-out; animation-iteration-count: infinite; }
+@keyframes brasa {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  60% { transform: translate(12px, -55%) rotate(90deg); opacity: 0.8; }
+  100% { transform: translate(-8px, -100%) rotate(200deg); opacity: 0; }
+}
+
+/* DARKORE: las letras caen una por una cuando se enciende la luz */
+.dk-letra { display: inline-block; }
+.escenario[data-luz='off'] .dk-letra { opacity: 0; transform: translateY(-28px) rotate(-8deg); }
+.escenario[data-luz='on'] .dk-letra { animation: dk-letra 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(0.5s + var(--i) * 0.07s); }
+@keyframes dk-letra {
+  from { opacity: 0; transform: translateY(-28px) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* El globo se abre desde la colita y los pasos aparecen de a uno */
+.escenario[data-luz='off'] .burbuja-dk { opacity: 0; transform: scale(0.85); }
+.escenario[data-luz='on'] .burbuja-dk { animation: burbuja-pop 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.9s both; transform-origin: 50% 0; }
+@media (min-width: 768px) { .escenario[data-luz='on'] .burbuja-dk { transform-origin: 0 60px; } }
+@keyframes burbuja-pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+.escenario[data-luz='off'] .paso { opacity: 0; }
+.escenario[data-luz='on'] .paso { animation: paso-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(1.3s + var(--i) * 0.28s); }
+@keyframes paso-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+
+/* La firma se escribe de izquierda a derecha al final */
+.escenario[data-luz='off'] .firma { clip-path: inset(0 100% 0 0); }
+.escenario[data-luz='on'] .firma { animation: firmar 0.9s cubic-bezier(0.65, 0, 0.35, 1) 2.5s both; }
+@keyframes firmar { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
 /* Impresión: trama de puntos en los afiches violeta */
 .afiche--violet::after {
   content: '';
@@ -271,7 +336,10 @@
   .afiche[data-paste='pending'] { opacity: 1; }
   .afiche[data-paste='done'], .afiche[data-paste='done'] .tape,
   .desfile > *, .cinta-larga > div, .onda i, .sticker .swap,
-  .llama, .llama-mini, .escenario[data-luz='on'] .llama { animation: none; }
+  .llama, .llama-mini, .escenario[data-luz='on'] .llama, .dk-flota { animation: none; }
+  .escenario[data-luz] .dk-letra, .escenario[data-luz] .burbuja-dk, .escenario[data-luz] .paso { animation: none; opacity: 1; transform: none; }
+  .escenario[data-luz] .firma { animation: none; clip-path: none; }
+  .brasas { display: none; }
   .llama { opacity: 1; }
   .afiche, .sticker, .btn-pegar { transition: none; }
 }
