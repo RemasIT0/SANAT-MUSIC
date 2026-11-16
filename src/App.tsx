@@ -6,7 +6,6 @@ import { supabase } from './lib/supabaseClient'
 import { useOnlineStatus } from './hooks/useOnlineStatus' // ✅ NUEVO IMPORT
 
 
-import Notificaciones from './pages/Notificaciones'
 import AvisosAdmin, { ADMIN_THREAD_ID } from './pages/AvisosAdmin'
 import BottomNav from './components/BottomNav'
 import AnimatedBackground from './components/AnimatedBackground'
@@ -136,7 +135,7 @@ function LayoutWithNav() {
             </div>
             <p className="text-gray-400 text-sm mb-4">¿Tenés una idea, encontraste un error o querés pedir una función? ¡Tu opinión nos ayuda a mejorar SANAT!</p>
             <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="Escribí tu sugerencia aquí..." className="w-full h-32 p-3 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-purple-600 resize-none mb-4 placeholder:text-gray-600" />
-            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:bg-[#2a2a2a] disabled:text-gray-400 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+            <button onClick={handleSendSuggestion} disabled={isSendingSuggestion || !suggestionText.trim()} className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
               {isSendingSuggestion ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />} {isSendingSuggestion ? 'Enviando...' : 'Enviar Sugerencia'}
             </button>
           </div>

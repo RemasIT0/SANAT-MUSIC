@@ -170,3 +170,25 @@
 .poster-swipe-hint { animation: poster-swipe 1.6s ease-in-out infinite; }
 @keyframes poster-swipe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .poster-swipe-hint { animation: none; } }
+
+/* ---------- Mascotita mensajera (notificaciones) ---------- */
+.mensajero-salta { display: inline-block; animation: mensajero-salta 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes mensajero-salta {
+  0%, 60%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-6px) rotate(-6deg); }
+  40% { transform: translateY(0) rotate(4deg); }
+}
+/* Las cartas llegan de a una */
+.carta { animation: carta-llega 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 0.05s); }
+@keyframes carta-llega { from { opacity: 0; transform: translateY(10px) rotate(-1deg); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mensajero-salta, .carta { animation: none; } }
+
+/* Panel de notificaciones: hoja desde abajo (celular) o desplegable (compu) */
+.notif-hoja { animation: notif-sube 0.32s cubic-bezier(0.16, 1, 0.3, 1); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes notif-sube { from { transform: translateY(100%); } to { transform: none; } }
+.notif-pop { transform-origin: top right; animation: notif-abre 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes notif-abre { from { opacity: 0; transform: scale(0.94) translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .notif-hoja, .notif-pop { animation: none; } }
+
+/* Letra escrita a mano (globos de las mascotas) */
+.font-marker { font-family: 'Permanent Marker', cursive; }

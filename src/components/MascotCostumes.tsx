@@ -14,7 +14,7 @@ export type MascotExpression =
   | 'timido' | 'cerdito' | 'pollito'
   | 'emo' | 'gotico' | 'grunge' | 'nerd' | 'unicornio' | 'siniestro' | 'payaso'
   | 'bufon' | 'verdugo' | 'sombra' | 'infectado' | 'penitente' | 'lord'
-  | 'darkking' | 'mago' | 'princesa'
+  | 'darkking' | 'mago' | 'princesa' | 'cartero'
   | 'gaucha' | 'rapera' | 'turra' | 'grungera' | 'dama' | 'maga'
 
 // Lista para los selectores (Editar perfil / Onboarding)
@@ -62,6 +62,7 @@ export const MASCOT_EXPRESSIONS: { id: MascotExpression; label: string }[] = [
   { id: 'mago', label: 'Mago sabio' },
   { id: 'maga', label: 'Maga' },
   { id: 'princesa', label: 'Princesa guerrera' },
+  { id: 'cartero', label: 'Cartero' },
   { id: 'darkking', label: 'Dark King' },
 ]
 
@@ -173,6 +174,38 @@ function Brows({ tilt = 0 }: { tilt?: number }) {
 }
 
 export const COSTUMES: Partial<Record<MascotExpression, Costume>> = {
+  cartero: {
+    // Mensajero de SANAT: gorra con visera, bolso cruzado y una carta asomando
+    front: () => (
+      <>
+        {/* Gorra violeta con visera y un sobrecito bordado */}
+        <Layer top={-24} left={2} w={104} h={44} className="z-20">
+          <path d="M8 34 Q8 6 50 4 Q92 6 92 34 Z" fill="#6d28d9" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
+          <path d="M4 34 L100 34 Q102 42 92 42 L10 42 Q2 42 4 34 Z" fill="#1f1235" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <rect x="40" y="14" width="20" height="14" rx="1.5" fill="#f4efe6" stroke={INK} strokeWidth="2" />
+          <path d="M40 15 L50 23 L60 15" fill="none" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        </Layer>
+        {/* Bolso al costado con una carta asomando */}
+        <Layer top={8} left={-8} w={122} h={108} className="z-20">
+          {/* La correa sale de atrás del cuerpo por el costado (no tapa la cara) */}
+          <path d="M106 18 Q114 40 104 66" fill="none" stroke={INK} strokeWidth="11" strokeLinecap="round" />
+          <path d="M106 18 Q114 40 104 66" fill="none" stroke="#92400e" strokeWidth="6" strokeLinecap="round" />
+          <rect x="80" y="62" width="38" height="36" rx="5" fill="#b45309" stroke={INK} strokeWidth="3" />
+          <rect x="85" y="50" width="26" height="18" rx="1.5" fill="#f4efe6" stroke={INK} strokeWidth="2" transform="rotate(-8 98 59)" />
+          <path d="M80 66 L118 66 L116 80 Q99 86 82 80 Z" fill="#92400e" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
+          <circle cx="99" cy="79" r="3" fill="#fde68a" stroke={INK} strokeWidth="1.5" />
+        </Layer>
+      </>
+    ),
+    face: ({ eye }) => (
+      <>
+        <div className="mt-4"><SquareEyes eye={eye} /></div>
+        <svg width="34" height="14" viewBox="0 0 34 14" className="mt-2">
+          <path d="M3 3 Q17 16 31 3" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+        </svg>
+      </>
+    ),
+  },
   halloween: {
     front: () => (
       <>

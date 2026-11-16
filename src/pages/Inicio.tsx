@@ -17,6 +17,7 @@ import { IoMegaphone } from "react-icons/io5"
 import { isUserOnline } from '../hooks/useOnlineStatus'
 import Mascot from '../components/Mascot'
 import PostModal from '../components/PostModal'
+import MensajeroButton from '../components/MensajeroButton'
 import PosterFace from '../components/poster/PosterFace'
 import PosterTile from '../components/poster/PosterTile'
 import PosterFocus, { type PosterAction } from '../components/poster/PosterFocus'
@@ -560,15 +561,18 @@ export default function Home() {
 
        <div className="space-y-4 w-full">
 
-          {/* Fila 1: Barra de búsqueda  */}
+          {/* Fila 1: Barra de búsqueda y la mascotita mensajera (notificaciones) */}
+          <div className="flex items-stretch gap-3">
           <button
             data-tour="buscar"
             onClick={() => setIsSearchOpen(true)}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
+            className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-purple-500/50 rounded-xl p-3.5 flex items-center justify-center md:justify-start gap-3 text-gray-400 hover:text-white transition-all group shadow-lg shadow-purple-900/5"
           >
             <FaSearch className="text-purple-500 group-hover:scale-110 transition-transform flex-shrink-0" size={18} />
             <span className="text-sm font-medium truncate">Buscar músicos por @usuario o nombre...</span>
           </button>
+          <MensajeroButton />
+          </div>
 
           {/* Fila 2: Televisión Retro (CENTRADA) */}
           <div className="flex justify-center">
@@ -905,7 +909,7 @@ export default function Home() {
             </select>
             <div className="flex gap-3">
               <button onClick={() => setReportModalOpen(false)} className="flex-1 py-3 bg-[#2a2a2a] text-gray-300 rounded-lg hover:bg-[#333] transition-all font-medium">Cancelar</button>
-              <button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:bg-[#2a2a2a] disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">
+              <button onClick={handleSubmitReport} disabled={isReporting || !reportReason} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2">
                 {isReporting ? <FaSpinner className="animate-spin" /> : <FaFlag />} {isReporting ? 'Enviando...' : 'Enviar Reporte'}
               </button>
             </div>
