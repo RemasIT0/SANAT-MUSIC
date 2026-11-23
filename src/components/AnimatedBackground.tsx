@@ -61,7 +61,7 @@ function Jaw({ id, paths, className }: { id: string; paths: string[]; className:
   )
 }
 
-function FangDisc() {
+export function FangDisc() {
   return (
     <div className="relative w-full h-full">
       {/* Disco negro, borde plateado y salpicado de tinta */}

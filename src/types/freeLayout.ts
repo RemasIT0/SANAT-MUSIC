@@ -391,10 +391,25 @@ export const backgroundCss = (bg: FreeBackground): CSSProperties => {
   }
 }
 
+// Todo perfil tiene que mostrar al menos el nombre y la foto (aunque no tenga imagen):
+// si faltan, se agregan arriba a la izquierda
+export const REQUIRED_ELEMENTS: FreeElementType[] = ['name', 'photo']
+
+export function ensureRequiredElements(layout: FreeLayout): FreeLayout {
+  const missing = REQUIRED_ELEMENTS.filter(type => !layout.elements.some(el => el.type === type))
+  if (!missing.length) return layout
+  let z = layout.elements.reduce((max, e) => Math.max(max, e.z), 0)
+  const added = missing.map((type): FreeElement => {
+    const box = type === 'photo' ? { x: 40, y: 40, w: 200, h: 200 } : { x: 260, y: 60, w: 520, h: 120 }
+    return { id: newId(), type, ...box, rotation: 0, z: ++z, style: defaultStyle(type), content: '' }
+  })
+  return { ...layout, elements: [...layout.elements, ...added] }
+}
+
 // Valida lo que viene de la base (por si está incompleto o viejo)
 export function parseFreeLayout(raw: any): FreeLayout | null {
   if (!raw || !Array.isArray(raw.elements)) return null
-  return {
+  return ensureRequiredElements({
     height: Math.min(MAX_CANVAS_HEIGHT, Math.max(MIN_CANVAS_HEIGHT, Number(raw.height) || 1000)),
     background: (() => {
       const bg = { type: 'solid', color: '#0f0f0f', color2: '#0f0f0f', image: '', pattern: 'none', patternColor: '#ffffff', patternSize: 28, ...(raw.background || {}) }
@@ -409,5 +424,5 @@ export function parseFreeLayout(raw: any): FreeLayout | null {
       if (!(style.font in FONTS)) style.font = 'sans'
       return { ...el, style }
     }),
-  }
+  })
 }

@@ -13,7 +13,7 @@ import { layoutImageUrls, removeOwnFiles, stripLayoutImages } from '../../lib/st
 import FreeElementView, { elementBoxStyle, elementFxClass } from './FreeElementView'
 import {
   CANVAS_WIDTH, MIN_CANVAS_HEIGHT, MAX_CANVAS_HEIGHT, MAX_ELEMENTS, MAX_IMAGES, MAX_SAVED_DESIGNS,
-  ELEMENT_CATALOG, STICKERS, FONTS, ANIMATIONS, PATTERNS, makeElement, cloneElement, defaultFreeLayout, parseFreeLayout, backgroundCss,
+  ELEMENT_CATALOG, STICKERS, FONTS, ANIMATIONS, PATTERNS, makeElement, cloneElement, defaultFreeLayout, parseFreeLayout, backgroundCss, ensureRequiredElements, REQUIRED_ELEMENTS,
   type FreeLayout, type FreeElement, type FreeElementType, type FreeElementStyle, type FontKey, type AnimationKey, type PatternKey,
 } from '../../types/freeLayout'
 import {
@@ -174,8 +174,16 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
     }, 150)
   }
 
+  // El nombre y la foto son obligatorios: no se puede borrar el último de cada uno
+  const isLastRequired = (el: FreeElement | null | undefined) =>
+    !!el && !!layout && REQUIRED_ELEMENTS.includes(el.type) && layout.elements.filter(e => e.type === el.type).length <= 1
+
   const removeSelected = () => {
     if (!selected) return
+    if (isLastRequired(selected)) {
+      setToast({ message: selected.type === 'name' ? 'Tu nombre tiene que estar en el perfil: podés moverlo o cambiarle el estilo, pero no borrarlo.' : 'La foto de perfil tiene que estar (aunque no tengas imagen): podés moverla o achicarla, pero no borrarla.', type: 'info' })
+      return
+    }
     change(prev => ({ ...prev, elements: prev.elements.filter(el => el.id !== selected.id) }))
     setSelectedId(null)
     setTab('add')
@@ -351,7 +359,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
 
   const applyTemplate = async (template: ProfileTemplate) => {
     if (!(await confirm({ title: `¿Usar la plantilla ${template.name}?`, message: 'Reemplaza el diseño que estás editando. No se publica hasta que toques "Publicar", y tus diseños guardados no se tocan.', confirmLabel: 'Usar plantilla' }))) return
-    setLayout(template.build(!!profile?.audio_url))
+    setLayout(ensureRequiredElements(template.build(!!profile?.audio_url)))
     setSelectedId(null)
     setDirty(true)
     setToast({ message: `Plantilla ${template.name} aplicada. Editala a tu gusto y tocá Publicar.`, type: 'success' })
@@ -626,7 +634,7 @@ export default function FreeProfileEditor({ onClose }: { onClose: () => void }) 
                   <button onClick={() => moveLayer('front')} className={`${smallBtn} bg-[#2a2a2a] text-gray-100 hover:bg-[#333]`}><FaArrowUp size={10} /> Al frente</button>
                   <button onClick={() => moveLayer('back')} className={`${smallBtn} bg-[#2a2a2a] text-gray-100 hover:bg-[#333]`}><FaArrowDown size={10} /> Atrás</button>
                   <button onClick={duplicateSelected} className={`${smallBtn} bg-[#2a2a2a] text-gray-100 hover:bg-[#333]`}><FaClone size={10} /> Duplicar</button>
-                  <button onClick={removeSelected} className={`${smallBtn} bg-red-900/30 border border-red-800/50 text-red-300 hover:bg-red-900/50`}><FaTrash size={10} /> Borrar</button>
+                  <button onClick={removeSelected} disabled={isLastRequired(selected)} title={isLastRequired(selected) ? 'Obligatorio en todo perfil' : undefined} className={`${smallBtn} bg-red-900/30 border border-red-800/50 text-red-300 hover:bg-red-900/50 disabled:opacity-40 disabled:cursor-not-allowed`}><FaTrash size={10} /> {isLastRequired(selected) ? 'Obligatorio' : 'Borrar'}</button>
                 </div>
               </>
             ))}
