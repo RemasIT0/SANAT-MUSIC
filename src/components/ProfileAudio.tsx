@@ -175,7 +175,7 @@ export function ProfileAudioUploader() {
       setMessage({ text: 'Formato no permitido. Usá MP3, M4A, AAC, OGG u OPUS, o grabá el audio desde acá.', type: 'error' }); return
     }
     if (file.size > AUDIO_MAX_BYTES) {
-      setMessage({ text: `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es 1 MB. Recortalo o grabalo desde acá (queda mucho más liviano).`, type: 'error' }); return
+      setMessage({ text: `El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es 1 MB. Recortalo o grabalo desde acá.`, type: 'error' }); return
     }
     try {
       const duration = await getAudioDuration(file)
