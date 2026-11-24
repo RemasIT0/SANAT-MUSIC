@@ -392,7 +392,7 @@ export default function Bienvenida() {
 
       <footer className="border-t border-[#262626] bg-[#0b0b0b]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-zinc-400">
-          <span><span className="font-nirvana text-white mr-2">SANAT</span>Hecho en Tucumán</span>
+          <span><span className="font-nirvana text-white mr-2">SANAT</span></span>
           <Link to="/legal" className="hover:text-white underline underline-offset-4">Términos y privacidad</Link>
         </div>
       </footer>
