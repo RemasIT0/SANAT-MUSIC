@@ -72,7 +72,9 @@ function stickerTilt(id: string, mine: boolean) {
 }
 
 export default function ChatRoom() {
-  const { userId } = useParams()
+  // Solo se aceptan ids válidos de la URL (nada de texto armado a mano)
+  const { userId: rawUserId } = useParams()
+  const userId = rawUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUserId) ? rawUserId : undefined
   const navigate = useNavigate()
   const location = useLocation()
   const { user, profile } = useAuth()
@@ -411,6 +413,16 @@ export default function ChatRoom() {
       <div className="h-[calc(100dvh-var(--banner-h,0px))] flex flex-col items-center justify-center gap-3 text-gray-300 bg-[#0f0f0f] px-6 text-center">
         <p>Este usuario ya no existe.</p>
         <button onClick={() => navigate('/bandeja')} className="text-cyan-400 underline">Volver a la bandeja</button>
+      </div>
+    )
+  }
+
+  // Link con un id inválido: no hay con quién chatear
+  if (!userId) {
+    return (
+      <div className="h-[calc(100dvh-var(--banner-h,0px))] flex flex-col items-center justify-center gap-3 text-gray-300 bg-[#0f0f0f]">
+        <p>Esa conversación no existe.</p>
+        <button onClick={() => navigate('/bandeja')} className="px-4 py-2 rounded-lg bg-purple-700 text-white text-sm">Ir a Mensajes</button>
       </div>
     )
   }
